@@ -239,9 +239,13 @@ spawn_rotmnist_block() {
     local label="$1"; shift
     local base_ablation="$1"; shift
     local mu="$1"; shift
+    local family="$1"; shift
     local suffix
     suffix="$(mu_suffix "${mu}")"
     local ablation_value="${base_ablation}${suffix}"
+    local mu_tag
+    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mu_on"; else mu_tag="mu_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${family},${mu_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             method=er \
@@ -253,6 +257,7 @@ spawn_rotmnist_block() {
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}" \
             "+ablation_value=${ablation_value}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
             "$@"
     done
     wait_block "${label} (µ=${mu})"
@@ -265,7 +270,7 @@ run_linear() {
     local base_ablation="$1"; shift
     local mu="$1"; shift
     echo "=== ${label}: std ER + λ-curriculum linear, N=${ramp_steps}, µ=${mu} ==="
-    spawn_rotmnist_block "${label}" "${base_ablation}" "${mu}" \
+    spawn_rotmnist_block "${label}" "${base_ablation}" "${mu}" linear \
         method.lambda_curriculum.enabled=true \
         "method.lambda_curriculum.ramp_steps=${ramp_steps}" \
         method.lambda_curriculum.schedule=linear
@@ -277,7 +282,7 @@ run_adaptive() {
     local base_ablation="$1"; shift
     local mu="$1"; shift
     echo "=== ${label}: std ER + λ-curriculum adaptive, λ_min=${lambda_min}, µ=${mu} ==="
-    spawn_rotmnist_block "${label}" "${base_ablation}" "${mu}" \
+    spawn_rotmnist_block "${label}" "${base_ablation}" "${mu}" adaptive \
         method.lambda_curriculum.enabled=true \
         method.lambda_curriculum.schedule=adaptive \
         "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
@@ -317,6 +322,13 @@ spawn_cifar_block() {
     local label="$1"; shift
     local base_ablation="$1"; shift
     local method_name="$1"; shift
+    local family="$1"; shift
+    local mu_tag
+    if [ "${MU_CIFAR}" = "${MU_ON}" ]; then mu_tag="mu_on"; else mu_tag="mu_off"; fi
+    # Use plain ABLATION_KEY ("curriculum") as a tag so CIFAR runs group with
+    # the rot-MNIST C-series; the wandb `group` field still uses the
+    # _cifar-suffixed ablation_key, which keeps the per-block grouping intact.
+    local tags_csv="${ABLATION_KEY},${label},${family},${mu_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             "method=${method_name}" \
@@ -326,6 +338,7 @@ spawn_cifar_block() {
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}_cifar" \
             "+ablation_value=${base_ablation}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
             "$@"
     done
     wait_block "${label} (CIFAR)"
@@ -338,20 +351,24 @@ if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
     echo "=================================================================="
 
     echo "=== D1: vanilla ER on dom_cifar10 ==="
-    spawn_cifar_block D1 D1_vanilla_ER er method.mode=standard
+    spawn_cifar_block D1 D1_vanilla_ER er vanilla method.mode=standard
 
     echo "=== D2: standard NCL on dom_cifar10 ==="
-    spawn_cifar_block D2 D2_NCL ncl
+    # prior_init=0.1 is the tuned winner from the rot-MNIST α sweep
+    # (thesis_draft/notes/ncl_implementation_findings.md §2.1 + iteration 2 in
+    # outputs/_probe/ncl_sweep_20260511_201851): α=1.0 is over-regularising,
+    # α≤0.03 diverges at lr=0.1, α=0.1 wins on ACC/FORG and on gap-depth.
+    spawn_cifar_block D2 D2_NCL ncl ncl method.ncl.prior_init=0.1
 
     echo "=== D3: best linear curriculum (N=${BEST_N}) on dom_cifar10 ==="
-    spawn_cifar_block D3 "D3_linear_N${BEST_N}" er \
+    spawn_cifar_block D3 "D3_linear_N${BEST_N}" er linear \
         method.mode=standard \
         method.lambda_curriculum.enabled=true \
         "method.lambda_curriculum.ramp_steps=${BEST_N}" \
         method.lambda_curriculum.schedule=linear
 
     echo "=== D4: adaptive curriculum on dom_cifar10 ==="
-    spawn_cifar_block D4 D4_adaptive er \
+    spawn_cifar_block D4 D4_adaptive er adaptive \
         method.mode=standard \
         method.lambda_curriculum.enabled=true \
         method.lambda_curriculum.schedule=adaptive \
