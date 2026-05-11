@@ -251,7 +251,7 @@ spawn_rotmnist_block() {
             method=er \
             "${ROTMNIST_OVERRIDES[@]}" \
             "${EVAL_OVERRIDES[@]}" \
-            "${GRAD_DIAG_OVERRIDES[@]}" \
+            ${GRAD_DIAG_OVERRIDES[@]:+"${GRAD_DIAG_OVERRIDES[@]}"} \
             "training.momentum=${mom}" \
             method.mode=standard \
             "seed=${seed}" \
