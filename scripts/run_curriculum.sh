@@ -238,13 +238,13 @@ mom_suffix() {
 spawn_rotmnist_block() {
     local label="$1"; shift
     local base_ablation="$1"; shift
-    local mu="$1"; shift
+    local mom="$1"; shift
     local family="$1"; shift
     local suffix
     suffix="$(mom_suffix "${mom}")"
     local ablation_value="${base_ablation}${suffix}"
     local mom_tag
-    if [ "$mu" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
     local tags_csv="${ABLATION_KEY},${label},${family},${mom_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
@@ -252,7 +252,7 @@ spawn_rotmnist_block() {
             "${ROTMNIST_OVERRIDES[@]}" \
             "${EVAL_OVERRIDES[@]}" \
             "${GRAD_DIAG_OVERRIDES[@]}" \
-            "training.momentum=${mu}" \
+            "training.momentum=${mom}" \
             method.mode=standard \
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}" \
@@ -260,7 +260,7 @@ spawn_rotmnist_block() {
             "tracking.wandb.tags=[${tags_csv}]" \
             "$@"
     done
-    wait_block "${label} (µ=${mu})"
+    wait_block "${label} (µ=${mom})"
 }
 
 # Wrappers for the two schedule families.
@@ -268,9 +268,9 @@ run_linear() {
     local label="$1"; shift
     local ramp_steps="$1"; shift
     local base_ablation="$1"; shift
-    local mu="$1"; shift
-    echo "=== ${label}: std ER + λ-curriculum linear, N=${ramp_steps}, µ=${mu} ==="
-    spawn_rotmnist_block "${label}" "${base_ablation}" "${mu}" linear \
+    local mom="$1"; shift
+    echo "=== ${label}: std ER + λ-curriculum linear, N=${ramp_steps}, µ=${mom} ==="
+    spawn_rotmnist_block "${label}" "${base_ablation}" "${mom}" linear \
         method.lambda_curriculum.enabled=true \
         "method.lambda_curriculum.ramp_steps=${ramp_steps}" \
         method.lambda_curriculum.schedule=linear
@@ -280,9 +280,9 @@ run_adaptive() {
     local label="$1"; shift
     local lambda_min="$1"; shift
     local base_ablation="$1"; shift
-    local mu="$1"; shift
-    echo "=== ${label}: std ER + λ-curriculum adaptive, λ_min=${lambda_min}, µ=${mu} ==="
-    spawn_rotmnist_block "${label}" "${base_ablation}" "${mu}" adaptive \
+    local mom="$1"; shift
+    echo "=== ${label}: std ER + λ-curriculum adaptive, λ_min=${lambda_min}, µ=${mom} ==="
+    spawn_rotmnist_block "${label}" "${base_ablation}" "${mom}" adaptive \
         method.lambda_curriculum.enabled=true \
         method.lambda_curriculum.schedule=adaptive \
         "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
@@ -294,20 +294,20 @@ run_adaptive() {
 # ──────────────────────────────────────────────────────────────────────────────
 
 if [ "$BLOCK" = "rot_mnist" ] || [ "$BLOCK" = "both" ]; then
-    for mu in $(momentum_values); do
+    for mom in $(momentum_values); do
         echo ""
         echo "=================================================================="
-        echo "  Curriculum block (rot-MNIST) — training.momentum = ${mu}"
+        echo "  Curriculum block (rot-MNIST) — training.momentum = ${mom}"
         echo "=================================================================="
 
-        if should_run C1; then run_linear C1  50 C1_linear_N50  "${mu}"; fi
-        if should_run C2; then run_linear C2 100 C2_linear_N100 "${mu}"; fi
-        if should_run C3; then run_linear C3 200 C3_linear_N200 "${mu}"; fi
+        if should_run C1; then run_linear C1  50 C1_linear_N50  "${mom}"; fi
+        if should_run C2; then run_linear C2 100 C2_linear_N100 "${mom}"; fi
+        if should_run C3; then run_linear C3 200 C3_linear_N200 "${mom}"; fi
 
-        if should_run C4; then run_adaptive C4 0.0                "C4_adaptive"           "${mu}"; fi
-        if should_run C5; then run_adaptive C5 "${LAMBDA_MIN_C5}" "C5_adaptive_lmin0.05" "${mu}"; fi
-        if should_run C6; then run_adaptive C6 "${LAMBDA_MIN_C6}" "C6_adaptive_lmin0.10" "${mu}"; fi
-        if should_run C7; then run_adaptive C7 "${LAMBDA_MIN_C7}" "C7_adaptive_lmin0.20" "${mu}"; fi
+        if should_run C4; then run_adaptive C4 0.0                "C4_adaptive"           "${mom}"; fi
+        if should_run C5; then run_adaptive C5 "${LAMBDA_MIN_C5}" "C5_adaptive_lmin0.05" "${mom}"; fi
+        if should_run C6; then run_adaptive C6 "${LAMBDA_MIN_C6}" "C6_adaptive_lmin0.10" "${mom}"; fi
+        if should_run C7; then run_adaptive C7 "${LAMBDA_MIN_C7}" "C7_adaptive_lmin0.20" "${mom}"; fi
     done
 fi
 
