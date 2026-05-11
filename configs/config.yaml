@@ -64,7 +64,7 @@ outputs:
 tracking:
   backend: wandb                     # wandb | csv_only (for debugging without W&B)
   wandb:
-    project: Gap Anatomy
+    project: ValleyWalk                     # W&B project name
     entity: arthurreuss-bachelor-thesis                     
     tags: []                         # auto-populated at runtime: [method, dataset, ablation]
     # W&B Artifacts — versioned model + results linked to each run
