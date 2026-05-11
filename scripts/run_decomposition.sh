@@ -180,9 +180,9 @@ momentum_values() {
 }
 
 # Suffix for ablation_value reflecting the momentum leg.
-mu_suffix() {
-    local mu="$1"
-    if [ "$mu" = "${MU_ON}" ]; then echo "_M"; else echo ""; fi
+mom_suffix() {
+    local mom="$1"
+    if [ "$mom" = "${MOM_ON}" ]; then echo "_M"; else echo ""; fi
 }
 
 # Generic ER condition launcher.  Loops over seeds inside; caller passes any
@@ -190,26 +190,26 @@ mu_suffix() {
 spawn_er_block() {
     local label="$1"; shift
     local base_ablation="$1"; shift
-    local mu="$1"; shift
+    local mom="$1"; shift
     local suffix
-    suffix="$(mu_suffix "${mu}")"
+    suffix="$(mom_suffix "${mom}")"
     local ablation_value="${base_ablation}${suffix}"
-    local mu_tag
-    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mom_on"; else mu_tag="mom_off"; fi
-    local tags_csv="${ABLATION_KEY},${label},${mu_tag}"
+    local mom_tag
+    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${mom_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             method=er \
             "${DATASET_OVERRIDES[@]}" \
             "${EVAL_OVERRIDES[@]}" \
-            "training.momentum=${mu}" \
+            "training.momentum=${mom}" \
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}" \
             "+ablation_value=${ablation_value}" \
             "tracking.wandb.tags=[${tags_csv}]" \
             "$@"
     done
-    wait_block "${label} (µ=${mu})"
+    wait_block "${label} (µ=${mom})"
 }
 
 # NCL condition launcher.  No replay buffer; grad_diagnostics toggle is set
@@ -217,19 +217,19 @@ spawn_er_block() {
 spawn_ncl_block() {
     local label="$1"; shift
     local base_ablation="$1"; shift
-    local mu="$1"; shift
+    local mom="$1"; shift
     local suffix
-    suffix="$(mu_suffix "${mu}")"
+    suffix="$(mom_suffix "${mom}")"
     local ablation_value="${base_ablation}${suffix}"
-    local mu_tag
-    if [ "$mu" = "${MOM_ON}" ]; then mu_tag="mom_on"; else mu_tag="mom_off"; fi
-    local tags_csv="${ABLATION_KEY},${label},${mu_tag}"
+    local mom_tag
+    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${mom_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             method=ncl \
             "${DATASET_OVERRIDES[@]}" \
             "${EVAL_OVERRIDES[@]}" \
-            "training.momentum=${mu}" \
+            "training.momentum=${mom}" \
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}" \
             "+ablation_value=${ablation_value}" \

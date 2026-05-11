@@ -39,7 +39,7 @@
 # The CIFAR block uses the default ConvNet / ResNet-18 backbone via
 # configs/model/resnet18.yaml.  Momentum cross is not run here — pick the
 # better-performing momentum setting from the rot-MNIST sweep and lock it
-# via MU_CIFAR (default 0.0).
+# via MOM_CIFAR (default 0.0).
 #
 # Total runs
 # ----------
@@ -96,7 +96,7 @@ BEST_N="${BEST_N:-200}"
 # generalisation block, where we ship the headline configuration (curriculum
 # + momentum) rather than the no-momentum reference.  Override via env var
 # if a different setting is needed.
-MU_CIFAR="${MU_CIFAR:-0.9}"
+MOM_CIFAR="${MOM_CIFAR:-0.9}"
 
 # Enable per-step g_true buffer-fidelity diagnostics?  Off by default for the
 # curriculum sweep (see header comment).
@@ -169,7 +169,7 @@ echo "Block:         ${BLOCK}"
 echo "Conditions:    ${CONDITIONS}"
 echo "Momentum set:  ${MOMENTUM_SET}"
 echo "Best-N:        ${BEST_N}  (CIFAR headline linear condition)"
-echo "MU_CIFAR:      ${MU_CIFAR}"
+echo "MOM_CIFAR:      ${MOM_CIFAR}"
 echo "Grad diag:     ${GRAD_DIAG}"
 echo "Seeds:         ${SEEDS}"
 echo "N_JOBS:        ${N_JOBS}"
@@ -229,9 +229,9 @@ momentum_values() {
 }
 
 # Suffix for ablation_value reflecting the momentum leg.
-mu_suffix() {
-    local mu="$1"
-    if [ "$mu" = "${MOM_ON}" ]; then echo "_M"; else echo ""; fi
+mom_suffix() {
+    local mom="$1"
+    if [ "$mom" = "${MOM_ON}" ]; then echo "_M"; else echo ""; fi
 }
 
 # Generic ER condition launcher for the rot-MNIST block.
@@ -241,11 +241,11 @@ spawn_rotmnist_block() {
     local mu="$1"; shift
     local family="$1"; shift
     local suffix
-    suffix="$(mu_suffix "${mu}")"
+    suffix="$(mom_suffix "${mom}")"
     local ablation_value="${base_ablation}${suffix}"
-    local mu_tag
-    if [ "$mu" = "${MOM_ON}" ]; then mu_tag="mom_on"; else mu_tag="mom_off"; fi
-    local tags_csv="${ABLATION_KEY},${label},${family},${mu_tag}"
+    local mom_tag
+    if [ "$mu" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${family},${mom_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             method=er \
@@ -315,7 +315,7 @@ fi
 # D-series — CIFAR-10 generalisation (§4.7)
 # ──────────────────────────────────────────────────────────────────────────────
 #
-# Single momentum setting (MU_CIFAR).  No further momentum cross.  Best-N
+# Single momentum setting (MOM_CIFAR).  No further momentum cross.  Best-N
 # defaults to 200 — override after the rot-MNIST sweep tells us better.
 
 spawn_cifar_block() {
@@ -323,18 +323,18 @@ spawn_cifar_block() {
     local base_ablation="$1"; shift
     local method_name="$1"; shift
     local family="$1"; shift
-    local mu_tag
-    if [ "${MU_CIFAR}" = "${MU_ON}" ]; then mu_tag="mom_on"; else mu_tag="mom_off"; fi
+    local mom_tag
+    if [ "${MOM_CIFAR}" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
     # Use plain ABLATION_KEY ("curriculum") as a tag so CIFAR runs group with
     # the rot-MNIST C-series; the wandb `group` field still uses the
     # _cifar-suffixed ablation_key, which keeps the per-block grouping intact.
-    local tags_csv="${ABLATION_KEY},${label},${family},${mu_tag}"
+    local tags_csv="${ABLATION_KEY},${label},${family},${mom_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             "method=${method_name}" \
             "${CIFAR_OVERRIDES[@]}" \
             "${EVAL_OVERRIDES[@]}" \
-            "training.momentum=${MU_CIFAR}" \
+            "training.momentum=${MOM_CIFAR}" \
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}_cifar" \
             "+ablation_value=${base_ablation}" \
@@ -347,7 +347,7 @@ spawn_cifar_block() {
 if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
     echo ""
     echo "=================================================================="
-    echo "  CIFAR-10 generalisation block — training.momentum = ${MU_CIFAR}"
+    echo "  CIFAR-10 generalisation block — training.momentum = ${MOM_CIFAR}"
     echo "=================================================================="
 
     echo "=== D1: vanilla ER on dom_cifar10 ==="
