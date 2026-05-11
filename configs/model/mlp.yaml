@@ -1,0 +1,4 @@
+name: mlp
+hidden_sizes: [400, 400]
+input_size: 784
+num_classes: 10

@@ -1,0 +1,73 @@
+name: er
+
+# mode: standard — original ER: one forward/backward on (current_loss + replay_loss).
+#                  Half the mini-batch is current data, half is replay.
+# mode: balanced — two separate backward passes with configurable gradient
+#                  combining (see grad_balance below).
+mode: standard
+
+reset_momentum_steps: 0  # steps at the start of each new task to suppress momentum (0 = disabled)
+
+# null = match the current-task batch size (default behaviour).
+# Set to a large int (e.g. 4096) to use a much larger replay batch than the
+# current-task batch — useful for the full-data-replay condition where we
+# want g_replay to closely approximate the full past-task gradient.
+replay_batch_size: null
+
+# When true, ER ignores ``replay_batch_size`` and computes the replay
+# gradient on EVERY stored buffer sample exactly once per step
+# (deterministic, no sampling).  Paired with ``memory.total_budget`` equal
+# to the per-task training-set size, this gives the exact empirical past-
+# task gradient at the current parameters — used by the G2 / G4 conditions
+# in §4.4 to remove estimator noise from the decomposition.
+# Default false to preserve the legacy sampling-with-replacement behaviour.
+replay_full_buffer: false
+
+grad_balance:
+  normalize_components: true        # true: normalise g_new and g_replay individually before combining
+                                    # false: combine raw gradients, then normalise the joint
+  task_weighted: false               # true: w_replay = t/(t+1), w_new = 1/(t+1)
+                                    # false: 50/50
+
+# λ-curriculum (homotopy on new-task loss weight) — see CACL config for details.
+# Effective loss minimised this step:  L_λ = L_replay + λ · L_current.
+# Mirrors the same block in configs/method/cacl.yaml so curriculum can be
+# applied to vanilla ER as a control: does the curriculum alone flatten
+# the bend, or is curvature awareness also required?
+#
+# Schedules:
+#   linear   — λ = progress                         (smooth ramp)
+#   cosine   — λ = 0.5·(1 − cos(π·progress))        (smooth, slower start)
+#   step     — λ = 0 for first N steps, then 1      (replay-only delay, no
+#              gradient interpolation — used as a falsification of the smooth
+#              homotopy story: does an abrupt switch flatten the bend too?)
+#   adaptive — λ = clip(EMA(‖g_replay‖/‖g_new‖), 0, 1)
+#              Closed-loop, hyperparameter-free schedule that paces λ at
+#              whatever rate the gradients actually rebalance.  Ignores
+#              ramp_steps; self-terminates when balance is achieved.  Only
+#              `ema_alpha` (numerical smoothing) is exposed.
+lambda_curriculum:
+  enabled: false                    # off by default — preserves existing behaviour
+  ramp_steps: 0                     # number of steps to ramp 0 → 1 (ignored when schedule=adaptive)
+  schedule: linear                  # linear | cosine | step | adaptive
+  ema_alpha: 0.05                   # EMA smoothing on the gradient ratio (only used when schedule=adaptive).
+                                    # Smaller = heavier smoothing, less noise on λ; larger = more responsive.
+                                    # Does not shape the curriculum — it only suppresses per-batch noise.
+  lambda_min: 0.0                   # Floor applied to λ during the ramp (all schedules).
+                                    # 0.0 = no floor (default; λ can start at 0).
+                                    # Small positive value (e.g. 0.05) keeps a non-zero new-task
+                                    # contribution from step 1 — useful for adaptive, where
+                                    # ‖g_replay‖ ≈ 0 at θ_T_0* drives EMA(r) ≈ 0 and the
+                                    # initial interpolation can feel overly cautious.
+                                    # Has no effect on task 0 or after the ramp completes.
+
+# Symmetric LR warm-up (M2 falsification of λ-curriculum).
+# Scales the optimiser's lr by  min((task_step − 1) / warmup_steps, 1)  for
+# the first ``warmup_steps`` steps of every task with task_id > 0.  Both the
+# new-task gradient AND the replay gradient are slowed equally — unlike the
+# λ-curriculum, which scales only the new-task contribution.  If lr warm-up
+# matches the depth reduction of λ-curriculum at matched N, the operative
+# mechanism is "small steps in early training", not asymmetric scaling.
+lr_warmup:
+  enabled: false                    # off by default — preserves existing behaviour
+  warmup_steps: 0                   # number of steps to ramp lr 0 → full (0 = disabled)

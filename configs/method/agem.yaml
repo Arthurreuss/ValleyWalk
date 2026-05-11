@@ -1,0 +1,5 @@
+name: agem
+gem:
+  reference_gradient: joint          # A-GEM: single constraint over all buffer samples
+  margin: 0.5
+  mem_batch_size: 256                # samples drawn from full buffer for reference gradient

@@ -1,0 +1,5 @@
+name: dom_cifar100
+num_tasks: 3                         # 3 domains: 1 clean + 2 corrupted
+corruption_types: [none, gaussian_noise, shot_noise, ] # defocus_blur, glass_blur
+severity: 3
+download_dir: ${hydra:runtime.cwd}/data

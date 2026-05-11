@@ -1,0 +1,16 @@
+/.venv
+.python-version
+.DS_Store
+/.claude
+/.pytest_cache
+uv.lock
+
+# Generated run artefacts
+outputs/
+checkpoints/
+/data/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
