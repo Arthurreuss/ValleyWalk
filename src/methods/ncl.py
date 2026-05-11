@@ -150,9 +150,14 @@ class NCL(BaseMethod):
         self._last_kl_proxy: float = 0.0
         self._last_tr_scale: float = 1.0
 
+        # Momentum read from training config so the §4.6 momentum cross
+        # (training.momentum=0.9) actually applies to NCL — Kao et al. (2021)
+        # Algorithm 1 line 15 uses momentum on top of the natural-gradient
+        # direction (ρ = 0.9 throughout their feedforward experiments).
         self.optimizer = torch.optim.SGD(
             model.parameters(),
             lr=float(cfg.training.lr),
+            momentum=float(cfg.training.momentum),
             weight_decay=float(cfg.training.weight_decay),
         )
         self.loss_fn = nn.CrossEntropyLoss()

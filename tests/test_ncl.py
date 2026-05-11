@@ -49,6 +49,7 @@ def _cfg(
     damping: float = 1e-3,
     trust_radius: float = 1.0,
     lr: float = 0.01,
+    momentum: float = 0.0,
     weight_decay: float = 0.0,
 ) -> SimpleNamespace:
     return SimpleNamespace(
@@ -60,7 +61,7 @@ def _cfg(
                 trust_radius=trust_radius,
             ),
         ),
-        training=SimpleNamespace(lr=lr, weight_decay=weight_decay),
+        training=SimpleNamespace(lr=lr, momentum=momentum, weight_decay=weight_decay),
     )
 
 
@@ -124,6 +125,16 @@ class TestStructure:
         ncl = NCL(TinyMLP(), _cfg())
         # TinyMLP has two nn.Linear layers — both should be picked up.
         assert len(ncl._linear_layers) == 2
+
+    def test_optimizer_reads_momentum_from_training_cfg(self):
+        """`training.momentum` must reach the SGD optimiser — otherwise the
+        §4.6 momentum cross would be a no-op for NCL. Kao et al. (2021)
+        Algorithm 1 line 15 applies momentum (ρ = 0.9 in all their
+        feedforward experiments) on top of the natural-gradient direction."""
+        ncl0 = NCL(TinyMLP(), _cfg(momentum=0.0))
+        ncl9 = NCL(TinyMLP(), _cfg(momentum=0.9))
+        assert ncl0.optimizer.param_groups[0]["momentum"] == pytest.approx(0.0)
+        assert ncl9.optimizer.param_groups[0]["momentum"] == pytest.approx(0.9)
 
 
 class TestFlatPriorMean:
