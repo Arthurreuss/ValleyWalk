@@ -103,8 +103,8 @@ GRAD_DIAG_ON=(
 ABLATION_KEY="decomposition"
 
 # Momentum settings.
-MU_OFF=0.0
-MU_ON=0.9
+MOM_OFF=0.0
+MOM_ON=0.9
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Pre-flight
@@ -172,9 +172,9 @@ should_run() {
 # Returns the list of momentum values to iterate, based on MOMENTUM_SET.
 momentum_values() {
     case "${MOMENTUM_SET}" in
-        off)  echo "${MU_OFF}" ;;
-        on)   echo "${MU_ON}"  ;;
-        both) echo "${MU_OFF} ${MU_ON}" ;;
+        off)  echo "${MOM_OFF}" ;;
+        on)   echo "${MOM_ON}"  ;;
+        both) echo "${MOM_OFF} ${MOM_ON}" ;;
         *) echo "ERROR: unknown MOMENTUM_SET=${MOMENTUM_SET} (expected off|on|both)" >&2; exit 1 ;;
     esac
 }
@@ -195,7 +195,7 @@ spawn_er_block() {
     suffix="$(mu_suffix "${mu}")"
     local ablation_value="${base_ablation}${suffix}"
     local mu_tag
-    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mu_on"; else mu_tag="mu_off"; fi
+    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mom_on"; else mu_tag="mom_off"; fi
     local tags_csv="${ABLATION_KEY},${label},${mu_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
@@ -222,7 +222,7 @@ spawn_ncl_block() {
     suffix="$(mu_suffix "${mu}")"
     local ablation_value="${base_ablation}${suffix}"
     local mu_tag
-    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mu_on"; else mu_tag="mu_off"; fi
+    if [ "$mu" = "${MOM_ON}" ]; then mu_tag="mom_on"; else mu_tag="mom_off"; fi
     local tags_csv="${ABLATION_KEY},${label},${mu_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
