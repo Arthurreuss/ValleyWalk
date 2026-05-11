@@ -5,14 +5,22 @@
 # config writes to its own subdir; at the end we print a side-by-side
 # summary of ACC / FORG / stability-gap metrics.
 #
-# The four configs probe one hypothesis each:
-#   baseline      paper-like reference (α=1.0, ρ=0.9)
-#   loose_prior   α=0.1 — does a weaker rubber-band buy task-1 plasticity?
-#   tight_prior   α=10.0 — does a stronger rubber-band reduce forgetting?
-#   no_momentum   ρ=0 — is momentum × rubber-band interaction biasing things?
+# **Iteration 2.** The previous sweep showed α=0.1 (`loose_prior`) beat
+# both α=1.0 and α=10.0 — the directional answer is "smaller α is better
+# until Λ⁻¹ amplification destabilises". This sweep characterises that
+# floor and tests one rescue (lower lr) in case Λ⁻¹ starts to overshoot.
 #
-# damping is held at 1e-3 (numerical safeguard only — the p_w = α·I prior
-# is what actually bounds Λ⁻¹). lr is held at 0.1 to match the ER baselines.
+#   alpha_0.1          anchor — previous winner, same-seed comparison point
+#   alpha_0.03         one step further down (expected to win)
+#   alpha_0.01         pushing toward the divergence floor
+#   alpha_0.003        almost certainly past the floor — characterises where
+#                      it breaks (NaN expected; surfaced in the summary as —)
+#   alpha_0.03_lowlr   if α=0.03 overshoots, halving lr should restore
+#                      stability while keeping the amplified natural-gradient.
+#                      (lr and Λ⁻¹ interact multiplicatively: η·Λ⁻¹·∇L.)
+#
+# damping is held at 1e-3 (numerical safeguard only — α·I is what bounds
+# Λ⁻¹). momentum is held at 0.9 to match the ER baselines.
 #
 # Override SEED to repeat with a different seed:
 #   SEED=2 bash scripts/probe_ncl_hparams.sh
@@ -39,10 +47,11 @@ mkdir -p "$SWEEP_DIR"
 # Each row: name | prior_init | lr | momentum
 # damping is fixed at 1e-3, fisher_samples at the cfg default (1000).
 CONFIGS=(
-    "baseline    | 1.0  | 0.1 | 0.9"
-    "loose_prior | 0.1  | 0.1 | 0.9"
-    "tight_prior | 10.0 | 0.1 | 0.9"
-    "no_momentum | 1.0  | 0.1 | 0.0"
+    "alpha_0.1        | 0.1   | 0.1  | 0.9"
+    "alpha_0.03       | 0.03  | 0.1  | 0.9"
+    "alpha_0.01       | 0.01  | 0.1  | 0.9"
+    "alpha_0.003      | 0.003 | 0.1  | 0.9"
+    "alpha_0.03_lowlr | 0.03  | 0.05 | 0.9"
 )
 
 echo "Sweep root: $SWEEP_DIR"
