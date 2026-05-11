@@ -104,17 +104,35 @@ class TestStructure:
         assert issubclass(NCL, BaseMethod)
 
     def test_init_state(self):
-        ncl = NCL(TinyMLP(), _cfg())
-        # No prior accumulated yet → factor dicts empty, flat _prior_mean is None.
-        assert ncl._kfac_A == {}
-        assert ncl._kfac_G == {}
-        assert ncl._prior_W == {}
-        assert ncl._prior_b == {}
-        assert ncl._prior_mean is None
+        model = TinyMLP()
+        ncl = NCL(model, _cfg())
+        # Paper Algo 1 line 6: Λ_0 = p_w = α·I. K-FAC realisation: each
+        # Linear layer starts with A = G = √α·I so A ⊗ G = α·I per layer.
+        for name, module in ncl._linear_layers.items():
+            d_in_aug = module.in_features + (1 if module.bias is not None else 0)
+            d_out = module.out_features
+            assert ncl._kfac_A[name].shape == (d_in_aug, d_in_aug)
+            assert ncl._kfac_G[name].shape == (d_out, d_out)
+            assert torch.allclose(ncl._kfac_A[name], torch.eye(d_in_aug), atol=1e-6)
+            assert torch.allclose(ncl._kfac_G[name], torch.eye(d_out), atol=1e-6)
+        # μ_0 = θ_init: per-layer and flat snapshots all match the live model.
+        for name, module in ncl._linear_layers.items():
+            assert torch.allclose(ncl._prior_W[name], module.weight.data.cpu(), atol=1e-6)
+            if module.bias is not None:
+                assert torch.allclose(ncl._prior_b[name], module.bias.data.cpu(), atol=1e-6)
+        expected_flat = torch.cat([
+            p.detach().reshape(-1).cpu() for p in model.parameters() if p.requires_grad
+        ])
+        assert ncl._prior_mean is not None
+        assert torch.allclose(ncl._prior_mean, expected_flat, atol=1e-6)
         # Hyperparameters are read from cfg.method.ncl.
         assert ncl._fisher_samples == 50
         assert pytest.approx(ncl._damping) == 1e-3
         assert pytest.approx(ncl._trust_radius) == 1.0
+        assert pytest.approx(ncl._prior_init) == 1.0
+        # No real task posterior yet → Eq. (8) rewrite is suppressed (task 0
+        # runs as plain SGD). end_task is what flips this on.
+        assert ncl._has_prior is False
 
     def test_required_methods(self):
         ncl = NCL(TinyMLP(), _cfg())
@@ -138,12 +156,23 @@ class TestStructure:
 
 
 class TestFlatPriorMean:
-    def test_prior_mean_none_until_end_task(self):
-        ncl = NCL(TinyMLP(), _cfg())
-        # Even after observe() on task 0, no prior has been folded in yet.
+    def test_prior_mean_initialised_to_theta_init(self):
+        """μ_0 = θ_init at construction (paper convention). Future observe()
+        calls drift θ but must NOT drift μ_0 — only end_task refreshes it."""
+        torch.manual_seed(0)
+        model = TinyMLP()
+        ncl = NCL(model, _cfg())
+        mu_at_init = ncl._prior_mean.clone()
+
         x, y = torch.randn(8, 20), torch.randint(0, 4, (8,))
         ncl.observe(x, y, task_id=0)
-        assert ncl._prior_mean is None
+
+        # μ_0 didn't move; the model did.
+        assert torch.allclose(ncl._prior_mean, mu_at_init, atol=0.0)
+        live = torch.cat([
+            p.detach().reshape(-1).cpu() for p in model.parameters() if p.requires_grad
+        ])
+        assert not torch.allclose(live, mu_at_init, atol=1e-7)
 
     def test_prior_mean_shape_matches_total_params(self):
         model = TinyMLP()
@@ -310,9 +339,10 @@ class TestKFACMeanReductionCompensation:
         loader = DataLoader(TensorDataset(x, y), batch_size=16)
         _train_first_task(ncl, loader)
 
-        # Closed form: augmented input correlation with ones column appended.
+        # Closed form: augmented input correlation with ones column appended,
+        # plus the √α·I = I prior initialiser (paper Algo 1 line 6).
         a_aug = torch.cat([x, torch.ones(n, 1)], dim=1)
-        A_expected = (a_aug.T @ a_aug) / n
+        A_expected = torch.eye(in_dim + 1) + (a_aug.T @ a_aug) / n
 
         # We can compare directly only when training did not modify the input
         # distribution — the input layer always sees `x`. The mean-reduction
@@ -440,6 +470,9 @@ class TestUpdateDirection:
             if module.bias is not None:
                 ncl._prior_b[name] = module.bias.data.clone() - 0.2
 
+        # Simulate having seen at least one task so the Eq. (8) rewrite fires.
+        ncl._has_prior = True
+
         return model, ncl
 
     def test_eq8_natgrad_direction_matches_closed_form(self):
@@ -483,9 +516,12 @@ class TestUpdateDirection:
             else:
                 assert torch.allclose(module.weight.grad.data, e, atol=1e-5)
 
-    def test_no_prior_means_passthrough(self):
-        """On task 0 (empty Λ) the rewritten gradient is exactly the raw
-        gradient — NCL reduces to plain SGD until a prior is folded in."""
+    def test_task_zero_is_plain_sgd_passthrough(self):
+        """Before any end_task fires, `_has_prior` is False and the Eq. (8)
+        rewrite is skipped — NCL reduces to ordinary SGD on the first task
+        (with α=1 the rubber-band toward θ_init would otherwise dominate
+        the gradient and prevent task-0 learning). The rewritten gradient
+        must equal the raw gradient bit-for-bit."""
         torch.manual_seed(0)
         model = nn.Sequential(nn.Linear(5, 4), nn.ReLU(), nn.Linear(4, 3))
         ncl = NCL(model, _cfg())
@@ -499,6 +535,7 @@ class TestUpdateDirection:
         ncl._apply_natural_gradient()
         for n, m in ncl._linear_layers.items():
             assert torch.allclose(m.weight.grad.data, raw[n], atol=0.0)
+        assert ncl._has_prior is False
 
     def test_rubber_band_pulls_toward_mu_when_loss_grad_zero(self):
         """If ∇L = 0 (set .grad to zeros after the loss backward), then
@@ -518,6 +555,7 @@ class TestUpdateDirection:
             model[0].bias.zero_()
         ncl._prior_W = {"0": torch.full_like(model[0].weight.data, -1.0)}
         ncl._prior_b = {"0": torch.full_like(model[0].bias.data, -1.0)}
+        ncl._has_prior = True
 
         ncl.optimizer.zero_grad()
         # Force ∇L = 0 by zeroing the .grad tensors directly.
@@ -547,6 +585,7 @@ class TestUpdateDirection:
         ncl._kfac_G = {"0": torch.eye(2)}
         ncl._prior_W = {"0": torch.zeros_like(model_ncl[0].weight.data)}
         ncl._prior_b = {"0": torch.zeros_like(model_ncl[0].bias.data)}
+        ncl._has_prior = True
 
         # Reference model — identical init, plain SGD with `θ + ∇L` gradient.
         torch.manual_seed(1)
@@ -577,6 +616,7 @@ class TestUpdateDirection:
         ncl._kfac_G = {"0": torch.eye(3)}
         ncl._prior_W = {"0": model[0].weight.data.clone()}    # μ = θ → δ = 0
         ncl._prior_b = {"0": model[0].bias.data.clone()}
+        ncl._has_prior = True
 
         x = torch.randn(5, 4)
         y = torch.randint(0, 3, (5,))
@@ -607,13 +647,46 @@ class TestDiagnostics:
         diag = ncl.get_step_diagnostics()
         assert set(diag.keys()) == {"kl_proxy", "tr_scale"}
 
-    def test_zero_kl_and_unit_trscale_before_first_end_task(self):
+    def test_diagnostics_defaults_at_construction(self):
+        """Before any observe() call, the cached diagnostics are at their
+        defaults (kl_proxy=0, tr_scale=1)."""
         ncl = NCL(TinyMLP(), _cfg())
-        x, y = torch.randn(8, 20), torch.randint(0, 4, (8,))
-        ncl.observe(x, y, task_id=0)
         diag = ncl.get_step_diagnostics()
         assert diag["kl_proxy"] == 0.0
         assert diag["tr_scale"] == 1.0
+
+    def test_kl_zero_on_task_zero_then_grows_under_task_one_prior(self):
+        """Task 0: no posterior yet → Eq. (8) rewrite is suppressed and
+        kl_proxy is identically zero regardless of how much θ drifts.
+        After end_task(0), Λ_0 = α·I + F_0 becomes the prior precision for
+        task 1; subsequent observe()s drift θ from μ_0 = θ_0* and kl_proxy
+        rises from 0 to a strictly positive Mahalanobis distance."""
+        torch.manual_seed(0)
+        ncl = NCL(TinyMLP(), _cfg(fisher_samples=20, damping=1e-3))
+
+        # On task 0, kl_proxy stays at 0 even after several gradient steps.
+        loader0 = _loader(n=32, seed=0)
+        for x, y in loader0:
+            ncl.observe(x, y, task_id=0)
+        assert ncl.get_step_diagnostics()["kl_proxy"] == 0.0
+
+        ncl.end_task(0, loader0)
+
+        # After end_task fires the prior is alive. First task-1 step:
+        # θ ≈ μ_0 ⇒ kl_proxy ≈ 0 (tiny FP noise from the SGD step inside
+        # observe() before _apply_natural_gradient computes diagnostics).
+        loader1 = _loader(n=32, seed=1)
+        it = iter(loader1)
+        x, y = next(it)
+        ncl.observe(x, y, task_id=1)
+        first_kl = ncl.get_step_diagnostics()["kl_proxy"]
+
+        # Drift many steps; kl_proxy must end up strictly larger.
+        for x, y in it:
+            ncl.observe(x, y, task_id=1)
+        later_kl = ncl.get_step_diagnostics()["kl_proxy"]
+        assert first_kl >= 0.0
+        assert later_kl > first_kl
 
     def test_kl_proxy_matches_quadratic_form(self):
         """For an injected (A, G, μ) and known θ, kl_proxy = (1/2) δ^T Λ δ
@@ -634,6 +707,7 @@ class TestDiagnostics:
         # δ_W and δ_b chosen so we can hand-compute the Mahalanobis quadratic.
         ncl._prior_W = {"0": model[0].weight.data - 0.5}     # δ_W = +0.5
         ncl._prior_b = {"0": model[0].bias.data + 0.3}        # δ_b = -0.3
+        ncl._has_prior = True
 
         # Closed form: (1/2) vec(δ_aug)^T (A ⊗ G) vec(δ_aug)
         delta_W = torch.full_like(model[0].weight.data, 0.5)

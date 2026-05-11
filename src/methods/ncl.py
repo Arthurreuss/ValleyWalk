@@ -116,6 +116,12 @@ class NCL(BaseMethod):
         # `tr_scale` diagnostic; the update itself is not rescaled (Eq. 8
         # absorbs r into η).
         self._trust_radius: float = float(getattr(ncl_cfg, "trust_radius", 1.0))
+        # α in p_w = α·I (paper Algorithm 1 line 6). Bounds Λ⁻¹ — without
+        # an initial prior, low-curvature directions of F_0 send Λ⁻¹∇L to
+        # arbitrarily large magnitudes on task 1 and the natural-gradient
+        # update diverges. With Λ_0 = α·I, the eigenvalues of Λ_k⁻¹ are
+        # bounded by 1/α uniformly.
+        self._prior_init: float = float(getattr(ncl_cfg, "prior_init", 1.0))
 
         self._device: torch.device = next(model.parameters()).device
 
@@ -128,23 +134,44 @@ class NCL(BaseMethod):
         }
 
         # Per-layer Kronecker factors of the accumulated prior precision
-        # Λ_{k-1} ≈ ⊕_l (A_l ⊗ G_l). Stored on CPU so the full prior
-        # survives even for large layers; copied to `self._device` per-step
-        # inside `_apply_natural_gradient`.
+        # Λ_{k-1} ≈ ⊕_l (A_l ⊗ G_l). Initialised to √α·I per factor so
+        # that A_l ⊗ G_l = α·I = p_w for each layer at construction time;
+        # subsequent tasks accumulate additively (A_l ← A_l + Â_k, etc.).
+        # Stored on CPU so the full prior survives even for large layers;
+        # copied to `self._device` per-step inside `_apply_natural_gradient`.
+        sqrt_alpha = self._prior_init ** 0.5
         self._kfac_A: Dict[str, Tensor] = {}
         self._kfac_G: Dict[str, Tensor] = {}
+        for name, module in self._linear_layers.items():
+            d_in_aug = module.in_features + (1 if module.bias is not None else 0)
+            d_out = module.out_features
+            self._kfac_A[name] = sqrt_alpha * torch.eye(d_in_aug)
+            self._kfac_G[name] = sqrt_alpha * torch.eye(d_out)
 
-        # Per-layer snapshots of μ_{k-1} (used inside the natural-gradient
-        # step so we can compute (θ - μ) per layer without unflattening a
-        # global parameter vector).
+        # Per-layer snapshots of μ_{k-1} — initialised to θ_init so that on
+        # task 0 the rubber-band term (θ - μ_0) is well-defined and equals
+        # zero at the first step (paper convention: Λ_0 = p_w, μ_0 = θ_init,
+        # i.e. the prior is centred at the initialisation point).
         self._prior_W: Dict[str, Tensor] = {}
         self._prior_b: Dict[str, Tensor] = {}
+        for name, module in self._linear_layers.items():
+            self._prior_W[name] = module.weight.data.detach().cpu().clone()
+            if module.bias is not None:
+                self._prior_b[name] = module.bias.data.detach().cpu().clone()
 
         # Flat μ_{k-1} over *all* trainable parameters (not just Linear
-        # ones). Surfaced as a single tensor for external inspection and
-        # for unit-testing the snapshot semantics; None until end_task is
-        # called for the first time.
-        self._prior_mean: Optional[Tensor] = None
+        # ones). Snapshot of θ_init at construction; refreshed in end_task.
+        self._prior_mean: Optional[Tensor] = _flat_params(model)
+
+        # Whether at least one task has produced a real K-FAC Fisher. On
+        # task 0 (no posterior accumulated yet), the natural-gradient
+        # rewrite is suppressed and `observe()` reduces to plain SGD — the
+        # p_w = α·I initial prior alone is not enough signal to regularise
+        # against (with α=1 the rubber-band toward θ_init dominates the
+        # gradient and prevents task-0 learning). The flag is set inside
+        # `end_task`, so the K-FAC inversion and the (θ - μ) term both
+        # come online only after a genuine task posterior exists.
+        self._has_prior: bool = False
 
         # Diagnostics from the most recent observe() call.
         self._last_kl_proxy: float = 0.0
@@ -177,7 +204,8 @@ class NCL(BaseMethod):
 
         Side effect: updates `self._last_kl_proxy` and `self._last_tr_scale`.
         """
-        if not self._kfac_A:
+        # Task 0: no real posterior yet → fall back to plain SGD.
+        if not self._has_prior or not self._kfac_A:
             self._last_kl_proxy = 0.0
             self._last_tr_scale = 1.0
             return
@@ -401,6 +429,9 @@ class NCL(BaseMethod):
         # Flat μ snapshot covering *all* trainable parameters. Detaching
         # and cloning ensures future parameter updates do not mutate it.
         self._prior_mean = _flat_params(self.model)
+
+        # Posterior now exists — activate Eq. (8) update on subsequent tasks.
+        self._has_prior = True
 
     # ------------------------------------------------------------------
     # Diagnostics
