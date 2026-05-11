@@ -1,58 +1,61 @@
 """NCL — Natural Continual Learning (Kao et al., NeurIPS 2021).
 
-True NCL frames continual learning as online Bayesian inference where the
-posterior from each completed task becomes the Gaussian prior for the next:
+This file implements the algorithm of
 
-    p(θ | D_{1:k}) ∝ p(D_k | θ) · N(θ; μ_{k-1}, Λ_{k-1}^{-1})
+    Kao, Jensen, van de Ven, Bernacchia & Hennequin (2021)
+    "Natural Continual Learning: Success is a Journey, Not (Just) a Destination."
+    https://arxiv.org/abs/2106.08085
 
-The prior precision Λ_{k-1} is approximated with K-FAC (Kronecker-Factored
-Approximate Curvature) rather than a diagonal Fisher.
+Specifically: paper Eq. (8) — the K-FAC-preconditioned natural-gradient
+update with the Bayesian rubber-band restoring term — and Algorithm 1 in
+Appendix E (the pseudocode the implementation tracks line-for-line).
 
-**Key algorithmic distinction from EWC**
+**Per-task objective.** With L_k(θ) the CE (negative log-likelihood) loss on
+task k, and (μ_{k-1}, Λ_{k-1}) the prior mean and precision summarising the
+posterior after tasks 1..k-1, the objective is the negative log Laplace
+posterior (paper Eq. 4),
 
-EWC adds a static rubber-band penalty to the loss:
+    L_post(θ) = L_k(θ) + (1/2) (θ - μ_{k-1})ᵀ Λ_{k-1} (θ - μ_{k-1}).
 
-    L_total = L_k(θ) + (λ/2) Σ_i F_i (θ_i - θ*_i)²
+**The NCL update (paper Eq. 8).** Rather than descend ∇L_post directly, NCL
+preconditions by the *prior covariance* Λ_{k-1}^{-1} (so that motion in
+high-prior-curvature directions is damped):
 
-NCL instead modifies the *optimisation trajectory* by replacing the raw
-gradient with the natural gradient computed under the accumulated precision:
+    θ ← θ - η [ Λ_{k-1}^{-1} ∇L_k(θ) + (θ - μ_{k-1}) ]
 
-    Δθ_nat = Λ_{k-1}^{-1} · ∇_θ L_k(θ)
+The radius r of the trust-region derivation (paper Eq. 7) is absorbed into η;
+Algorithm 1 in Appendix E does not clip the step. We report a `tr_scale`
+diagnostic of the form min(1, r / ‖step‖_Λ) for instrumentation but do not
+rescale the update.
 
-For a Linear layer y = Wx + b this factorises cleanly as:
+**K-FAC factorisation.** For a Linear layer with weight W ∈ R^{d_out × d_in}
+(and bias augmented as the (d_in+1)-th column when present), the layer's
+Fisher factorises as F_W ≈ A ⊗ G with
 
-    [ΔW_nat | Δb_nat] = G_{k-1}^{-1} · [∇W | ∇b] · A_{k-1}^{-1}
+    A = E[ā āᵀ]   (ā = [x; 1] for biased layers)        — (d_in[+1], d_in[+1])
+    G = E[g_s g_sᵀ], g_s = ∂L/∂(Wx + b)                 — (d_out, d_out)
 
-where A (input autocorrelation) and G (output-gradient autocorrelation) are
-the two Kronecker factors of the layer-wise Fisher:
+so the per-layer natural-gradient direction and prior contribution combine
+into the single line
 
-    F_W ≈ G ⊗ A
-    A = E[ā ā^T],    ā = [x; 1]  (input augmented with bias column)
-    G = E[g_s g_s^T], g_s = ∂L / ∂(Wx + b)
+    [ΔW_nat | Δb_nat] = G⁻¹ [∇W | ∇b] A⁻¹ + ([W − W*] | [b − b*])
 
-High-curvature directions in the parameter space (important for past tasks)
-receive small natural gradient steps; orthogonal directions are updated freely.
-A trust-region clip ensures the Λ-weighted step norm stays within radius δ:
+which is what is written back into `.grad` for the optimiser.
 
-    scale = min(1, δ / √(g^T Λ^{-1} g))
+**Online prior update (paper Eq. 5).** After each task, A_k = A_{k-1} + Â_k
+and G_k = G_{k-1} + Ĝ_k (additive Kronecker accumulation — a simplification
+of the optimal `nearest_kf_sum` of Appendix G that is standard in K-FAC
+implementations) and μ_k ← θ_k*.
 
-**After each task** the K-FAC factors are folded into the evolving Bayesian
-prior (online precision update):
+**Empirical Fisher.** Â_k and Ĝ_k use the gradient of the loss against the
+*true labels* (empirical Fisher), not labels sampled from the model
+(the proper Fisher used in the paper's reference code). For classification
+the two are very close; the empirical version avoids a sampling step and
+is the common choice across K-FAC implementations.
 
-    Λ_k ≈ Λ_{k-1} + F_k
-    A_k ← A_{k-1} + Â_k
-    G_k ← G_{k-1} + Ĝ_k
-
-and the prior mean μ_k is snapshotted as the current parameter vector.
-
-**Non-Linear layers** (BatchNorm, LayerNorm, embeddings) are updated with
-the raw gradient unchanged; only nn.Linear layers receive K-FAC treatment.
-
-References:
-    Kao et al. (2021) "Natural Continual Learning"
-        — https://arxiv.org/abs/2106.08085
-    Martens & Grosse (2015) "Optimizing Neural Networks with Kronecker-factored
-        Approximate Curvature" — https://arxiv.org/abs/1503.05671
+**Non-Linear layers** (BatchNorm, LayerNorm, embeddings) are not K-FAC'd —
+their gradients are passed through unchanged, since the prior precision
+restricted to them is treated as zero.
 
 Usage::
 
@@ -60,12 +63,12 @@ Usage::
     for task_id, train_loader, test_loaders in dataset.task_iterator():
         for x, y in train_loader:
             result = method.observe(x, y, task_id)   # → {"loss": float, ...}
-        method.end_task(task_id, train_loader)        # accumulates K-FAC prior
+        method.end_task(task_id, train_loader)        # K-FAC factors + μ snapshot
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple  # Tuple kept for _compute_kfac_factors
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -76,31 +79,23 @@ from src.methods.base_method import BaseMethod
 
 
 # ---------------------------------------------------------------------------
-# Module-level helper
+# Helpers
 # ---------------------------------------------------------------------------
 
 def _damped_inv(M: Tensor, damping: float) -> Tensor:
-    """Compute (M + ε·I)⁻¹ with a hard fallback on LinAlgError.
-
-    Parameters
-    ----------
-    M : Tensor
-        Square symmetric matrix on any device.
-    damping : float
-        Tikhonov regularisation constant ε > 0.
-
-    Returns
-    -------
-    Tensor
-        Inverse of the damped matrix, same device as M.
-    """
+    """Compute (M + ε·I)⁻¹ with a hard fallback on LinAlgError."""
     n = M.size(0)
     I = torch.eye(n, device=M.device, dtype=M.dtype)
     try:
         return torch.linalg.inv(M + damping * I)
     except torch.linalg.LinAlgError:
-        # Rare: matrix is extremely ill-conditioned — apply stronger damping.
         return torch.linalg.inv(M + (damping * 100.0) * I)
+
+
+def _flat_params(model: nn.Module) -> Tensor:
+    """Detached, CPU-side flat snapshot of every trainable parameter."""
+    return torch.cat([p.detach().reshape(-1).cpu()
+                      for p in model.parameters() if p.requires_grad])
 
 
 # ---------------------------------------------------------------------------
@@ -108,21 +103,7 @@ def _damped_inv(M: Tensor, damping: float) -> Tensor:
 # ---------------------------------------------------------------------------
 
 class NCL(BaseMethod):
-    """True NCL — K-FAC precision matrix with natural gradient projection.
-
-    Parameters
-    ----------
-    model : nn.Module
-        The neural network being trained.
-    cfg : DictConfig
-        **Full** Hydra config.  NCL reads ``cfg.training`` for optimiser
-        hyper-parameters and ``cfg.method.ncl`` for NCL-specific settings:
-
-        * ``fisher_samples`` (int): maximum training examples used to
-          estimate K-FAC factors after each task.
-        * ``damping`` (float): ε added to the diagonal of A and G before
-          inversion (Tikhonov regularisation for numerical stability).
-    """
+    """K-FAC NCL — paper Eq. (8) + Algorithm 1 in Appendix E."""
 
     def __init__(self, model: nn.Module, cfg) -> None:
         super().__init__(model, cfg.method)
@@ -131,30 +112,43 @@ class NCL(BaseMethod):
         ncl_cfg = cfg.method.ncl
         self._fisher_samples: int = int(ncl_cfg.fisher_samples)
         self._damping: float = float(ncl_cfg.damping)
+        # Trust-region radius r from paper Eq. (7). Used only to scale the
+        # `tr_scale` diagnostic; the update itself is not rescaled (Eq. 8
+        # absorbs r into η).
+        self._trust_radius: float = float(getattr(ncl_cfg, "trust_radius", 1.0))
 
         self._device: torch.device = next(model.parameters()).device
 
-        # Collect all nn.Linear layers — only these receive K-FAC treatment.
+        # Only nn.Linear layers receive K-FAC treatment; everything else is
+        # passed through with its raw gradient (zero prior precision).
         self._linear_layers: Dict[str, nn.Linear] = {
             name: module
             for name, module in model.named_modules()
             if isinstance(module, nn.Linear)
         }
 
-        # Accumulated Bayesian prior precision (Λ_{k-1}), decomposed as
-        # per-layer Kronecker factors stored on CPU to minimise GPU memory.
-        #
-        #   _kfac_A[name] : Tensor (d_in[+1], d_in[+1]) — input autocorrelation
-        #   _kfac_G[name] : Tensor (d_out,  d_out)      — gradient autocorrelation
+        # Per-layer Kronecker factors of the accumulated prior precision
+        # Λ_{k-1} ≈ ⊕_l (A_l ⊗ G_l). Stored on CPU so the full prior
+        # survives even for large layers; copied to `self._device` per-step
+        # inside `_apply_natural_gradient`.
         self._kfac_A: Dict[str, Tensor] = {}
         self._kfac_G: Dict[str, Tensor] = {}
 
-        # Prior mean μ_{k-1} — per-layer weight/bias snapshots after the last
-        # completed task (CPU).  Stored per-layer (not flat) so that the
-        # restoring force (W − W*) can be computed directly in the gradient
-        # projection step without requiring a costly unflatten.
-        self._prior_W: Dict[str, Tensor] = {}   # weight snapshot per linear layer
-        self._prior_b: Dict[str, Tensor] = {}   # bias snapshot per linear layer
+        # Per-layer snapshots of μ_{k-1} (used inside the natural-gradient
+        # step so we can compute (θ - μ) per layer without unflattening a
+        # global parameter vector).
+        self._prior_W: Dict[str, Tensor] = {}
+        self._prior_b: Dict[str, Tensor] = {}
+
+        # Flat μ_{k-1} over *all* trainable parameters (not just Linear
+        # ones). Surfaced as a single tensor for external inspection and
+        # for unit-testing the snapshot semantics; None until end_task is
+        # called for the first time.
+        self._prior_mean: Optional[Tensor] = None
+
+        # Diagnostics from the most recent observe() call.
+        self._last_kl_proxy: float = 0.0
+        self._last_tr_scale: float = 1.0
 
         self.optimizer = torch.optim.SGD(
             model.parameters(),
@@ -164,33 +158,29 @@ class NCL(BaseMethod):
         self.loss_fn = nn.CrossEntropyLoss()
 
     # ------------------------------------------------------------------
-    # Natural gradient projection
+    # Natural-gradient step (Eq. 8) — preconditioning + rubber-band
     # ------------------------------------------------------------------
 
     def _apply_natural_gradient(self) -> None:
-        """Project in-place gradients through the accumulated K-FAC precision.
+        """In-place: rewrite each Linear layer's `.grad` to
 
-        For each Linear layer with prior factors (A_prior, G_prior):
+            G⁻¹ [∇W | ∇b] A⁻¹  +  ([W - W*] | [b - b*])
 
-            [ΔW_nat | Δb_nat] = G_prior⁻¹ · [∇W | ∇b] · A_prior⁻¹
+        which, when multiplied by -η inside the optimiser step, gives the
+        Eq. (8) update direction. On task 0 (`_kfac_A` empty) this is a no-op
+        and the optimiser sees the raw gradient.
 
-        The full MAP natural gradient is:
-
-            Λ⁻¹ ∇J = Λ⁻¹ ∇L_k  +  (θ − μ*)
-
-        where (θ − μ*) is the restoring force from the Bayesian prior.
-        Numerical stability is handled entirely by damping ε in _damped_inv.
-
-        Layers with no K-FAC prior (task 0, or non-Linear layers) are left
-        with their raw gradients untouched.
+        Side effect: updates `self._last_kl_proxy` and `self._last_tr_scale`.
         """
         if not self._kfac_A:
-            # No prior yet (first task) — raw gradient passes through unchanged.
+            self._last_kl_proxy = 0.0
+            self._last_tr_scale = 1.0
             return
 
-        # ---- Pass 1: compute natural gradients ----
-        nat_task: Dict[str, Tensor] = {}   # Λ⁻¹ ∇L_k
-        restoring: Dict[str, Tensor] = {}  # (θ − μ*)
+        kl_proxy = 0.0          # (1/2) Σ_l tr(δ_l^T G_l δ_l A_l)
+        step_lambda_sq = 0.0    # ‖step‖_Λ²  with step = Λ⁻¹∇L + (θ - μ)
+
+        rewrites: List[Tuple[nn.Linear, Tensor, Optional[Tensor]]] = []
 
         for name, module in self._linear_layers.items():
             if name not in self._kfac_A or module.weight.grad is None:
@@ -203,36 +193,59 @@ class NCL(BaseMethod):
 
             grad_W = module.weight.grad.data  # (d_out, d_in)
 
-            # Restoring force: (W − W*) — zero on first task (no prior mean yet).
-            delta_W = (
-                module.weight.data - self._prior_W[name].to(self._device)
-                if name in self._prior_W else torch.zeros_like(grad_W)
-            )
+            # (θ - μ_{k-1}) for this layer. The prior is anchored at the
+            # previous task's optimum; if this is the first task that ever
+            # produced a prior the dict has the entry, otherwise δ = 0.
+            if name in self._prior_W:
+                delta_W = module.weight.data - self._prior_W[name].to(self._device)
+            else:
+                delta_W = torch.zeros_like(grad_W)
 
-            if module.bias is not None and module.bias.grad is not None:
-                delta_b = (
-                    module.bias.data - self._prior_b[name].to(self._device)
-                    if name in self._prior_b else torch.zeros_like(module.bias.data)
-                )
+            has_bias = module.bias is not None and module.bias.grad is not None
+            if has_bias:
+                if name in self._prior_b:
+                    delta_b = module.bias.data - self._prior_b[name].to(self._device)
+                else:
+                    delta_b = torch.zeros_like(module.bias.data)
+
                 grad_aug = torch.cat(
                     [grad_W, module.bias.grad.data.unsqueeze(1)], dim=1
                 )
-                nat_task[name] = G_inv @ grad_aug @ A_inv        # (d_out, d_in+1)
-                restoring[name] = torch.cat([delta_W, delta_b.unsqueeze(1)], dim=1)
+                delta_aug = torch.cat([delta_W, delta_b.unsqueeze(1)], dim=1)
             else:
-                nat_task[name] = G_inv @ grad_W @ A_inv          # (d_out, d_in)
-                restoring[name] = delta_W
+                grad_aug = grad_W
+                delta_aug = delta_W
 
-        # ---- Pass 2: write effective gradients back ----
-        for name, module in self._linear_layers.items():
-            if name not in nat_task:
-                continue
-            ng = nat_task[name] + restoring[name]
+            # Eq. 8 update direction (the term inside the brackets):
+            #   step_aug = Λ⁻¹ ∇L + (θ - μ) = G⁻¹ ∇L_aug A⁻¹ + δ_aug
+            nat_aug = G_inv @ grad_aug @ A_inv
+            step_aug = nat_aug + delta_aug
+
+            # kl_proxy contribution: (1/2) δ^T Λ δ = (1/2) tr(δ^T G δ A).
+            #   For a Kronecker-factored Λ = A ⊗ G (vec-column convention):
+            #     vec(δ)^T (A ⊗ G) vec(δ) = tr(δ^T G δ A).
+            kl_proxy += 0.5 * (delta_aug * (G @ delta_aug @ A)).sum().item()
+
+            # ‖step‖_Λ² = step^T Λ step = tr(step^T G step A) — same identity.
+            step_lambda_sq += (step_aug * (G @ step_aug @ A)).sum().item()
+
+            rewrites.append((module, step_aug, None))
+
+        # ---- write the effective gradients back ----
+        for module, step_aug, _ in rewrites:
             if module.bias is not None and module.bias.grad is not None:
-                module.weight.grad.data = ng[:, :-1].contiguous()
-                module.bias.grad.data = ng[:, -1].contiguous()
+                module.weight.grad.data = step_aug[:, :-1].contiguous()
+                module.bias.grad.data = step_aug[:, -1].contiguous()
             else:
-                module.weight.grad.data = ng
+                module.weight.grad.data = step_aug
+
+        # ---- diagnostics ----
+        self._last_kl_proxy = float(kl_proxy)
+        if step_lambda_sq > 0.0 and self._trust_radius > 0.0:
+            step_lambda = step_lambda_sq ** 0.5
+            self._last_tr_scale = float(min(1.0, self._trust_radius / step_lambda))
+        else:
+            self._last_tr_scale = 1.0
 
     # ------------------------------------------------------------------
     # K-FAC factor estimation
@@ -241,33 +254,19 @@ class NCL(BaseMethod):
     def _compute_kfac_factors(
         self, train_loader: DataLoader
     ) -> Tuple[Dict[str, Optional[Tensor]], Dict[str, Optional[Tensor]]]:
-        """Estimate K-FAC (A, G) factors for every Linear layer.
+        """Estimate Â and Ĝ for every Linear layer from `train_loader`.
 
-        Uses standard batch forward/backward passes with registered hooks.
-        The factors are the uncentred second moments of, respectively, the
-        layer input and the pre-activation gradient signal:
+        Â = (1/N) Σ_n ā_n ā_nᵀ  with ā = [x; 1] for biased layers
+        Ĝ = (1/N) Σ_n g_{s,n} g_{s,n}ᵀ,  g_s = ∂L / ∂(Wx + b)
 
-            A = (1/N) Σ_n ā_n ā_n^T     (ā = [x; 1] for biased layers)
-            G = (1/N) Σ_n g_{s,n} g_{s,n}^T
-
-        Since the CE loss uses mean-reduction, the backward-hook gradient
-        ``g_out[0][i]`` equals ``(1/B) · g_{s,i}``.  We multiply by B to
-        recover the per-sample scale before forming the outer product.
-
-        Parameters
-        ----------
-        train_loader : DataLoader
-            Training loader for the just-completed task.
-
-        Returns
-        -------
-        A_out, G_out : dicts mapping layer name → CPU Tensor (or None if the
-            layer was never reached during the forward pass).
+        Mean-reduced CE means the backward-hook gradient ``g_out[0][i]``
+        equals ``g_{s,i} / B``; we multiply by B before forming the outer
+        product, so the result is (1/N) Σ g_s g_sᵀ regardless of how the
+        mini-batches were sized.
         """
         a_sum: Dict[str, Optional[Tensor]] = {n: None for n in self._linear_layers}
         g_sum: Dict[str, Optional[Tensor]] = {n: None for n in self._linear_layers}
         a_cnt: Dict[str, int] = {n: 0 for n in self._linear_layers}
-        g_cnt: Dict[str, int] = {n: 0 for n in self._linear_layers}
 
         saved_inputs: Dict[str, Tensor] = {}
         hooks: List = []
@@ -275,24 +274,21 @@ class NCL(BaseMethod):
         for name, module in self._linear_layers.items():
 
             def _fwd(mod: nn.Linear, inp, out, _n: str = name) -> None:
-                a = inp[0].detach()  # (B, d_in)
+                a = inp[0].detach()
                 if mod.bias is not None:
-                    ones = torch.ones(
-                        a.size(0), 1, device=a.device, dtype=a.dtype
-                    )
-                    a = torch.cat([a, ones], dim=1)  # (B, d_in+1)
+                    ones = torch.ones(a.size(0), 1, device=a.device, dtype=a.dtype)
+                    a = torch.cat([a, ones], dim=1)
                 saved_inputs[_n] = a
 
             def _bwd(mod: nn.Linear, g_in, g_out, _n: str = name) -> None:
-                gs = g_out[0].detach()   # (B, d_out) — mean-reduced
+                gs = g_out[0].detach()
                 a = saved_inputs.pop(_n, None)
                 if a is None:
                     return
                 B = gs.size(0)
-                # Recover per-sample gradient scale (undo 1/B mean-reduction).
-                gs_sample = gs * B       # (B, d_out)
-                A_batch = a.T @ a        # (d_in[+1], d_in[+1]) — sum of outer products
-                G_batch = gs_sample.T @ gs_sample  # (d_out, d_out)
+                gs_sample = gs * B   # undo CE mean-reduction → per-sample g_s
+                A_batch = a.T @ a
+                G_batch = gs_sample.T @ gs_sample
                 if a_sum[_n] is None:
                     a_sum[_n] = A_batch
                     g_sum[_n] = G_batch
@@ -300,20 +296,18 @@ class NCL(BaseMethod):
                     a_sum[_n] = a_sum[_n] + A_batch
                     g_sum[_n] = g_sum[_n] + G_batch
                 a_cnt[_n] += B
-                g_cnt[_n] += B
 
             hooks.append(module.register_forward_hook(_fwd))
             hooks.append(module.register_full_backward_hook(_bwd))
 
-        # register_full_backward_hook wraps module outputs in a custom
-        # backward function.  Any inplace activation (relu_, silu_, …) that
-        # runs *after* the hook-wrapped layer then tries to modify a view of
-        # that wrapped output, which PyTorch forbids.  Temporarily disabling
-        # inplace on all activation modules sidesteps the conflict without
-        # altering any weights or the forward computation's numerical result.
+        # `register_full_backward_hook` wraps the module's outputs in a
+        # custom autograd function. Any inplace activation (relu_, silu_,
+        # …) that follows would then try to modify a view of that wrapped
+        # output and PyTorch forbids it. Temporarily disabling inplace on
+        # all activation modules sidesteps the conflict without altering
+        # the forward result.
         inplace_modules = [
-            m for m in self.model.modules()
-            if hasattr(m, "inplace") and m.inplace
+            m for m in self.model.modules() if hasattr(m, "inplace") and m.inplace
         ]
         for m in inplace_modules:
             m.inplace = False
@@ -343,12 +337,12 @@ class NCL(BaseMethod):
                 A_out[name] = G_out[name] = None
             else:
                 A_out[name] = (a_sum[name] / max(a_cnt[name], 1)).cpu()
-                G_out[name] = (g_sum[name] / max(g_cnt[name], 1)).cpu()
+                G_out[name] = (g_sum[name] / max(a_cnt[name], 1)).cpu()
 
         return A_out, G_out
 
     # ------------------------------------------------------------------
-    # BaseMethod abstract interface
+    # BaseMethod interface
     # ------------------------------------------------------------------
 
     def observe(
@@ -357,26 +351,7 @@ class NCL(BaseMethod):
         y_batch: Tensor,
         task_id: int,
     ) -> Dict[str, float]:
-        """One natural-gradient step on the current task.
-
-        No regularisation term is added to the loss.  The Bayesian prior
-        from past tasks is encoded entirely in the gradient projection step:
-        parameter updates are restricted to directions that do not interfere
-        with the K-FAC curvature of previously learned tasks.
-
-        On task 0 (empty prior) the method reduces to plain SGD.
-
-        Parameters
-        ----------
-        x_batch : Tensor  — shape (B, ...)
-        y_batch : Tensor  — shape (B,)
-        task_id : int     — zero-based task index
-
-        Returns
-        -------
-        dict
-            ``{"loss": float}``
-        """
+        """One natural-gradient step (paper Eq. 8) on the current batch."""
         self.model.train()
         x_batch = x_batch.to(self._device)
         y_batch = y_batch.to(self._device)
@@ -385,31 +360,20 @@ class NCL(BaseMethod):
         loss = self.loss_fn(self.model(x_batch), y_batch)
         loss.backward()
 
-        # Project gradients through accumulated K-FAC precision.
-        # No-op on task 0 (prior is empty).
         self._apply_natural_gradient()
 
         self.optimizer.step()
         return {"loss": loss.item()}
 
     def end_task(self, task_id: int, train_loader: DataLoader) -> None:
-        """Accumulate K-FAC factors and update the Bayesian prior.
+        """Accumulate K-FAC factors and snapshot μ_k.
 
-        Implements the online precision update:
+        Implements Eq. 5 in the K-FAC-factored form:
 
-            Λ_k = Λ_{k-1} + F_k
-            A_k ← A_{k-1} + Â_k   (input autocorrelation)
-            G_k ← G_{k-1} + Ĝ_k   (gradient autocorrelation)
-
-        The prior mean μ_k is set to the current parameter vector θ_k*.
-        Future ``observe()`` calls will use the updated (Λ_k, μ_k) prior.
-
-        Parameters
-        ----------
-        task_id : int
-            Zero-based index of the task that just finished.
-        train_loader : DataLoader
-            Training loader for the completed task, used for K-FAC estimation.
+            Λ_k ← Λ_{k-1} + F_k            (additive accumulation)
+            A_k ← A_{k-1} + Â_k            (input correlation)
+            G_k ← G_{k-1} + Ĝ_k            (output-gradient correlation)
+            μ_k ← θ_k*                     (current weights are the new mean)
         """
         A_new, G_new = self._compute_kfac_factors(train_loader)
 
@@ -417,19 +381,37 @@ class NCL(BaseMethod):
             if A_new[name] is None:
                 continue
             if name not in self._kfac_A:
-                # First task: initialise prior from scratch.
                 self._kfac_A[name] = A_new[name]
                 self._kfac_G[name] = G_new[name]
             else:
-                # Subsequent tasks: accumulate — Λ_k = Λ_{k-1} + F_k.
                 self._kfac_A[name] = self._kfac_A[name] + A_new[name]
                 self._kfac_G[name] = self._kfac_G[name] + G_new[name]
 
-        # Snapshot current per-layer weights as the new prior mean μ_k.
-        # Stored per-layer so _apply_natural_gradient can compute (W − W*)
-        # directly without unflattening a global parameter vector.
+        # Per-layer μ snapshot — used by `_apply_natural_gradient`.
         for name, module in self._linear_layers.items():
-            self._prior_W[name] = module.weight.data.cpu().clone()
+            self._prior_W[name] = module.weight.data.detach().cpu().clone()
             if module.bias is not None:
-                self._prior_b[name] = module.bias.data.cpu().clone()
+                self._prior_b[name] = module.bias.data.detach().cpu().clone()
 
+        # Flat μ snapshot covering *all* trainable parameters. Detaching
+        # and cloning ensures future parameter updates do not mutate it.
+        self._prior_mean = _flat_params(self.model)
+
+    # ------------------------------------------------------------------
+    # Diagnostics
+    # ------------------------------------------------------------------
+
+    def get_step_diagnostics(self) -> Dict[str, float]:
+        """Scalars logged after the last observe() call.
+
+        - ``kl_proxy``: (1/2)(θ − μ)ᵀ Λ (θ − μ). Zero before any prior
+          has been accumulated; otherwise non-negative by PSD-ness of Λ.
+        - ``tr_scale``: min(1, r / ‖step‖_Λ) where step is the Eq. 8
+          direction and r = `trust_radius`. Per Algorithm 1 the radius is
+          implicit in the learning rate and *no* clip is applied — this
+          value is reported as a diagnostic only.
+        """
+        return {
+            "kl_proxy": float(self._last_kl_proxy),
+            "tr_scale": float(self._last_tr_scale),
+        }

@@ -1,4 +1,5 @@
 name: ncl # lr 0.1
 ncl:
   fisher_samples: 1000          # max training examples used to estimate K-FAC factors
-  damping: 0.2               # ε added to A and G diagonals before inversion; must be large enough to regularise near-zero K-FAC eigenvalues (e.g. sparse MNIST inputs)
+  damping: 0.2                  # ε added to A and G diagonals before inversion; must be large enough to regularise near-zero K-FAC eigenvalues (e.g. sparse MNIST inputs)
+  trust_radius: 1.0             # nominal Λ-norm radius r; reported via diag.tr_scale = min(1, r / ||step||_Λ). Per Kao et al. (2021) Eq. (8) the radius is implicit in the learning rate — no clip is enforced.
