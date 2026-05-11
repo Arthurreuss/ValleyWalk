@@ -194,6 +194,9 @@ spawn_er_block() {
     local suffix
     suffix="$(mu_suffix "${mu}")"
     local ablation_value="${base_ablation}${suffix}"
+    local mu_tag
+    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mu_on"; else mu_tag="mu_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${mu_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             method=er \
@@ -203,6 +206,7 @@ spawn_er_block() {
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}" \
             "+ablation_value=${ablation_value}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
             "$@"
     done
     wait_block "${label} (µ=${mu})"
@@ -217,6 +221,9 @@ spawn_ncl_block() {
     local suffix
     suffix="$(mu_suffix "${mu}")"
     local ablation_value="${base_ablation}${suffix}"
+    local mu_tag
+    if [ "$mu" = "${MU_ON}" ]; then mu_tag="mu_on"; else mu_tag="mu_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${mu_tag}"
     for seed in "${SEED_ARRAY[@]}"; do
         spawn_job \
             method=ncl \
@@ -226,6 +233,7 @@ spawn_ncl_block() {
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}" \
             "+ablation_value=${ablation_value}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
             "$@"
     done
     wait_block "${label} (µ=${mu})"
@@ -286,7 +294,11 @@ for mu in $(momentum_values); do
 
     if should_run NCL; then
         echo "=== NCL: standard NCL (precision-matrix preconditioning) — reference path-finding ==="
-        spawn_ncl_block NCL NCL_reference "${mu}"
+        # prior_init=0.1 is the tuned winner from the α sweep (matches the new
+        # global default in configs/method/ncl.yaml); pinned explicitly here so
+        # the decomposition condition stays reproducible if the config drifts.
+        # See thesis_draft/notes/ncl_implementation_findings.md.
+        spawn_ncl_block NCL NCL_reference "${mu}" method.ncl.prior_init=0.1
     fi
 done
 
