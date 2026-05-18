@@ -31,22 +31,21 @@
 #
 # CIFAR-10 generalisation (§4.7)
 # ------------------------------
-# Headline carry-over only — not the full sweep.  Four conditions:
-#   D1 — Vanilla ER (ResNet-18, dom_cifar10)
-#   D2 — Standard NCL
-#   D3 — Best linear curriculum (defaults to N = 200; override via BEST_N env)
-#   D4 — Best adaptive curriculum
-# The CIFAR block uses the default ConvNet / ResNet-18 backbone via
-# configs/model/resnet18.yaml.  Momentum cross is not run here — pick the
-# better-performing momentum setting from the rot-MNIST sweep and lock it
-# via MOM_CIFAR (default 0.0).
+# Headline carry-over only — not the full sweep.  Two-task dom_cifar10
+# (clean → gaussian_noise), ResNet-18, 10 epochs per task.  Three conditions:
+#   D1 — Vanilla ER
+#   D2 — Standard NCL (damping=1e-3, fisher_samples=1000, prior_init=0.1,
+#        trust_radius=1.0)
+#   D3 — Best adaptive curriculum (λ_min = 0.20, matches C7)
+# Momentum cross is not run here — pick the better-performing momentum
+# setting from the rot-MNIST sweep and lock it via MOM_CIFAR (default 0.9).
 #
 # Total runs
 # ----------
 #   rot-MNIST:  7 conditions × 2 momentum × 5 seeds = 70
-#   CIFAR-10:   4 conditions × 1 momentum × 5 seeds = 20
+#   CIFAR-10:   3 conditions × 1 momentum × 5 seeds = 15
 #   ────────────────────────────────────────────────────
-#   Grand total                                      = 90
+#   Grand total                                      = 85
 #
 # Per-step instrumentation
 # ------------------------
@@ -65,9 +64,9 @@
 #   CONDITIONS="C1 C4 C6" bash scripts/run_curriculum.sh      # subset
 #   MOMENTUM_SET="off" bash scripts/run_curriculum.sh         # only the µ=0 leg
 #   GRAD_DIAG=on bash scripts/run_curriculum.sh               # enable g_true diag
-#   BEST_N=100   bash scripts/run_curriculum.sh               # different best-N
 #   SEEDS="1,2,3,4,5" bash scripts/run_curriculum.sh          # custom seeds
-#   N_JOBS=4     bash scripts/run_curriculum.sh               # cap parallelism
+#   N_JOBS=4     bash scripts/run_curriculum.sh               # cap parallelism (rot-MNIST)
+#   N_JOBS_CIFAR=2 bash scripts/run_curriculum.sh             # CIFAR parallelism (default 1)
 #   DRY_RUN=1    bash scripts/run_curriculum.sh               # preview only
 
 set -euo pipefail
@@ -77,6 +76,10 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────────────────────
 
 N_JOBS="${N_JOBS:-5}"
+# CIFAR runs on a single MPS GPU — parallelism only adds context-switch
+# overhead.  Default to sequential for the D-block; override if running on
+# CUDA or multi-GPU.
+N_JOBS_CIFAR="${N_JOBS_CIFAR:-1}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
 ALL_CONDITIONS_DEFAULT="C1 C2 C3 C4 C5 C6 C7"
@@ -87,10 +90,6 @@ MOMENTUM_SET="${MOMENTUM_SET:-both}"
 
 # BLOCK: which dataset block to run.  "rot_mnist" | "cifar10" | "both"
 BLOCK="${BLOCK:-both}"
-
-# Headline N for the "best linear curriculum" CIFAR condition.  Override
-# after the rot-MNIST sweep tells us which N actually wins.
-BEST_N="${BEST_N:-200}"
 
 # Momentum used for the CIFAR block.  Default 0.9 — CIFAR is the
 # generalisation block, where we ship the headline configuration (curriculum
@@ -120,17 +119,29 @@ ROTMNIST_OVERRIDES=(
     'dataset.rotations_deg=[0,90]'
 )
 
-# CIFAR overrides — 3-task dom_cifar10 with the ResNet-18 backbone.  Number
-# of tasks is taken from configs/dataset/dom_cifar10.yaml (currently 3).
+# CIFAR overrides — two-task dom_cifar10 (clean → gaussian_noise) with the
+# ResNet-18 backbone.  10 epochs per task to let ResNet-18 converge on each
+# domain before the transition (vs. the 1-epoch rot-MNIST online regime).
 CIFAR_OVERRIDES=(
     dataset=dom_cifar10
+    dataset.num_tasks=2
+    'dataset.corruption_types=[none,gaussian_noise]'
     model=resnet18
+    training.epochs_per_task=10
 )
 
 # Dense per-step eval over a 500-step window starting at the transition.
 EVAL_OVERRIDES=(
     eval.stability_gap.eval_freq_steps=1
     eval.stability_gap.window_steps=500
+)
+
+# CIFAR-specific eval cadence — at 10 epochs/task the post-switch dynamics
+# play out over thousands of steps, so we coarsen to every-50-steps and
+# cap the fine window at 250 steps.
+CIFAR_EVAL_OVERRIDES=(
+    eval.stability_gap.eval_freq_steps=50
+    eval.stability_gap.window_steps=250
 )
 
 # Optional g_true diagnostics — applied only when GRAD_DIAG=on.
@@ -168,11 +179,11 @@ echo "Python:        ${PYTHON}"
 echo "Block:         ${BLOCK}"
 echo "Conditions:    ${CONDITIONS}"
 echo "Momentum set:  ${MOMENTUM_SET}"
-echo "Best-N:        ${BEST_N}  (CIFAR headline linear condition)"
 echo "MOM_CIFAR:      ${MOM_CIFAR}"
 echo "Grad diag:     ${GRAD_DIAG}"
 echo "Seeds:         ${SEEDS}"
 echo "N_JOBS:        ${N_JOBS}"
+echo "N_JOBS_CIFAR:  ${N_JOBS_CIFAR}"
 echo "Dry run:       ${DRY_RUN}"
 echo "---"
 
@@ -333,7 +344,7 @@ spawn_cifar_block() {
         spawn_job \
             "method=${method_name}" \
             "${CIFAR_OVERRIDES[@]}" \
-            "${EVAL_OVERRIDES[@]}" \
+            "${CIFAR_EVAL_OVERRIDES[@]}" \
             "training.momentum=${MOM_CIFAR}" \
             "seed=${seed}" \
             "+ablation_key=${ABLATION_KEY}_cifar" \
@@ -345,9 +356,13 @@ spawn_cifar_block() {
 }
 
 if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
+    # Swap the parallelism cap to the CIFAR-specific one for the D-block.
+    _N_JOBS_SAVED="$N_JOBS"
+    N_JOBS="$N_JOBS_CIFAR"
+
     echo ""
     echo "=================================================================="
-    echo "  CIFAR-10 generalisation block — training.momentum = ${MOM_CIFAR}"
+    echo "  CIFAR-10 generalisation block — training.momentum = ${MOM_CIFAR} (N_JOBS=${N_JOBS})"
     echo "=================================================================="
 
     echo "=== D1: vanilla ER on dom_cifar10 ==="
@@ -358,21 +373,21 @@ if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
     # (thesis_draft/notes/ncl_implementation_findings.md §2.1 + iteration 2 in
     # outputs/_probe/ncl_sweep_20260511_201851): α=1.0 is over-regularising,
     # α≤0.03 diverges at lr=0.1, α=0.1 wins on ACC/FORG and on gap-depth.
-    spawn_cifar_block D2 D2_NCL ncl ncl method.ncl.prior_init=0.1
+    spawn_cifar_block D2 D2_NCL ncl ncl \
+        method.ncl.damping=0.001 \
+        method.ncl.fisher_samples=1000 \
+        method.ncl.prior_init=0.1 \
+        method.ncl.trust_radius=1.0
 
-    echo "=== D3: best linear curriculum (N=${BEST_N}) on dom_cifar10 ==="
-    spawn_cifar_block D3 "D3_linear_N${BEST_N}" er linear \
-        method.mode=standard \
-        method.lambda_curriculum.enabled=true \
-        "method.lambda_curriculum.ramp_steps=${BEST_N}" \
-        method.lambda_curriculum.schedule=linear
-
-    echo "=== D4: adaptive curriculum on dom_cifar10 ==="
-    spawn_cifar_block D4 D4_adaptive er adaptive \
+    echo "=== D3: adaptive curriculum (λ_min=0.20) on dom_cifar10 ==="
+    spawn_cifar_block D3 D3_adaptive_lmin0.20 er adaptive \
         method.mode=standard \
         method.lambda_curriculum.enabled=true \
         method.lambda_curriculum.schedule=adaptive \
-        "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}"
+        "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+        method.lambda_curriculum.lambda_min=0.20
+
+    N_JOBS="$_N_JOBS_SAVED"
 fi
 
 echo ""
