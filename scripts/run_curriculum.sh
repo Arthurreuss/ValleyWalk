@@ -61,7 +61,8 @@
 #   bash scripts/run_curriculum.sh                            # rot-MNIST + CIFAR
 #   BLOCK="rot_mnist" bash scripts/run_curriculum.sh          # rot-MNIST only
 #   BLOCK="cifar10"   bash scripts/run_curriculum.sh          # CIFAR only
-#   CONDITIONS="C1 C4 C6" bash scripts/run_curriculum.sh      # subset
+#   CONDITIONS="C1 C4 C6" bash scripts/run_curriculum.sh      # subset (C-series)
+#   CONDITIONS="D4" BLOCK="cifar10" bash scripts/run_curriculum.sh  # only D4
 #   MOMENTUM_SET="off" bash scripts/run_curriculum.sh         # only the µ=0 leg
 #   GRAD_DIAG=on bash scripts/run_curriculum.sh               # enable g_true diag
 #   SEEDS="1,2,3,4,5" bash scripts/run_curriculum.sh          # custom seeds
@@ -82,7 +83,9 @@ N_JOBS="${N_JOBS:-5}"
 N_JOBS_CIFAR="${N_JOBS_CIFAR:-1}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
-ALL_CONDITIONS_DEFAULT="C1 C2 C3 C4 C5 C6 C7"
+ALL_C_CONDITIONS="C1 C2 C3 C4 C5 C6 C7"
+ALL_D_CONDITIONS="D1 D2 D3 D4"
+ALL_CONDITIONS_DEFAULT="${ALL_C_CONDITIONS} ${ALL_D_CONDITIONS}"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
 # MOMENTUM_SET: "off" → µ=0.0 only, "on" → µ=0.9 only, "both" → both legs.
@@ -365,35 +368,43 @@ if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
     echo "  CIFAR-10 generalisation block — training.momentum = ${MOM_CIFAR} (N_JOBS=${N_JOBS})"
     echo "=================================================================="
 
-    echo "=== D1: vanilla ER on dom_cifar10 ==="
-    spawn_cifar_block D1 D1_vanilla_ER er vanilla method.mode=standard
+    if should_run D1; then
+        echo "=== D1: vanilla ER on dom_cifar10 ==="
+        spawn_cifar_block D1 D1_vanilla_ER er vanilla method.mode=standard
+    fi
 
-    echo "=== D2: standard NCL on dom_cifar10 ==="
-    # prior_init=0.1 is the tuned winner from the rot-MNIST α sweep
-    # (thesis_draft/notes/ncl_implementation_findings.md §2.1 + iteration 2 in
-    # outputs/_probe/ncl_sweep_20260511_201851): α=1.0 is over-regularising,
-    # α≤0.03 diverges at lr=0.1, α=0.1 wins on ACC/FORG and on gap-depth.
-    spawn_cifar_block D2 D2_NCL ncl ncl \
-        method.ncl.damping=0.001 \
-        method.ncl.fisher_samples=1000 \
-        method.ncl.prior_init=0.1 \
-        method.ncl.trust_radius=1.0
+    if should_run D2; then
+        echo "=== D2: standard NCL on dom_cifar10 ==="
+        # prior_init=0.1 is the tuned winner from the rot-MNIST α sweep
+        # (thesis_draft/notes/ncl_implementation_findings.md §2.1 + iteration 2 in
+        # outputs/_probe/ncl_sweep_20260511_201851): α=1.0 is over-regularising,
+        # α≤0.03 diverges at lr=0.1, α=0.1 wins on ACC/FORG and on gap-depth.
+        spawn_cifar_block D2 D2_NCL ncl ncl \
+            method.ncl.damping=0.001 \
+            method.ncl.fisher_samples=1000 \
+            method.ncl.prior_init=0.1 \
+            method.ncl.trust_radius=1.0
+    fi
 
-    echo "=== D3: adaptive curriculum (λ_min=0.20) on dom_cifar10 ==="
-    spawn_cifar_block D3 D3_adaptive_lmin0.20 er adaptive \
-        method.mode=standard \
-        method.lambda_curriculum.enabled=true \
-        method.lambda_curriculum.schedule=adaptive \
-        "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
-        method.lambda_curriculum.lambda_min=0.20
-    
-    echo "=== D4: adaptive curriculum (λ_min=0.10) on dom_cifar10 ==="
-    spawn_cifar_block D4 D4_adaptive_lmin0.10 er adaptive \
-        method.mode=standard \
-        method.lambda_curriculum.enabled=true \
-        method.lambda_curriculum.schedule=adaptive \
-        "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
-        method.lambda_curriculum.lambda_min=0.10
+    if should_run D3; then
+        echo "=== D3: adaptive curriculum (λ_min=0.20) on dom_cifar10 ==="
+        spawn_cifar_block D3 D3_adaptive_lmin0.20 er adaptive \
+            method.mode=standard \
+            method.lambda_curriculum.enabled=true \
+            method.lambda_curriculum.schedule=adaptive \
+            "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+            method.lambda_curriculum.lambda_min=0.20
+    fi
+
+    if should_run D4; then
+        echo "=== D4: adaptive curriculum (λ_min=0.10) on dom_cifar10 ==="
+        spawn_cifar_block D4 D4_adaptive_lmin0.10 er adaptive \
+            method.mode=standard \
+            method.lambda_curriculum.enabled=true \
+            method.lambda_curriculum.schedule=adaptive \
+            "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+            method.lambda_curriculum.lambda_min=0.10
+    fi
 
     N_JOBS="$_N_JOBS_SAVED"
 fi
