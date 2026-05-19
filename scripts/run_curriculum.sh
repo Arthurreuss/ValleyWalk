@@ -386,6 +386,14 @@ if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
         method.lambda_curriculum.schedule=adaptive \
         "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
         method.lambda_curriculum.lambda_min=0.20
+    
+    echo "=== D4: adaptive curriculum (λ_min=0.20) on dom_cifar10 ==="
+    spawn_cifar_block D4 D4_adaptive_lmin0.20 er adaptive \
+        method.mode=standard \
+        method.lambda_curriculum.enabled=true \
+        method.lambda_curriculum.schedule=adaptive \
+        "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+        method.lambda_curriculum.lambda_min=0.10
 
     N_JOBS="$_N_JOBS_SAVED"
 fi
