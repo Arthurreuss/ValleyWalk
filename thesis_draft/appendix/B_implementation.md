@@ -6,7 +6,7 @@ This appendix documents the implementation choices behind the experiments. All r
 
 ### B.1.1 MLP (rot-MNIST sweep)
 
-`src/models/mlp.py`. A two-hidden-layer fully-connected network with ReLU activations and **no regularisation layers** (no dropout, no batch-norm). The absence of normalisation is deliberate: it keeps the Hessian structure clean so that the envelope-theorem regularity assumptions of §3.5 (positive-definite, well-conditioned H_λ along the path) are plausibly approximated.
+`src/models/mlp.py`. A two-hidden-layer fully-connected network with ReLU activations and **no regularisation layers** (no dropout, no batch-norm). The absence of normalisation is deliberate: it keeps the Hessian structure clean so that the envelope-theorem regularity assumptions of §3.7 (positive-definite, well-conditioned H_λ along the path) are plausibly approximated.
 
 | Layer | Shape | Activation |
 |-------|-------|------------|
@@ -51,7 +51,7 @@ g_joint = λ · w_new · (g_new / ‖g_new‖) + w_replay · (g_replay / ‖g_re
 g_joint ← g_joint / ‖g_joint‖
 ```
 
-with `w_new = w_replay = 0.5` (the `task_weighted=false` setting used throughout this thesis). The per-component normalisation removes the magnitude asymmetry between g_new and g_replay; the final joint normalisation removes the dependence of step size on landscape steepness. The latter is precisely the property that costs balanced ER its final-accuracy margin (§3.3).
+with `w_new = w_replay = 0.5` (the `task_weighted=false` setting used throughout this thesis). The per-component normalisation removes the magnitude asymmetry between g_new and g_replay; the final joint normalisation removes the dependence of step size on landscape steepness. The latter is precisely the path-finding ACC cost described in §3.3: balanced ER's M-rescaling breaks SGD's natural step-size adaptation.
 
 ### B.2.3 Replay batch size
 
@@ -100,7 +100,9 @@ Unit tests for all four schedules, the λ_min floor, and the λ = 1 → vanilla 
 | Field | Value | Meaning |
 |-------|-------|---------|
 | `fisher_samples` | 1000 | Max training examples used to estimate K-FAC factors after each task |
-| `damping` | 0.2 | ε added to A and G diagonals before inversion — regularises near-zero K-FAC eigenvalues (relevant for sparse MNIST inputs) |
+| `damping` | 1.0e-3 | ε added to A and G diagonals before inversion — small because the identity prior (`prior_init`) already bounds Λ⁻¹; damping only handles residual rank-deficiency in F_k itself |
+| `prior_init` | 0.1 | α in p_w = α·I (Kao et al. 2021 Algorithm 1, line 6 — Gaussian prior precision). Bounds Λ⁻¹: with Λ_k = α·I + Σ F_i, the natural gradient cannot amplify the raw gradient beyond 1/α in any direction. Paper-literal α = 1.0 over-regularises on rot-MNIST; α ≤ 0.03 diverges at lr = 0.1. See `thesis_draft/notes/ncl_implementation_findings.md` |
+| `trust_radius` | 1.0 | Nominal Λ-norm radius r; reported via `diag.tr_scale = min(1, r / ‖step‖_Λ)`. Per Kao et al. (2021) Eq. (8) the radius is implicit in the learning rate — no clip is enforced |
 
 K-FAC factors are accumulated online — `end_task()` folds the just-finished task's factors into the evolving prior `Λ_k ≈ Λ_{k-1} + F_k`. Only `nn.Linear` layers receive K-FAC treatment; batch-norm and embeddings are updated with the raw gradient unchanged.
 
@@ -122,16 +124,23 @@ Each task wraps the standard 60 000-sample MNIST training set and 10 000-sample 
 
 ### B.6.2 Domain CIFAR-10
 
-`src/data/domain_cifar10.py`. Three-task domain-incremental setting (`configs/dataset/dom_cifar10.yaml`):
+`src/data/domain_cifar10.py`. Domain-incremental setting (`configs/dataset/dom_cifar10.yaml`); the default config supports up to three tasks, but the §4.7 generalisation sweep overrides to a two-task sequence to match the rot-MNIST design (one clean transition):
 
 ```yaml
+# Default config (three tasks supported)
 name: dom_cifar10
 num_tasks: 3
 corruption_types: [none, gaussian_noise, shot_noise]
 severity: 3
 ```
 
-All three tasks share the same 10 CIFAR-10 classes — only the input distribution shifts. Corruptions are applied on-the-fly via the `imagecorruptions` package; standard CIFAR-10 mean / std normalisation is applied *after* corruption.
+```bash
+# Override used by scripts/run_curriculum.sh for the D-block
+dataset.num_tasks=2
+dataset.corruption_types=[none, gaussian_noise]
+```
+
+All tasks share the same 10 CIFAR-10 classes — only the input distribution shifts. Corruptions are applied on-the-fly via the `imagecorruptions` package; standard CIFAR-10 mean / std normalisation is applied *after* corruption.
 
 ## B.7 Stability-Gap Tracking
 

@@ -18,13 +18,13 @@ Experience Replay (Lopez-Paz & Ranzato, 2017; Ratcliff, 1990) is the simplest re
 θ ← θ − η · (∇_θ L(x_current, y_current; θ) + ∇_θ L(x_replay, y_replay; θ))
 ```
 
-This is the "standard" mode used throughout this thesis; a "balanced" variant that normalises each gradient before summing is introduced in §3.3 and used as one of the decomposition conditions in §4.4.
+This is the "standard" mode used throughout this thesis; a "balanced" variant that normalises each gradient before summing is discussed in §3.3 (path-finding via gradient rescaling) and used as one of the decomposition conditions in §4.4.
 
 The replay buffer is populated by **reservoir sampling** (Vitter's Algorithm R, 1985): each sample seen so far has equal probability `budget / n_seen` of currently occupying a buffer slot, regardless of arrival order. In our implementation the buffer is populated *after* each task ends by iterating once over the completed task's training data and calling the per-sample reservoir insertion; samples may be accepted or rejected stochastically depending on how many samples have already been seen. During T₀ training the buffer is empty by construction, so ER degrades to plain SGD for the first task — the stability gap is measurable only from T₁ onward.
 
 ER's simplicity makes it a strong, well-understood baseline. Its primary limitation for stability-gap analysis is precisely that it does *nothing* to balance gradient magnitudes or directions — making it the ideal condition in which each contributor's individual impact can be measured.
 
-**Buffer-as-estimator caveat.** A finite replay buffer is an *imperfect estimator* of the true past-task data distribution. Aljundi et al. (2019) formalise this by framing buffer selection as a constraint-reduction problem in which the chosen samples approximate the feasibility region defined by the *full* past-task data; reservoir sampling is a specific (and not optimal) policy within that frame. The gradient ∇L_replay(θ) computed on a 1 k-sample buffer differs from the gradient ∇L_true(θ) computed on all past data, both in direction and magnitude. This estimator gap is present at every step and does not disappear under any schedule. It is reported in this thesis as a separate, persistent contributor to the stability gap (§3.2) and is *not* the contributor the λ-curriculum is designed to fix.
+**Buffer-as-estimator caveat.** A finite replay buffer is an *imperfect estimator* of the true past-task data distribution. Aljundi et al. (2019) formalise this by framing buffer selection as a constraint-reduction problem in which the chosen samples approximate the feasibility region defined by the *full* past-task data; reservoir sampling is a specific (and not optimal) policy within that frame. The gradient ∇L_replay(θ) computed on a 1 k-sample buffer differs from the gradient ∇L_true(θ) computed on all past data, both in direction and magnitude. This estimator gap is present at every step and does not disappear under any schedule. It is reported in this thesis as a separate, persistent contributor to the stability gap (the estimator-bias contributor G_est of §3.2) and is *not* the contributor the λ-curriculum is designed to fix.
 
 ## 2.3 Path-Finding Methods: NCL, GEM, A-GEM, EWC
 
@@ -69,7 +69,7 @@ L_T₀(θ₁) − L_T₀(θ_0*) ≈ ½ · η² · ∇L_T₁(θ_0*)ᵀ · H_T₀(
 
 whenever H_T₀ has any positive curvature in the direction of ∇L_T₁ — which it generically does. The Hessian of L_T₀ at its own minimum is positive semi-definite; any displacement raises L_T₀ quadratically. The replay-restoring force ∇L_T₀(θ₁) only switches on *after* this rise, and so the joint trajectory is a curved arc that overshoots and recovers.
 
-In our framing (§3.1), this is the cleanest possible isolation of the **trajectory contributor**: the discontinuity has been suppressed (the loss is the joint loss from step 1) and the buffer has been eliminated, yet the geometric effect of an unopposed first step survives. Chapter 3 shows that smoothing the schedule — replacing the instant switch with a continuous ramp — is sufficient to eliminate this contributor in the continuous-time limit.
+In our framing (§3.2), this is the cleanest possible isolation of the **trajectory contributor** (G_traj): the discontinuity has been suppressed (the loss is the joint loss from step 1) and the buffer has been eliminated, yet the geometric effect of an unopposed first step survives. Chapter 3 shows that smoothing the schedule — replacing the instant switch with a continuous ramp — is sufficient to eliminate this contributor in the continuous-time limit.
 
 ## 2.6 Blurry Task Boundaries and Their Relationship to the λ-Curriculum
 

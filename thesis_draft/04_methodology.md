@@ -33,9 +33,9 @@ The MLP is chosen over a ResNet for the rot-MNIST sweep on deliberate scientific
 
 - Simpler loss landscape — fewer spurious curvature effects unrelated to the curriculum dynamics.
 - Faster training — the curriculum + refinement sweep requires many conditions × seeds; an MLP run completes in seconds.
-- Cleaner adiabatic regime — the Hessian assumptions of §3.5 hold approximately, so the envelope-theorem prediction is sharply testable.
+- Cleaner adiabatic regime — the Hessian assumptions of §3.7 hold approximately, so the envelope-theorem prediction is sharply testable.
 
-A ConvNet backbone is used for the CIFAR-10 generalisation experiment (§4.7); details in Appendix C.
+A ResNet-18 backbone is used for the CIFAR-10 generalisation experiment (§4.7); details in Appendix B.
 
 ### 4.1.3 Training Protocol
 
@@ -55,15 +55,17 @@ The **online regime** (one epoch per task) is standard for stability-gap analysi
 
 ### 4.1.4 Evaluation Protocol
 
-**Dense per-step evaluation** is used during the first 250 steps of T₁ training:
+**Dense per-step evaluation** is used during the first 500 steps of T₁ training (`eval.stability_gap.eval_freq_steps=1`, `window_steps=500`):
 
 - `StabilityGapTracker` snapshots the pre-task accuracy on T₀ test data before T₁ training begins.
 - At every training step, the tracker evaluates the model on T₀ test data and records (step, accuracy).
 - After T₁ training, the tracker computes the scalar summaries listed in §4.2.
 
-A `GradientTracker` records, at the same per-step cadence, the directional and magnitude fidelity of the replay-buffer gradient against a fresh, large past-task sample.
+A `GradientTracker` records, at the same per-step cadence, the directional and magnitude fidelity of the replay-buffer gradient against the deterministic empirical past-task gradient g_true.
 
 Periodic evaluation (every 10 steps) is used for the general training-loss and final-accuracy curves outside the boundary window.
+
+The CIFAR-10 generalisation block (§4.7) coarsens the fine cadence to every 50 steps over a 250-step window — at 10 epochs per task the post-switch dynamics play out over thousands of steps, so a step-1 cadence over a 500-step window would no longer cover the gap and would inflate logging cost on the deeper backbone.
 
 ## 4.2 Metrics
 
@@ -120,17 +122,17 @@ Each experimental block tests one or more falsifiable predictions from Chapter 3
 | Block | Section | RQ tested | Falsifiable prediction (from Ch. 3) | Conditions |
 |-------|---------|-----------|--------------------------------------|------------|
 | Three-contributor decomposition | §4.4 | RQ5 | Magnitude + estimator + trajectory together account for the total gap; trajectory residual matches Kao et al. (§2.5) | G1–G4, plus NCL reference |
-| Linear λ-curriculum | §4.5 | RQ1 | gap_depth falls monotonically with N; ACC matches vanilla ER (Eq. 9 of §3.4) | N ∈ {50, 100, 200} |
+| Linear λ-curriculum | §4.5 | RQ1 | gap_depth falls monotonically with N; ACC matches vanilla ER (Eq. 9 of §3.6) | N ∈ {50, 100, 200} |
 | Adaptive λ-curriculum | §4.5 | RQ2 | gap_depth falls relative to vanilla ER without an explicit tunable N | Adaptive schedule from ‖g_replay‖/‖g_current‖ |
-| λ_min refinement | §4.5 | RQ4 | Adding λ_min > 0 recovers early-task velocity without inflating depth back to vanilla-ER levels (§3.7) | λ_min ∈ {0.05, 0.10, 0.20} on adaptive |
-| Momentum cross-cut | §4.6 | RQ3 | Momentum tightens depth on top of the curriculum, but momentum-alone (no curriculum) does *not* reduce depth (Eq. 11 of §3.6) | Every condition above repeated at momentum 0.9 |
-| CIFAR-10 generalisation | §4.7 | All | Headline contrasts carry to a stronger task shift and a deeper backbone | ER, NCL, best linear, best adaptive |
+| λ_min refinement | §4.5 | RQ4 | Adding λ_min > 0 recovers early-task velocity without inflating depth back to vanilla-ER levels (§3.9) | λ_min ∈ {0.05, 0.10, 0.20} on adaptive |
+| Momentum cross-cut | §4.6 | RQ3 | Momentum tightens depth on top of the curriculum, but momentum-alone (no curriculum) does *not* reduce depth (Eq. 11 of §3.8) | Every rot-MNIST condition above repeated at momentum 0.9 |
+| CIFAR-10 generalisation | §4.7 | All | Headline contrasts carry to a stronger task shift and a deeper backbone | Vanilla ER, NCL, adaptive λ_min=0.20, adaptive λ_min=0.10 |
 
 All conditions use 5 seeds and the training protocol of §4.1.3 unless noted otherwise.
 
 ## 4.4 Three-Contributor Decomposition
 
-**Aim.** Empirically isolate the three contributors named in §3.1 — magnitude bias, estimator bias, trajectory effect — and quantify each one's share of the total gap. This is the diagnostic question of RQ5 and the empirical analogue of the discontinuity framing of Chapter 3.
+**Aim.** Empirically isolate the three contributors derived in §3.2 — magnitude bias (G_mag), estimator bias (G_est), trajectory effect (G_traj) — and quantify each one's share of the total gap. This is the diagnostic question of RQ5 and the empirical analogue of the discontinuity framing of Chapter 3.
 
 **Rationale.** Two of the three contributors are predicted to be downstream symptoms of the discontinuity at the task boundary; the third (estimator bias) is a property of finite replay buffers and persists at any schedule. Removing each contributor *by construction* and observing the residual gap depth identifies which contributors drive the observed dip. The path G1 → G2 → G3 → G4 each removes one source.
 
@@ -144,7 +146,7 @@ All conditions use 5 seeds and the training protocol of §4.1.3 unless noted oth
 | G4 — Full-data + balanced | 60 k | Unit-norm balanced | Magnitude + estimator | G_traj |
 | NCL (reference) | None (no replay buffer) | K-FAC precision-matrix preconditioning | — | Reference path-finding method (Kao et al., 2021) |
 
-**On "full-data" in G2/G4.** The 60 k condition holds the entire past-task training set in the buffer (`memory.total_budget=60000`, which equals the MNIST training-set size) and, at every step, computes the replay gradient on **every stored sample exactly once** (`method.replay_full_buffer=true`). The resulting replay gradient is the deterministic empirical past-task gradient at the current parameters — no sampling, no bootstrap variance. Vanilla ER (G1) draws 256 samples with replacement, so its replay gradient is a stochastic estimator of this same quantity. G_est in §3.1 is therefore *exactly* the gap-depth difference between an estimator-driven step and an exact-gradient step; G_traj in G4 is the residual once both the estimator and the magnitude asymmetry are removed.
+**On "full-data" in G2/G4.** The 60 k condition holds the entire past-task training set in the buffer (`memory.total_budget=60000`, which equals the MNIST training-set size) and, at every step, computes the replay gradient on **every stored sample exactly once** (`method.replay_full_buffer=true`). The resulting replay gradient is the deterministic empirical past-task gradient at the current parameters — no sampling, no bootstrap variance. Vanilla ER (G1) draws 256 samples with replacement, so its replay gradient is a stochastic estimator of this same quantity. G_est in §3.2 is therefore *exactly* the gap-depth difference between an estimator-driven step and an exact-gradient step; G_traj in G4 is the residual once both the estimator and the magnitude asymmetry are removed.
 
 **Decomposition shares.** Differences along the path G1 → G3 → G4 identify each contributor:
 
@@ -160,7 +162,7 @@ The G2 condition is a sanity check: gap_depth(G1) − gap_depth(G2) should also 
 
 ## 4.5 The λ-Curriculum Sweep
 
-**Aim.** Test the envelope-theorem prediction of §3.4 — that a continuous λ-schedule eliminates the trajectory contribution to the gap — and the λ_min trade-off prediction of §3.7. Answers RQ1, RQ2, RQ4.
+**Aim.** Test the envelope-theorem prediction of §3.6 — that a continuous λ-schedule eliminates the trajectory contribution to the gap — and the λ_min trade-off prediction of §3.9. Answers RQ1, RQ2, RQ4.
 
 **Conditions.** All curriculum conditions are applied on top of standard ER (1 k reservoir, no balancing, no NCL) so that the curriculum's effect is isolated.
 
@@ -170,10 +172,10 @@ The G2 condition is a sanity check: gap_depth(G1) − gap_depth(G2) should also 
 | Linear N = 50 | clip(t / 50, 0, 1) | N = 50 | RQ1 |
 | Linear N = 100 | clip(t / 100, 0, 1) | N = 100 | RQ1 |
 | Linear N = 200 | clip(t / 200, 0, 1) | N = 200 | RQ1 |
-| Adaptive | λ = clip(EMA(‖g_replay‖ / ‖g_new‖), 0, 1) | EMA α | RQ2 |
-| Adaptive + λ_min = 0.05 | max(λ_min, clip(EMA(‖g_replay‖/‖g_new‖), 0, 1)) | λ_min = 0.05 | RQ4 |
-| Adaptive + λ_min = 0.10 | max(λ_min, clip(EMA(‖g_replay‖/‖g_new‖), 0, 1)) | λ_min = 0.10 | RQ4 |
-| Adaptive + λ_min = 0.20 | max(λ_min, clip(EMA(‖g_replay‖/‖g_new‖), 0, 1)) | λ_min = 0.20 | RQ4 |
+| Adaptive | λ = clip(EMA_α(‖g_replay‖ / ‖g_new‖), 0, 1) | EMA α = 0.05 | RQ2 |
+| Adaptive + λ_min = 0.05 | max(λ_min, clip(EMA_α(‖g_replay‖/‖g_new‖), 0, 1)) | α = 0.05, λ_min = 0.05 | RQ4 |
+| Adaptive + λ_min = 0.10 | max(λ_min, clip(EMA_α(‖g_replay‖/‖g_new‖), 0, 1)) | α = 0.05, λ_min = 0.10 | RQ4 |
+| Adaptive + λ_min = 0.20 | max(λ_min, clip(EMA_α(‖g_replay‖/‖g_new‖), 0, 1)) | α = 0.05, λ_min = 0.20 | RQ4 |
 
 The adaptive schedule is *self-paced*: at θ_0* the replay gradient is ≈ 0 (stationarity), so r := ‖g_replay‖ / ‖g_new‖ ≈ 0 and λ starts near 0. As the iterate leaves θ_0*, ‖g_replay‖ grows while ‖g_new‖ shrinks (the model fits T₁), so r climbs and λ → 1 without any explicit ramp length. The schedule ignores N entirely. A non-zero λ_min floor is mainly relevant for the adaptive variant: it prevents the schedule from sitting at λ ≈ 0 in the very first steps when the EMA estimate of r is still close to 0.
 
@@ -187,9 +189,9 @@ The contrast G3 (balanced ER) vs. linear N = 200 isolates the difference between
 
 ## 4.6 Momentum and the Curriculum × Momentum Cross
 
-**Aim.** Test the two predictions of §3.6 — (i) momentum on top of the curriculum suppresses the residual stochastic oscillation around the optimum path, and (ii) momentum *alone* (no curriculum) does not reduce gap depth because the first-step direction is unchanged. Answers RQ3.
+**Aim.** Test the two predictions of §3.8 — (i) momentum on top of the curriculum suppresses the residual stochastic oscillation around the optimum path, and (ii) momentum *alone* (no curriculum) does not reduce gap depth because the first-step direction is unchanged. Answers RQ3.
 
-**Design.** Every condition in §4.4 and §4.5 is repeated with momentum 0.9 (Nesterov off), giving a 2 × (decomposition + curriculum) cross:
+**Design.** Every rot-MNIST condition in §4.4 and §4.5 is repeated with momentum 0.9 (Nesterov off), giving a 2 × (decomposition + curriculum) cross. The CIFAR-10 generalisation block (§4.7) ships a single momentum setting (μ = 0.9, the better-performing leg from the rot-MNIST sweep) and is not part of this cross.
 
 | Curriculum / decomp. condition | Momentum 0.0 | Momentum 0.9 |
 |--------------------------------|--------------|--------------|
@@ -211,15 +213,21 @@ The single contrast (linear N = 200, momentum on) vs. (linear N = 200, momentum 
 
 ## 4.7 Generalisation: CIFAR-10
 
-**Aim.** Confirm the direction of the rot-MNIST findings under (i) stronger task shift and (ii) a deeper, harder-to-analyse architecture. This probes the regime in which the assumptions (A1)–(A3) of §3.1 weaken (§3.5).
+**Aim.** Confirm the direction of the rot-MNIST findings under (i) stronger task shift and (ii) a deeper, harder-to-analyse architecture. This probes the regime in which the assumptions (A1)–(A3) of §3.1 weaken (§3.7).
 
-**Conditions.** A small set of headline conditions only — not the full sweep.
+**Dataset.** Two-task `dom_cifar10`: T₀ uses clean CIFAR-10, T₁ uses the `gaussian_noise` corruption (severity 3 from `imagecorruptions`). Both tasks share the same 10 classes — only the input distribution shifts. As in rot-MNIST, two tasks produce exactly one transition.
 
-| Condition | Backbone | Role |
-|-----------|----------|------|
-| Vanilla ER | ConvNet (Appendix C) | Reference |
-| NCL | ConvNet | Reference path-finding |
-| Best linear curriculum (from §4.5) | ConvNet | Headline landscape-shaping |
-| Best adaptive curriculum (from §4.5) | ConvNet | Hyperparameter-free landscape-shaping |
+**Training protocol.** ResNet-18 (CIFAR-adapted: 3×3 stem, no max-pool stem; see Appendix B), 10 epochs per task (vs. the 1-epoch rot-MNIST online regime — at this depth ResNet-18 needs more than one pass to converge before the transition), batch size 256, SGD with lr = 0.1, momentum 0.9 only. The momentum cross of §4.6 is not repeated on CIFAR; momentum 0.9 is locked in as the better-performing leg observed on rot-MNIST. Dense per-step eval cadence is coarsened to every 50 steps over a 250-step window (see §4.1.4).
 
-**What we expect.** Qualitative carry-over of the rot-MNIST result: the curriculum should reduce gap depth relative to vanilla ER and at least match NCL on depth while preserving ACC better than balanced ER would. The quantitative O(1/N) scaling of the bound is not expected to hold tightly here; deviations are reported and discussed in §6.
+**Conditions.** Four headline conditions only — not the full sweep.
+
+| Condition | Method | Tests |
+|-----------|--------|-------|
+| D1 — Vanilla ER | ER (1 k reservoir, standard) | Reference |
+| D2 — Standard NCL | NCL (damping 1e−3, fisher_samples 1000, prior_init = 0.1, trust_radius 1.0) | Reference path-finding |
+| D3 — Adaptive curriculum, λ_min = 0.20 | ER + adaptive λ-curriculum | RQ4 carry-over (best λ_min on rot-MNIST) |
+| D4 — Adaptive curriculum, λ_min = 0.10 | ER + adaptive λ-curriculum | RQ4 carry-over (alternate λ_min) |
+
+A linear curriculum is *not* run on CIFAR — only the two best-performing adaptive variants from the rot-MNIST λ_min refinement (§4.5) are carried over, alongside the two reference points. NCL hyperparameters are pinned to the values that won the α sweep on rot-MNIST (`thesis_draft/notes/ncl_implementation_findings.md`).
+
+**What we expect.** Qualitative carry-over of the rot-MNIST result: the adaptive curriculum should reduce gap depth relative to vanilla ER and at least match NCL on depth while preserving ACC. The quantitative O(1/N) scaling of the bound is not expected to hold tightly here; deviations are reported and discussed in §6.

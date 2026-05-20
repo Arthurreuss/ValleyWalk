@@ -32,20 +32,38 @@
 # CIFAR-10 generalisation (§4.7)
 # ------------------------------
 # Headline carry-over only — not the full sweep.  Two-task dom_cifar10
-# (clean → gaussian_noise), ResNet-18, 10 epochs per task.  Three conditions:
+# (clean → gaussian_noise), ResNet-18, 10 epochs per task.  Five conditions:
 #   D1 — Vanilla ER
 #   D2 — Standard NCL (damping=1e-3, fisher_samples=1000, prior_init=0.1,
 #        trust_radius=1.0)
-#   D3 — Best adaptive curriculum (λ_min = 0.20, matches C7)
+#   D3 — Adaptive curriculum, λ_min = 0.20 (matches C7)
+#   D4 — Adaptive curriculum, λ_min = 0.10 (matches C6)
+#   D5 — Adaptive curriculum, λ_min = 0.00 (pure-adaptive, matches C4)
 # Momentum cross is not run here — pick the better-performing momentum
 # setting from the rot-MNIST sweep and lock it via MOM_CIFAR (default 0.9).
 #
-# Total runs
-# ----------
-#   rot-MNIST:  7 conditions × 2 momentum × 5 seeds = 70
-#   CIFAR-10:   3 conditions × 1 momentum × 5 seeds = 15
-#   ────────────────────────────────────────────────────
-#   Grand total                                      = 85
+# Long-sequence rot-MNIST (§5.7, TODO 1.2)
+# ----------------------------------------
+# Five-task rot-MNIST (rotations [0,30,60,90,120]) to test whether the
+# curriculum carries past a single transition, and whether NCL recovers its
+# advantage at the task counts where Kao et al. (2021) report SOTA.
+#   L1 — Vanilla ER (no curriculum)
+#   L2 — Standard NCL (α = prior_init = 0.1, same config as D2)
+#   L3 — Adaptive curriculum, λ_min = 0.00
+#   L4 — Adaptive curriculum, λ_min = 0.10
+# Single momentum setting (MOM_LSEQ, default 0.9) — the C-series and the
+# G1/G1_M decomposition already establish that momentum-on dominates µ=0 on
+# stability-gap depth, so running both legs here would burn 20 extra runs
+# without addressing the long-sequence research question.  Mirror the
+# CIFAR D-block (which is also single-momentum) for the same reason.
+#
+# Total runs (when all blocks selected)
+# -------------------------------------
+#   rot-MNIST (C1-C7):       7 conditions × 2 momentum × 5 seeds = 70
+#   CIFAR-10  (D1-D5):       5 conditions × 1 momentum × 5 seeds = 25
+#   rot-MNIST 5-task (L1-L4): 4 conditions × 1 momentum × 5 seeds = 20
+#   ──────────────────────────────────────────────────────────────────
+#   Grand total                                                  = 115
 #
 # Per-step instrumentation
 # ------------------------
@@ -58,17 +76,24 @@
 #
 # Usage
 # -----
-#   bash scripts/run_curriculum.sh                            # rot-MNIST + CIFAR
-#   BLOCK="rot_mnist" bash scripts/run_curriculum.sh          # rot-MNIST only
-#   BLOCK="cifar10"   bash scripts/run_curriculum.sh          # CIFAR only
-#   CONDITIONS="C1 C4 C6" bash scripts/run_curriculum.sh      # subset (C-series)
-#   CONDITIONS="D4" BLOCK="cifar10" bash scripts/run_curriculum.sh  # only D4
-#   MOMENTUM_SET="off" bash scripts/run_curriculum.sh         # only the µ=0 leg
-#   GRAD_DIAG=on bash scripts/run_curriculum.sh               # enable g_true diag
-#   SEEDS="1,2,3,4,5" bash scripts/run_curriculum.sh          # custom seeds
-#   N_JOBS=4     bash scripts/run_curriculum.sh               # cap parallelism (rot-MNIST)
-#   N_JOBS_CIFAR=2 bash scripts/run_curriculum.sh             # CIFAR parallelism (default 1)
-#   DRY_RUN=1    bash scripts/run_curriculum.sh               # preview only
+# BLOCKS is required — every block is opt-in.  Valid block names:
+#   rot_mnist          — C-series, two-task rot-MNIST
+#   cifar10            — D-series, two-task dom_cifar10
+#   rot_mnist_5task    — L-series, five-task rot-MNIST (long-sequence)
+#
+#   BLOCKS="rot_mnist" bash scripts/run_curriculum.sh                      # C-series only
+#   BLOCKS="cifar10"   bash scripts/run_curriculum.sh                      # D-series only
+#   BLOCKS="rot_mnist_5task" bash scripts/run_curriculum.sh                # L-series only
+#   BLOCKS="rot_mnist cifar10 rot_mnist_5task" bash scripts/run_curriculum.sh   # everything
+#   CONDITIONS="C1 C4 C6" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh     # subset
+#   CONDITIONS="D5" BLOCKS="cifar10" bash scripts/run_curriculum.sh             # only D5
+#   CONDITIONS="L3 L4" BLOCKS="rot_mnist_5task" bash scripts/run_curriculum.sh  # only L3/L4
+#   MOMENTUM_SET="off" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh        # µ=0 leg only
+#   GRAD_DIAG=on CONDITIONS="C4 C7" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh
+#   SEEDS="1,2,3,4,5" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh         # custom seeds
+#   N_JOBS=4     BLOCKS="rot_mnist" bash scripts/run_curriculum.sh              # parallelism cap
+#   N_JOBS_CIFAR=2 BLOCKS="cifar10" bash scripts/run_curriculum.sh              # CIFAR parallelism
+#   DRY_RUN=1    BLOCKS="rot_mnist cifar10" bash scripts/run_curriculum.sh      # preview only
 
 set -euo pipefail
 
@@ -84,21 +109,29 @@ N_JOBS_CIFAR="${N_JOBS_CIFAR:-1}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
 ALL_C_CONDITIONS="C1 C2 C3 C4 C5 C6 C7"
-ALL_D_CONDITIONS="D1 D2 D3 D4"
-ALL_CONDITIONS_DEFAULT="${ALL_C_CONDITIONS} ${ALL_D_CONDITIONS}"
+ALL_D_CONDITIONS="D1 D2 D3 D4 D5"
+ALL_L_CONDITIONS="L1 L2 L3 L4"
+ALL_CONDITIONS_DEFAULT="${ALL_C_CONDITIONS} ${ALL_D_CONDITIONS} ${ALL_L_CONDITIONS}"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
 # MOMENTUM_SET: "off" → µ=0.0 only, "on" → µ=0.9 only, "both" → both legs.
 MOMENTUM_SET="${MOMENTUM_SET:-both}"
 
-# BLOCK: which dataset block to run.  "rot_mnist" | "cifar10" | "both"
-BLOCK="${BLOCK:-both}"
+# BLOCKS: space-separated list of dataset blocks to run.  Every block is
+# opt-in — no default.  Valid values: rot_mnist | cifar10 | rot_mnist_5task
+BLOCKS="${BLOCKS:-}"
+VALID_BLOCKS=(rot_mnist cifar10 rot_mnist_5task)
 
 # Momentum used for the CIFAR block.  Default 0.9 — CIFAR is the
 # generalisation block, where we ship the headline configuration (curriculum
 # + momentum) rather than the no-momentum reference.  Override via env var
 # if a different setting is needed.
 MOM_CIFAR="${MOM_CIFAR:-0.9}"
+
+# Momentum used for the 5-task long-sequence block.  Default 0.9 — same
+# reasoning as MOM_CIFAR (we ship the headline configuration; the C-series
+# already characterises the µ=0 vs. µ=0.9 trade-off at two tasks).
+MOM_LSEQ="${MOM_LSEQ:-0.9}"
 
 # Enable per-step g_true buffer-fidelity diagnostics?  Off by default for the
 # curriculum sweep (see header comment).
@@ -120,6 +153,15 @@ ROTMNIST_OVERRIDES=(
     dataset=rot_mnist
     dataset.num_tasks=2
     'dataset.rotations_deg=[0,90]'
+)
+
+# Five-task rot-MNIST (§5.7, TODO 1.2): four consecutive transitions over a
+# uniform 30°-step rotation schedule.  Same MLP backbone / online regime as
+# the two-task block.
+ROTMNIST_5TASK_OVERRIDES=(
+    dataset=rot_mnist
+    dataset.num_tasks=5
+    'dataset.rotations_deg=[0,30,60,90,120]'
 )
 
 # CIFAR overrides — two-task dom_cifar10 (clean → gaussian_noise) with the
@@ -169,6 +211,24 @@ MOM_ON=0.9
 # Pre-flight
 # ──────────────────────────────────────────────────────────────────────────────
 
+if [ -z "$BLOCKS" ]; then
+    echo "ERROR: BLOCKS environment variable not set — every block is opt-in." >&2
+    echo "Usage: BLOCKS=\"<block> [<block> ...]\" bash scripts/run_curriculum.sh" >&2
+    echo "       Valid blocks: ${VALID_BLOCKS[*]}" >&2
+    exit 1
+fi
+
+for _b in $BLOCKS; do
+    _ok=0
+    for _v in "${VALID_BLOCKS[@]}"; do
+        [ "$_b" = "$_v" ] && { _ok=1; break; }
+    done
+    if [ "$_ok" = "0" ]; then
+        echo "ERROR: unknown block '${_b}'. Valid: ${VALID_BLOCKS[*]}" >&2
+        exit 1
+    fi
+done
+
 if [ -n "$(git status --porcelain)" ]; then
     echo "ERROR: dirty git working tree — commit or stash all changes before" \
          "launching the sweep." >&2
@@ -179,10 +239,11 @@ fi
 GIT_COMMIT="$(git rev-parse HEAD)"
 echo "Git commit:    ${GIT_COMMIT}"
 echo "Python:        ${PYTHON}"
-echo "Block:         ${BLOCK}"
+echo "Blocks:        ${BLOCKS}"
 echo "Conditions:    ${CONDITIONS}"
 echo "Momentum set:  ${MOMENTUM_SET}"
-echo "MOM_CIFAR:      ${MOM_CIFAR}"
+echo "MOM_CIFAR:     ${MOM_CIFAR}"
+echo "MOM_LSEQ:      ${MOM_LSEQ}"
 echo "Grad diag:     ${GRAD_DIAG}"
 echo "Seeds:         ${SEEDS}"
 echo "N_JOBS:        ${N_JOBS}"
@@ -228,6 +289,14 @@ should_run() {
     local label="$1"
     for c in $CONDITIONS; do
         [ "$c" = "$label" ] && return 0
+    done
+    return 1
+}
+
+has_block() {
+    local target="$1"
+    for b in $BLOCKS; do
+        [ "$b" = "$target" ] && return 0
     done
     return 1
 }
@@ -307,7 +376,7 @@ run_adaptive() {
 # C-series — λ-curriculum sweep on standard ER (rot-MNIST, §4.5)
 # ──────────────────────────────────────────────────────────────────────────────
 
-if [ "$BLOCK" = "rot_mnist" ] || [ "$BLOCK" = "both" ]; then
+if has_block rot_mnist; then
     for mom in $(momentum_values); do
         echo ""
         echo "=================================================================="
@@ -358,7 +427,7 @@ spawn_cifar_block() {
     wait_block "${label} (CIFAR)"
 }
 
-if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
+if has_block cifar10; then
     # Swap the parallelism cap to the CIFAR-specific one for the D-block.
     _N_JOBS_SAVED="$N_JOBS"
     N_JOBS="$N_JOBS_CIFAR"
@@ -406,7 +475,103 @@ if [ "$BLOCK" = "cifar10" ] || [ "$BLOCK" = "both" ]; then
             method.lambda_curriculum.lambda_min=0.10
     fi
 
+    if should_run D5; then
+        echo "=== D5: adaptive curriculum (λ_min=0.0, pure-adaptive) on dom_cifar10 ==="
+        spawn_cifar_block D5 D5_adaptive_lmin0.00 er adaptive \
+            method.mode=standard \
+            method.lambda_curriculum.enabled=true \
+            method.lambda_curriculum.schedule=adaptive \
+            "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+            method.lambda_curriculum.lambda_min=0.0
+    fi
+
     N_JOBS="$_N_JOBS_SAVED"
+fi
+
+# ──────────────────────────────────────────────────────────────────────────────
+# L-series — five-task rot-MNIST long-sequence sweep (§5.7, TODO 1.2)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Same MLP / online regime as the C-series, but with four consecutive task
+# transitions over a uniform 30° rotation schedule.  Tests (i) whether the
+# adaptive curriculum carries past a single transition and (ii) whether NCL
+# recovers its rot-MNIST advantage at the task counts where Kao et al.
+# (2021) report SOTA.
+
+spawn_rotmnist_5task_block() {
+    local label="$1"; shift
+    local base_ablation="$1"; shift
+    local method_name="$1"; shift
+    local mom="$1"; shift
+    local family="$1"; shift
+    local suffix
+    suffix="$(mom_suffix "${mom}")"
+    local ablation_value="${base_ablation}${suffix}"
+    local mom_tag
+    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    # Tag with the plain ABLATION_KEY ("curriculum") so the L-series groups
+    # with the C- and D-series in wandb; the ablation_key carries the
+    # "_5task" suffix so per-block grouping stays distinct.
+    local tags_csv="${ABLATION_KEY},${label},${family},${mom_tag}"
+    for seed in "${SEED_ARRAY[@]}"; do
+        spawn_job \
+            "method=${method_name}" \
+            "${ROTMNIST_5TASK_OVERRIDES[@]}" \
+            "${EVAL_OVERRIDES[@]}" \
+            ${GRAD_DIAG_OVERRIDES[@]:+"${GRAD_DIAG_OVERRIDES[@]}"} \
+            "training.momentum=${mom}" \
+            "seed=${seed}" \
+            "+ablation_key=${ABLATION_KEY}_5task" \
+            "+ablation_value=${ablation_value}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
+            "$@"
+    done
+    wait_block "${label} (µ=${mom}, 5-task)"
+}
+
+if has_block rot_mnist_5task; then
+    mom="${MOM_LSEQ}"
+    echo ""
+    echo "=================================================================="
+    echo "  Long-sequence block (rot-MNIST, 5 tasks) — training.momentum = ${mom}"
+    echo "=================================================================="
+
+    if should_run L1; then
+        echo "=== L1: vanilla ER on 5-task rot-MNIST, µ=${mom} ==="
+        spawn_rotmnist_5task_block L1 L1_vanilla_ER er "${mom}" vanilla \
+            method.mode=standard
+    fi
+
+    if should_run L2; then
+        echo "=== L2: standard NCL (α=0.1) on 5-task rot-MNIST, µ=${mom} ==="
+        # Same NCL config as D2 — see comment in the CIFAR block for the
+        # provenance of prior_init=0.1.
+        spawn_rotmnist_5task_block L2 L2_NCL ncl "${mom}" ncl \
+            method.ncl.damping=0.001 \
+            method.ncl.fisher_samples=1000 \
+            method.ncl.prior_init=0.1 \
+            method.ncl.trust_radius=1.0
+    fi
+
+    if should_run L3; then
+        echo "=== L3: adaptive curriculum (λ_min=0.0) on 5-task rot-MNIST, µ=${mom} ==="
+        spawn_rotmnist_5task_block L3 L3_adaptive_lmin0.00 er "${mom}" adaptive \
+            method.mode=standard \
+            method.lambda_curriculum.enabled=true \
+            method.lambda_curriculum.schedule=adaptive \
+            "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+            method.lambda_curriculum.lambda_min=0.0
+    fi
+
+    if should_run L4; then
+        echo "=== L4: adaptive curriculum (λ_min=0.10) on 5-task rot-MNIST, µ=${mom} ==="
+        spawn_rotmnist_5task_block L4 L4_adaptive_lmin0.10 er "${mom}" adaptive \
+            method.mode=standard \
+            method.lambda_curriculum.enabled=true \
+            method.lambda_curriculum.schedule=adaptive \
+            "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
+            method.lambda_curriculum.lambda_min=0.10
+    fi
 fi
 
 echo ""
