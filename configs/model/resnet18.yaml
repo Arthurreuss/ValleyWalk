@@ -1,3 +1,14 @@
 name: resnet18
 input_channels: 3
 num_classes: 10
+
+# Normalisation layer used by every conv stage (stem + every BasicBlock).
+# Default "batch" reproduces the canonical CIFAR ResNet-18 (He et al.).
+# "group" replaces every BatchNorm2d with a GroupNorm layer — used by the
+# CIFAR gap-anatomy sweep to isolate the BN-driven contributor (§6.5).
+#
+#   batch — nn.BatchNorm2d(C)
+#   group — nn.GroupNorm(min(norm_groups, C), C)  (groups capped at C if
+#                                                  C < norm_groups)
+norm_type: batch          # batch | group
+norm_groups: 32           # GroupNorm group count; ignored when norm_type=batch

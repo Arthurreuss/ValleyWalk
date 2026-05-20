@@ -175,18 +175,15 @@ CIFAR_OVERRIDES=(
     training.epochs_per_task=10
 )
 
-# Dense per-step eval over a 500-step window starting at the transition.
 EVAL_OVERRIDES=(
     eval.stability_gap.eval_freq_steps=1
-    eval.stability_gap.window_steps=500
+    eval.stability_gap.window_steps=250
 )
 
-# CIFAR-specific eval cadence — at 10 epochs/task the post-switch dynamics
-# play out over thousands of steps, so we coarsen to every-50-steps and
-# cap the fine window at 250 steps.
 CIFAR_EVAL_OVERRIDES=(
-    eval.stability_gap.eval_freq_steps=50
-    eval.stability_gap.window_steps=250
+    eval.stability_gap.eval_freq_steps=1
+    eval.stability_gap.window_steps=50
+    eval.eval_every_n_steps=50
 )
 
 # Optional g_true diagnostics — applied only when GRAD_DIAG=on.

@@ -27,10 +27,29 @@ Usage:
     model = ResNet18.from_dims(input_channels=3, num_classes=100)
 """
 
-from typing import List, Optional, Type
+from typing import Callable, List, Optional, Type
 
 import torch
 import torch.nn as nn
+
+
+# ---------------------------------------------------------------------------
+# Norm-layer factory
+# ---------------------------------------------------------------------------
+
+def _make_norm_factory(norm_type: str, norm_groups: int) -> Callable[[int], nn.Module]:
+    """Return a callable that maps ``num_channels`` to a fresh norm layer.
+
+    ``norm_type="batch"`` reproduces the canonical BN-equipped ResNet.
+    ``norm_type="group"`` swaps every BN for a GroupNorm with at most
+    ``norm_groups`` groups (capped at ``num_channels`` when ``num_channels <
+    norm_groups`` so the divisibility constraint is always satisfied).
+    """
+    if norm_type == "batch":
+        return lambda c: nn.BatchNorm2d(c)
+    if norm_type == "group":
+        return lambda c: nn.GroupNorm(min(norm_groups, c), c)
+    raise ValueError(f"Unknown norm_type='{norm_type}' (expected 'batch' or 'group')")
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +57,7 @@ import torch.nn as nn
 # ---------------------------------------------------------------------------
 
 class _BasicBlock(nn.Module):
-    """Standard ResNet BasicBlock (two 3×3 convs, batch-norm, skip connection).
+    """Standard ResNet BasicBlock (two 3×3 convs, norm layer, skip connection).
 
     Handles the downsampling shortcut automatically when `stride > 1` or when
     in/out channel counts differ.
@@ -47,6 +66,8 @@ class _BasicBlock(nn.Module):
         in_channels:  Number of input channels.
         out_channels: Number of output channels.
         stride:       Stride for the first conv (and the shortcut, if needed).
+        norm:         Callable mapping ``num_channels → norm-layer instance``.
+                      See ``_make_norm_factory``.
     """
 
     def __init__(
@@ -54,6 +75,7 @@ class _BasicBlock(nn.Module):
         in_channels: int,
         out_channels: int,
         stride: int = 1,
+        norm: Callable[[int], nn.Module] = lambda c: nn.BatchNorm2d(c),
     ) -> None:
         super().__init__()
 
@@ -61,14 +83,14 @@ class _BasicBlock(nn.Module):
             in_channels, out_channels,
             kernel_size=3, stride=stride, padding=1, bias=False,
         )
-        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.bn1 = norm(out_channels)
         self.relu = nn.ReLU(inplace=True)
 
         self.conv2 = nn.Conv2d(
             out_channels, out_channels,
             kernel_size=3, stride=1, padding=1, bias=False,
         )
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.bn2 = norm(out_channels)
 
         # Shortcut projection when dimensions change
         self.shortcut: Optional[nn.Sequential]
@@ -78,7 +100,7 @@ class _BasicBlock(nn.Module):
                     in_channels, out_channels,
                     kernel_size=1, stride=stride, bias=False,
                 ),
-                nn.BatchNorm2d(out_channels),
+                norm(out_channels),
             )
         else:
             self.shortcut = None
@@ -117,6 +139,11 @@ class ResNet18(nn.Module):
         super().__init__()
         self.input_channels: int = cfg.input_channels
         self.num_classes: int = cfg.num_classes
+        # Norm-type config — defaults preserve canonical BN-ResNet behaviour.
+        self.norm_type: str = getattr(cfg, "norm_type", "batch")
+        self.norm_groups: int = getattr(cfg, "norm_groups", 32)
+        norm = _make_norm_factory(self.norm_type, self.norm_groups)
+        self._norm = norm
 
         # ------------------------------------------------------------------
         # Stem: 3×3 conv, stride 1, NO max-pool (CIFAR adaptation)
@@ -126,7 +153,7 @@ class ResNet18(nn.Module):
                 self.input_channels, 64,
                 kernel_size=3, stride=1, padding=1, bias=False,
             ),
-            nn.BatchNorm2d(64),
+            norm(64),
             nn.ReLU(inplace=True),
         )
 
@@ -151,8 +178,8 @@ class ResNet18(nn.Module):
     # Construction helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _make_stage(
+        self,
         in_channels: int,
         out_channels: int,
         num_blocks: int,
@@ -173,18 +200,20 @@ class ResNet18(nn.Module):
             nn.Sequential containing all blocks.
         """
         blocks: List[nn.Module] = [
-            _BasicBlock(in_channels, out_channels, stride=stride)
+            _BasicBlock(in_channels, out_channels, stride=stride, norm=self._norm)
         ]
         for _ in range(1, num_blocks):
-            blocks.append(_BasicBlock(out_channels, out_channels, stride=1))
+            blocks.append(
+                _BasicBlock(out_channels, out_channels, stride=1, norm=self._norm)
+            )
         return nn.Sequential(*blocks)
 
     def _init_weights(self) -> None:
-        """Kaiming-normal init for conv layers; constant init for BN."""
+        """Kaiming-normal init for conv layers; constant init for norm layers."""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
@@ -193,12 +222,16 @@ class ResNet18(nn.Module):
         cls,
         input_channels: int = 3,
         num_classes: int = 100,
+        norm_type: str = "batch",
+        norm_groups: int = 32,
     ) -> "ResNet18":
         """Construct a ResNet18 directly from dimension arguments (e.g. for tests).
 
         Args:
             input_channels: Number of input channels (default 3).
             num_classes:    Number of output logits (default 100).
+            norm_type:      Normalisation layer type ("batch" or "group").
+            norm_groups:    Group count for GroupNorm (ignored if norm_type="batch").
 
         Returns:
             Initialised ResNet18 instance.
@@ -210,6 +243,8 @@ class ResNet18(nn.Module):
         cfg = _Cfg()
         cfg.input_channels = input_channels
         cfg.num_classes = num_classes
+        cfg.norm_type = norm_type
+        cfg.norm_groups = norm_groups
         return cls(cfg)
 
     # ------------------------------------------------------------------
