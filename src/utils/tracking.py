@@ -450,6 +450,7 @@ def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:
     metrics : dict
         Must contain keys: ``ACC``, ``FORG``, ``min_ACC``, ``WF10``, ``WF100``,
         ``WP10``, ``WP100``, ``WC_ACC``, ``stability_gap_max_drop``,
+        ``stability_gap_depth``, ``stability_gap_area``,
         ``stability_gap_recovery_steps``.  Missing keys produce ``None`` entries.
     run : wandb.Run | _NullRun
     """
@@ -461,7 +462,8 @@ def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:
     table = wandb.Table(
         columns=[
             "ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100", "WC_ACC",
-            "stab_gap_max_drop", "stab_gap_recovery_steps",
+            "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area",
+            "stab_gap_recovery_steps",
         ],
         data=[[
             metrics.get("ACC"),
@@ -473,6 +475,8 @@ def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:
             metrics.get("WP100"),
             metrics.get("WC_ACC"),
             metrics.get("stability_gap_max_drop"),
+            metrics.get("stability_gap_depth"),
+            metrics.get("stability_gap_area"),
             metrics.get("stability_gap_recovery_steps"),
         ]],
     )

@@ -23,7 +23,7 @@ Synthetic degrade-then-recover scenario
 
 Expected results:
   max_drop()         ≈ 0.50   (1.0 − 0.5)
-  recovery_steps()   == 200   (first step where acc ≥ 0.95 × 1.0)
+  recovery_steps()   == 200   (first step where acc ≥ 0.90 × 1.0)
 """
 
 import os
@@ -38,10 +38,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.eval.stability_gap import StabilityGapTracker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model_and_loader():
     """Return (model, loader, good_weights) with 100 % initial accuracy.
@@ -53,16 +53,17 @@ def _make_model_and_loader():
     torch.manual_seed(0)
     n_per_class = 50
     x0 = -torch.ones(n_per_class, 4)
-    x1 =  torch.ones(n_per_class, 4)
+    x1 = torch.ones(n_per_class, 4)
     X = torch.cat([x0, x1], dim=0)
-    Y = torch.cat([
-        torch.zeros(n_per_class, dtype=torch.long),
-        torch.ones( n_per_class, dtype=torch.long),
-    ])
+    Y = torch.cat(
+        [
+            torch.zeros(n_per_class, dtype=torch.long),
+            torch.ones(n_per_class, dtype=torch.long),
+        ]
+    )
 
     model = nn.Linear(4, 2, bias=False)
-    good_weights = torch.tensor([[-1., -1., -1., -1.],
-                                  [ 1.,  1.,  1.,  1.]])
+    good_weights = torch.tensor([[-1.0, -1.0, -1.0, -1.0], [1.0, 1.0, 1.0, 1.0]])
     with torch.no_grad():
         model.weight.copy_(good_weights)
 
@@ -73,6 +74,7 @@ def _make_model_and_loader():
 # ---------------------------------------------------------------------------
 # Test class
 # ---------------------------------------------------------------------------
+
 
 class TestStabilityGapTracker:
     """Verify StabilityGapTracker on a controlled degrade-then-recover scenario."""
@@ -103,18 +105,18 @@ class TestStabilityGapTracker:
     def test_max_drop_degrade_then_recover(self):
         """max_drop() ≈ 0.50 after zeroing weights for the first 200 steps."""
         with torch.no_grad():
-            self.model.weight.zero_()           # acc drops to 0.5
-        for step in range(0, 200, 10):          # steps 0..190 (within window)
+            self.model.weight.zero_()  # acc drops to 0.5
+        for step in range(0, 200, 10):  # steps 0..190 (within window)
             self.tracker.record(step, self.test_loaders)
 
         with torch.no_grad():
             self.model.weight.copy_(self.good_weights)  # acc restored to 1.0
-        self.tracker.record(200, self.test_loaders)      # step 200, still within window
+        self.tracker.record(200, self.test_loaders)  # step 200, still within window
 
         assert pytest.approx(self.tracker.max_drop(), abs=0.01) == 0.5
 
     def test_recovery_steps_degrade_then_recover(self):
-        """recovery_steps() == 200 (first step where acc ≥ 0.95)."""
+        """recovery_steps() == 200 (first step where acc ≥ 0.90)."""
         with torch.no_grad():
             self.model.weight.zero_()
         for step in range(0, 200, 10):
@@ -127,9 +129,9 @@ class TestStabilityGapTracker:
         assert self.tracker.recovery_steps() == 200
 
     def test_no_recovery_returns_none(self):
-        """recovery_steps() is None when the model never regains 95 % accuracy."""
+        """recovery_steps() is None when the model never regains 90 % accuracy."""
         with torch.no_grad():
-            self.model.weight.zero_()           # acc = 0.5 throughout
+            self.model.weight.zero_()  # acc = 0.5 throughout
         for step in range(0, 100, 10):
             self.tracker.record(step, self.test_loaders)
         # Model stays degraded → threshold never crossed
@@ -156,10 +158,60 @@ class TestStabilityGapTracker:
         """Step 200 is within the ≤ 200 window and contributes to max_drop()."""
         with torch.no_grad():
             self.model.weight.zero_()
-        self.tracker.record(200, self.test_loaders)   # step_within_task = 200
+        self.tracker.record(200, self.test_loaders)  # step_within_task = 200
 
         # acc = 0.5 at step 200 → drop = 0.5
         assert pytest.approx(self.tracker.max_drop(), abs=0.01) == 0.5
+
+    # -----------------------------------------------------------------------
+    # gap_area: full-history vs windowed
+    # -----------------------------------------------------------------------
+
+    def test_gap_area_windowed_excludes_later_records(self):
+        """gap_area(window_steps=K) only integrates records with step < K.
+
+        Degrades the model for a brief transient, then recovers — the
+        windowed area at the transient boundary equals the pure-transient
+        integral, while the full-history area is larger because it also
+        counts the linear-interpolation bridge between the last drop record
+        and the first recovered record.
+        """
+        # Transient drop: acc = 0.5 for steps 0..100.
+        with torch.no_grad():
+            self.model.weight.zero_()
+        for step in range(0, 110, 10):
+            self.tracker.record(step, self.test_loaders)
+
+        # Recovery: acc back to 1.0 from step 200 onwards.
+        with torch.no_grad():
+            self.model.weight.copy_(self.good_weights)
+        for step in range(200, 310, 10):
+            self.tracker.record(step, self.test_loaders)
+
+        full = self.tracker.gap_area()
+        within_transient = self.tracker.gap_area(window_steps=200)
+        post_transient_only = self.tracker.gap_area(window_steps=10)
+
+        # Pure-transient integral: 10 trapezoids of 10×0.5 each = 50.
+        assert pytest.approx(within_transient, abs=0.01) == 50.0
+        # Full integral includes the recovery bridge (100→200, 0.5→0): +25.
+        assert full > within_transient
+        assert pytest.approx(full - within_transient, abs=0.01) == 25.0
+        # window=10 keeps only step 0 (one record) → no trapezoid possible.
+        assert post_transient_only == 0.0
+
+    def test_gap_area_windowed_strict_inequality(self):
+        """Window boundary is strict: step == window_steps is *excluded*."""
+        with torch.no_grad():
+            self.model.weight.zero_()
+        # Record at step 0 and step 250.
+        self.tracker.record(0, self.test_loaders)
+        self.tracker.record(250, self.test_loaders)
+
+        # window=250 → only step 0 is kept (250 is not < 250) → no integral.
+        assert self.tracker.gap_area(window_steps=250) == 0.0
+        # window=251 → both records are kept → nonzero integral.
+        assert self.tracker.gap_area(window_steps=251) > 0
 
     # -----------------------------------------------------------------------
     # List interface
@@ -177,6 +229,6 @@ class TestStabilityGapTracker:
         tracker = StabilityGapTracker(
             eval_freq_steps=10,
             model=self.model,
-            test_loaders=[loader],          # list, not dict
+            test_loaders=[loader],  # list, not dict
         )
         assert 0 in tracker._pre_task_acc

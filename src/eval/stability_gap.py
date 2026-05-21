@@ -9,9 +9,17 @@ several scalar summaries:
     the first 200 steps of the new task (legacy metric, fixed window).
   - **gap_depth**: largest accuracy drop on any previously seen task across
     the full record history — same as max_drop but without the 200-step cap.
-  - **gap_area**: cumulative drop integrated over time (trapezoidal rule),
-    summed across all previously seen tasks.  Captures both depth and
-    duration of the dip in a single scalar.
+  - **gap_area**: cumulative drop integrated over the *entire* recorded
+    history (trapezoidal rule), summed across all previously seen tasks.
+    Useful for a full-run forgetting picture, but conflates the transient
+    dip with any permanent below-baseline drift: a run that recovers fully
+    in 50 steps but settles 0.2 pp below baseline will keep accruing area
+    for thousands of steps.
+  - **gap_area_windowed(W)**: as above but integrated only over the first
+    ``W`` post-transition steps.  Cleanly isolates the transient gap from
+    permanent forgetting.  Default ``W = 250`` (matches the typical CIFAR
+    recovery time-constant); exposed in ``metrics_summary.json`` as
+    ``stability_gap_area_w250``.
   - **recovery_steps**: the earliest step at which *all* previously seen tasks
     simultaneously recover to ≥ 90 % of their pre-task accuracy.
 
@@ -198,7 +206,7 @@ class StabilityGapTracker:
                     max_d = drop
         return float(max_d)
 
-    def gap_area(self) -> float:
+    def gap_area(self, window_steps: Optional[int] = None) -> float:
         """Trapezoidal integral of the per-task drop curve, summed across tasks.
 
         For each previously seen task *j* with a recorded baseline, defines
@@ -208,20 +216,31 @@ class StabilityGapTracker:
         ``step_within_task`` axis using the trapezoidal rule, then sums
         across tasks.
 
-        Captures both depth and duration of the dip in a single scalar.
+        Args:
+            window_steps: If given, only integrate over records with
+                ``step_within_task < window_steps``.  This is the recommended
+                "transient-only" mode: permanent below-baseline drift after
+                the dip recovers (or fails to recover) is excluded.  If
+                ``None``, integrates over the full history — kept for
+                backward compatibility with old summary files.
 
         Returns:
             Non-negative float with units ``accuracy · steps``.  Returns 0.0
-            if fewer than two records have been collected.
+            if fewer than two records fall within the window.
         """
-        if len(self._records) < 2:
+        records = (
+            [r for r in self._records if r[0] < window_steps]
+            if window_steps is not None
+            else self._records
+        )
+        if len(records) < 2:
             return 0.0
 
         total = 0.0
         for j, pre_acc_j in self._pre_task_acc.items():
             prev_step: Optional[int] = None
             prev_drop: float = 0.0
-            for step, accs in self._records:
+            for step, accs in records:
                 if j not in accs:
                     continue
                 drop = max(0.0, pre_acc_j - accs[j])
@@ -233,7 +252,7 @@ class StabilityGapTracker:
         return float(total)
 
     def recovery_steps(self) -> Optional[int]:
-        """First step at which all previously seen tasks recover to ≥ 95 % of their baseline,
+        """First step at which all previously seen tasks recover to ≥ 90 % of their baseline,
         measured from the point of maximum drop.
 
         Only meaningful after a drop below the 90 % threshold has been observed.
@@ -369,7 +388,9 @@ class GradientTracker:
         """Mean cos(g_replay, g_true) over all recorded steps."""
         if not self._true_grad_cosines:
             return None
-        return float(sum(v for _, v in self._true_grad_cosines) / len(self._true_grad_cosines))
+        return float(
+            sum(v for _, v in self._true_grad_cosines) / len(self._true_grad_cosines)
+        )
 
     def min_true_grad_cosine(self) -> Optional[float]:
         """Minimum cos(g_replay, g_true) — worst-case directional conflict."""
@@ -381,7 +402,10 @@ class GradientTracker:
         """Mean ‖g_replay‖ / ‖g_true‖ over all recorded steps."""
         if not self._true_grad_mag_ratios:
             return None
-        return float(sum(v for _, v in self._true_grad_mag_ratios) / len(self._true_grad_mag_ratios))
+        return float(
+            sum(v for _, v in self._true_grad_mag_ratios)
+            / len(self._true_grad_mag_ratios)
+        )
 
     def true_grad_cosine_series(self) -> List[Tuple[int, float]]:
         """All recorded (step, cos(g_replay, g_true)) pairs, insertion order."""

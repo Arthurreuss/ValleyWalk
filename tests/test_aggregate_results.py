@@ -78,7 +78,12 @@ def _make_manifest(
             "WP100":                        0.07,
             "WC_ACC":                       0.78,
             "stability_gap_max_drop":       0.12,
+            "stability_gap_depth":          0.10,
+            "stability_gap_area":           5.2,
             "stability_gap_recovery_steps": 80,
+            "true_grad_cosine_mean":        0.71,
+            "true_grad_cosine_min":         0.31,
+            "true_grad_mag_ratio_mean":     0.95,
         },
     }
     manifest_path = run_dir / "run_manifest.json"
@@ -189,7 +194,10 @@ class TestBuildSummaryDf:
             "seed": seed, "ACC": acc, "FORG": 0.06, "min_ACC": 0.75,
             "WF10": 0.08, "WF100": 0.10, "WP10": 0.05, "WP100": 0.07,
             "WC_ACC": 0.78,
-            "stab_gap_max_drop": 0.10, "stab_gap_recovery_steps": 50,
+            "stab_gap_max_drop": 0.10, "stab_gap_depth": 0.08, "stab_gap_area": 4.5,
+            "stab_gap_recovery_steps": 50,
+            "true_grad_cosine_mean": 0.71, "true_grad_cosine_min": 0.31,
+            "true_grad_mag_ratio_mean": 0.95,
             "wall_clock_total": 120.0, "run_dir": "/tmp", "wandb_run_url": None,
             "git_commit": "abc", "status": "completed",
         }
@@ -328,7 +336,10 @@ class TestCheckCompleteness:
                 "seed": seed, "ACC": 0.8, "FORG": 0.06, "min_ACC": 0.75,
                 "WF10": 0.08, "WF100": 0.10, "WP10": 0.05, "WP100": 0.07,
                 "WC_ACC": 0.78,
-                "stab_gap_max_drop": 0.1, "stab_gap_recovery_steps": 50,
+                "stab_gap_max_drop": 0.1, "stab_gap_depth": 0.08, "stab_gap_area": 4.5,
+                "stab_gap_recovery_steps": 50,
+                "true_grad_cosine_mean": 0.71, "true_grad_cosine_min": 0.31,
+                "true_grad_mag_ratio_mean": 0.95,
                 "wall_clock_total": 100.0, "run_dir": "/tmp", "wandb_run_url": None,
                 "git_commit": "abc", "status": status,
             })

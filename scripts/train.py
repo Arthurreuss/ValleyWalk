@@ -510,6 +510,11 @@ def main(cfg: DictConfig) -> None:
         "stability_gap_area": (
             gap_tracker.gap_area() if gap_tracker is not None else None
         ),
+        "stability_gap_area_w250": (
+            gap_tracker.gap_area(window_steps=250)
+            if gap_tracker is not None
+            else None
+        ),
         "stability_gap_recovery_steps": (
             gap_tracker.recovery_steps() if gap_tracker is not None else None
         ),

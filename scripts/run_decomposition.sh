@@ -88,10 +88,10 @@ DATASET_OVERRIDES=(
     'dataset.rotations_deg=[0,90]'
 )
 
-# Dense per-step eval over a 500-step window starting at the transition.
+# Dense per-step eval over a 250-step window starting at the transition.
 EVAL_OVERRIDES=(
     eval.stability_gap.eval_freq_steps=1
-    eval.stability_gap.window_steps=500
+    eval.stability_gap.window_steps=250
 )
 
 # Buffer-fidelity diagnostics are essential for the G-series: they provide
