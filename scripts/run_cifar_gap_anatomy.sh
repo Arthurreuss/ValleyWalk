@@ -16,13 +16,20 @@
 #   H2 — H1 + model.norm_type=group  (GroupNorm-ResNet-18)    BN-drives-gap test
 #   H3 — H1 + memory.total_budget=5000 (5× buffer)            G_est test
 #   H4 — H1 + training.momentum=0.0  (no momentum)            momentum sanity check
+#   H5 — H1 + GroupNorm + buffer 5000  (combines H2 and H3)   "best of both" test
 #
-# All four conditions share method/dataset/eval otherwise → directly
+# H5 is the combined intervention: GroupNorm's faster post-transition
+# recovery (seen in H2 at n=1) plus the larger buffer that uniformly
+# helps in H3.  If GN's task-0 baseline deficit closes with a richer
+# replay distribution, H5 should beat H3.  If GN's baseline cost
+# persists, H3 (BN + 5k) ships as the headline configuration.
+#
+# All five conditions share method/dataset/eval otherwise → directly
 # paired-by-seed against H1.
 #
 # Total runs
 # ----------
-#   4 conditions × 5 seeds = 20  (default SEEDS="1,2,3,4,5")
+#   5 conditions × 5 seeds = 25  (default SEEDS="1,2,3,4,5")
 #
 # Compute cost
 # ------------
@@ -48,7 +55,7 @@ set -euo pipefail
 N_JOBS="${N_JOBS:-1}"
 SEEDS="${SEEDS:-1}"
 
-ALL_CONDITIONS_DEFAULT="H1 H2 H3 H4"
+ALL_CONDITIONS_DEFAULT="H1 H2 H3 H4 H5"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
 DRY_RUN="${DRY_RUN:-0}"
@@ -211,6 +218,14 @@ fi
 if should_run H4; then
     echo "=== H4: H1 + no momentum (µ=0.0) ==="
     spawn_h_block H4 H4_nomomentum nomom 0.0
+fi
+
+if should_run H5; then
+    echo "=== H5: H1 + GroupNorm + buffer 5000 (combines H2 & H3) ==="
+    spawn_h_block H5 H5_groupnorm_buffer5k gn_buffer "${MOM_DEFAULT}" \
+        model.norm_type=group \
+        model.norm_groups=32 \
+        memory.total_budget=5000
 fi
 
 echo ""

@@ -412,20 +412,33 @@ def main(cfg: DictConfig) -> None:
                     and global_step % sg_freq == 0
                 ):
                     sg_accs = gap_tracker.record(global_step, all_test_loaders)
-                    # Log stability-gap accuracies to the same task_j_acc metric
-                    # names as the regular eval so W&B shows one continuous curve
-                    # per task instead of a split between eval and sg/ charts.
-                    # Only skip steps already covered by the regular eval block
-                    # (those are a multiple of eval_every_n_steps) to avoid
-                    # double-writing the same step value to W&B.
-                    if not isinstance(run, _NullRun) and (
-                        global_step % cfg.eval.eval_every_n_steps != 0
-                    ):
-                        import wandb  # noqa: PLC0415
-                        wandb.log(
-                            {f"task_{j}_acc": v for j, v in sg_accs.items()},
-                            step=global_step,
+                    # Persist the fine-grained sample to the SAME sinks the
+                    # regular eval block writes to — per-task CSV, combined
+                    # accuracy CSV, in-memory metrics tracker (which drives
+                    # WF10/WF100/WP10/WP100/min_ACC), and W&B.  Without this
+                    # the fine samples used to be live only on W&B and inside
+                    # gap_tracker._records, leaving local plots blind to the
+                    # dip and ContinualMetrics blind to the dense gap window.
+                    #
+                    # Skip on steps already handled by the regular eval block
+                    # (a multiple of eval_every_n_steps) — those use the same
+                    # model state on the same loaders so the values are
+                    # identical, and re-writing would duplicate rows and (on
+                    # W&B) be silently dropped anyway.
+                    if global_step % cfg.eval.eval_every_n_steps != 0:
+                        sg_payload = {
+                            f"task_{j}_acc": v for j, v in sg_accs.items()
+                        }
+                        eval_logger.log(global_step, sg_payload)
+                        combined_acc_writer.writerow(
+                            {"step": global_step, **sg_payload}
                         )
+                        _combined_acc_file.flush()
+                        for j, acc in sg_accs.items():
+                            metrics.record_step(j, global_step, acc)
+                        if not isinstance(run, _NullRun):
+                            import wandb  # noqa: PLC0415
+                            wandb.log(sg_payload, step=global_step)
 
                 global_step += 1
                 task_step += 1
