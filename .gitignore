@@ -9,6 +9,9 @@ uv.lock
 outputs/
 checkpoints/
 /data/
+archive/
+thesis_latex/
+thesis_draft/
 
 # Python bytecode
 __pycache__/

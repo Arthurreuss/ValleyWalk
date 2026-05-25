@@ -1,6 +1,6 @@
 # Chapter 3 — Theoretical Foundation
 
-This chapter develops the mathematical foundation for the λ-curriculum. §3.1 introduces the homotopy family that the curriculum implements and states the assumptions used throughout. §3.2 decomposes the stability gap into three additive contributors — magnitude asymmetry, estimator bias, and trajectory effect — and identifies which of them the curriculum is designed to address. §3.3 formalises the *path-finding vs. landscape-shaping* distinction that places the curriculum in a different family of interventions from NCL, EWC, and GEM. §3.4 proves that the replay loss is monotone non-decreasing along the optimum path of the homotopy (the envelope-theorem inequality, Part A). §3.5 proves that the SGD trajectory tracks the optimum path with error O(1/N) in the adiabatic limit (Part B). §3.6 combines the two parts into an O(1/N) bound on the trajectory contribution to the stability gap. §3.7 discusses the regime in which the bound is expected to be tight. §3.8 and §3.9 derive the momentum and λ_min refinements within the same framework.
+This chapter develops the mathematical foundation for the λ-curriculum. §3.1 introduces the homotopy family that the curriculum implements and states the assumptions used throughout. §3.2 decomposes the stability gap into three additive contributors — magnitude asymmetry, estimator bias, and trajectory effect — and identifies which of them the curriculum is designed to address. §3.3 formalises the *path-finding vs. landscape-shaping* distinction that places the curriculum in a different family of interventions from NCL, EWC, and GEM. §3.4 proves that the replay loss is monotone non-decreasing along the optimum path of the homotopy (the envelope-theorem inequality, Part A). §3.5 proves that the SGD trajectory tracks the optimum path with error O(1/N) in the adiabatic limit (Part B). §3.6 combines the two parts into an O(1/N) bound on the trajectory contribution to the stability gap. §3.7 discusses the regime in which the bound is expected to be tight. §3.8 and §3.9 derive the momentum and λ_min refinements within the same framework. §3.10 delimits the formal scope of the bound for the adaptive-schedule variant of the curriculum.
 
 The chapter is theory only; the empirical testing of every prediction made here is in Chapter 4 (design) and Chapter 5 (results).
 
@@ -277,3 +277,23 @@ with λ_min > 0.
 **Theoretical statement.** λ_min controls a one-parameter trade between the gap-floor tightness (smaller λ_min → smaller gap floor) and the early-task velocity (larger λ_min → faster T₁ progress).
 
 **Combined refinement.** Momentum and λ_min act on different parts of the trajectory error — stochastic oscillation (eq. 11, second term) vs. early-time velocity — and are therefore additive. Chapter 4 (§4.6) tests their combined Pareto position against either alone.
+
+## 3.10 Adaptive Schedule: Removing the N Hyperparameter at the Cost of the Adiabatic Guarantee
+
+The schedules of §3.1, §3.8, and §3.9 are *time-indexed*: λ(t) is a known function of within-task step count, fixed before training begins and parameterised by N. The implementation additionally supports an *adaptive* schedule that infers λ from running gradient magnitudes,
+
+```
+λ(t) = clip(EMA_α(‖ĝ_replay(θ_t)‖ / ‖g_new(θ_t)‖), 0, 1)                (adaptive)
+```
+
+with EMA rate α and the same λ_min floor as §3.9. The motivation is operational: the gradient ratio is a model-free proxy for "how far along the homotopy the iterate currently sits," so a controller that drives λ toward this ratio replaces the open-loop choice of N with a closed-loop one and removes one hyperparameter from the curriculum.
+
+**This thesis does not extend the §3.6 bound to the adaptive schedule.** Part A of §3.4 continues to apply *conditionally*: the optimum-path inequality d/dλ L_replay(Θ*(λ)) ≥ 0 is a property of Θ* alone and is independent of how λ(t) is generated, so as long as λ(t) is monotone non-decreasing along the actual trajectory, no overshoot of L_replay(θ_joint*) is possible on the optimum path. Monotonicity of λ under the adaptive rule is not derived here; it is checked empirically in Chapter 5.
+
+The adiabatic-tracking argument of Part B (§3.5) does *not* carry over without additional assumptions. Equations (5)–(8) require λ to be an exogenous function of time with dλ/dt = 1/N treated as a tunable open-loop forcing rate; the adaptive rule makes λ endogenous (its evolution is coupled to θ through the gradient ratio), so the δ-dynamics become a coupled (δ, λ) system rather than a driven linear ODE in δ alone. Three structural obstructions then arise:
+
+1. *No exogenous slowness knob.* The EMA rate α is formally analogous to 1/N — small α corresponds to slow drift in λ — but it acts through a closed-loop feedback rather than an open-loop schedule. A bound in α is plausible in principle (local adiabatic limit for small α under additional regularity on ∇r(θ)), but it is not derived here.
+2. *Fixed-point degeneracy.* On the optimum path, the first-order condition gives ‖∇L_replay(Θ*(λ))‖ = λ · ‖∇L_current(Θ*(λ))‖, so the gradient ratio satisfies r(Θ*(λ)) = λ identically. Every λ ∈ [0, 1] is a self-consistent fixed point of the adaptive rule, and there is no formal guarantee that λ progresses to 1. The empirical fact that it does is driven by the iterate lagging behind Θ*(λ) — the very lag that the bound would attempt to control — so the clean separation of "schedule progress" and "tracking error" used in §3.5 is no longer available.
+3. *Closed-loop stability.* The coupled (δ, λ) linearisation is stable only when the gradient-ratio feedback satisfies regularity beyond (A1)–(A3) — concretely, a Lipschitz bound on ∇r(θ) in a neighbourhood of the optimum path. (A1)–(A3) alone are not sufficient.
+
+The adaptive schedule is therefore treated as **engineering**, not as a regime in which the §3.6 O(1/N) bound applies. Its role in this thesis is operational — it lets the curriculum run without specifying N — and its evaluation is empirical: Chapter 5 reports gap depth and joint-task accuracy under the adaptive schedule alongside the linear schedule, but only the latter is the formal subject of the bound.
