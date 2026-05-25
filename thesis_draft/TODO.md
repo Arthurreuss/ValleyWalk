@@ -113,7 +113,19 @@ Mean values in Chapter 5 tables are correct, but several claims about *seed-pair
 
 The actual numbers are now computed by `scripts/aggregate_results.py` against the deduped manifests — see Appendix C.7. Re-run the script after any new sweep (Items 1.1–1.5) to keep these in sync.
 
-### 3.2 (done 2026-05-20) Chapter 3 expanded with two new sections
+### 3.2 (done 2026-05-25) Regenerate metrics summaries after all CIFAR runs finish
+
+Discovered 2026-05-22 while inspecting the new `run_cifar.sh` headline block: the diagonal cells `R[i, i]` of every saved `accuracy_matrix.npy` for `i < N − 1` were wrong, and consequently `FORG` in `results/metrics_summary.json` was wrong on the headline + generalization runs.
+
+**Root cause.** `metrics.record_step` was called twice at the same `global_step` for each intermediate task — once by the boundary eval after `notify_task_end`, once by the first eval in the next task's inner loop after one gradient step on the new task. `_acc_at_boundary` picked the later (post-gradient-step, mid-dip) record. Patched in `src/eval/metrics.py` on 2026-05-22 by short-circuiting on the first match at `step == end`.
+
+**Resolution (2026-05-25).** `scripts/patch_cifar_metrics.py` walks every `outputs/**` run whose `run_manifest.json::ablation_key` is `cifar_headline` or `cifar_generalization` (48 runs total), reads the last row of each `task_NN_eval.csv` for `NN < N-1` as the corrected diagonal, rewrites `accuracy_matrix.npy` in place, recomputes `FORG` from the patched matrix, and overwrites `FORG` in both `metrics_summary.json` and `run_manifest.json::final_metrics`. Idempotent. Scope-verified: only `FORG` depended on the bugged diagonal — `ACC`/`WC_ACC` use only `R[N-1, :]` (correct in both code paths), and `min_ACC`/`WF*`/`WP*`/`stability_gap_*` are computed from per-step history sinks that already excluded the duplicate `step==end` record.
+
+**Outcome.** GN headline runs now show `FORG ≈ 0` instead of the spurious −0.23 backward-transfer (D4 seed 1: `−0.247 → −0.007`; D5 seed 1: `−0.201 → +0.028`). BN runs shift by ≤ 0.02 as predicted. Re-run `scripts/aggregate_results.py` before regenerating any downstream Chapter 5 / Appendix E table.
+
+**Caveat for §6 narrative.** The recipe (last in-loop eval row) is a ~10-step approximation of the true boundary value — mean abs error 0.0075, worst 0.024 against the 27 runs where the on-disk metrics.py fix had already produced an exact boundary value. The patch overwrites those exact values with the approximation for consistency across all 48 runs; if exact diagonals are needed, re-run the affected headline conditions with the committed fix.
+
+### 3.3 (done 2026-05-20) Chapter 3 expanded with two new sections
 
 Chapter 3 now contains an explicit §3.2 "Three-Contributor Decomposition" deriving G_mag, G_est, G_traj from the first-step Taylor expansion at θ_0*, and an explicit §3.3 "Path-Finding vs. Landscape-Shaping" formalising the (P) preconditioning / (S) loss-shaping split that earlier chapters had only referenced. Downstream sections §3.4–§3.9 are renumbered from the old §3.2–§3.7. Every §3.X cross-reference in chapters 1, 2, 4, 5, 6 and the appendix was updated to point at the new section numbers. The §3.2.1 reference (which never existed) was removed.
 

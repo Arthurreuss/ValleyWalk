@@ -109,14 +109,26 @@ class ContinualMetrics:
     # ------------------------------------------------------------------
 
     def _acc_at_boundary(self, task_j: int, task_i: int) -> Optional[float]:
-        """Return the last accuracy for task_j recorded at or before task_i's end step."""
+        """Return the accuracy for task_j right at task_i's boundary.
+
+        When a record exists exactly at ``step == end``, that is the
+        boundary eval written by train.py immediately after
+        ``notify_task_end`` (and before any gradient step on the next task);
+        it is the first record appended at that step.  Any later
+        ``record_step`` calls at the same ``global_step`` come from the next
+        task's inner loop after one or more gradient steps on the new task
+        and would bias the diagonal toward the stability-gap dip, so we
+        return the *first* match at ``step == end``.
+        """
         end = self._task_end_step.get(task_i)
         if end is None:
             return None
         result = None
         for s, acc in self._history[task_j]:
-            if s <= end:
+            if s < end:
                 result = acc
+            elif s == end:
+                return acc
             else:
                 break
         return result

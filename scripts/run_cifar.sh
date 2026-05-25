@@ -94,7 +94,7 @@ VALID_BLOCKS=(headline generalization)
 
 # Which norm to ship in the generalization block.  Default "bn" — set to
 # "gn" after the headline block if GroupNorm wins.
-SHIP_NORM="${SHIP_NORM:-bn}"
+SHIP_NORM="${SHIP_NORM:-gn}"
 
 DRY_RUN="${DRY_RUN:-0}"
 

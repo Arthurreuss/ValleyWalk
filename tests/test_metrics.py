@@ -298,6 +298,40 @@ class TestEdgeCases:
         assert m.windowed_plasticity(10) == 0.0
         assert m.wc_acc() == 0.0
 
+    def test_boundary_eval_not_corrupted_by_duplicate_step_record(self):
+        """Regression: the diagonal must hold the boundary eval, not a later
+        record at the same global_step.
+
+        In production, train.py calls notify_task_end(step=S) and then
+        record_step(task_j=i, step=S, acc=boundary_acc) before any gradient
+        step on task i+1.  The first iteration of task i+1's inner loop
+        runs one gradient step *while global_step is still S*, then fires
+        the eval block when ``S % eval_every_n_steps == 0`` — adding a
+        second record at step=S with the post-step (dip) accuracy.
+
+        _acc_at_boundary must return the *first* record at step==end (the
+        boundary eval), not the later mid-dip record.
+        """
+        m = ContinualMetrics()
+        # Task 0: train ends at step 10
+        m.record_step(task_j=0, step=5, accuracy=0.88)
+        m.notify_task_end(task_i=0, step=10)
+        m.record_step(task_j=0, step=10, accuracy=0.90)   # boundary eval — TRUE diagonal
+        # Task 1 starts: first inner-loop eval fires at the same global_step
+        # after one gradient step → mid-dip accuracy
+        m.record_step(task_j=0, step=10, accuracy=0.50)   # corruption attempt
+        m.record_step(task_j=1, step=10, accuracy=0.20)
+        # Task 1 ends at step 20
+        m.notify_task_end(task_i=1, step=20)
+        m.record_step(task_j=0, step=20, accuracy=0.75)
+        m.record_step(task_j=1, step=20, accuracy=0.80)
+
+        R = m.get_accuracy_matrix()
+        # R[0, 0] must be the boundary value 0.90, not the corruption 0.50
+        assert pytest.approx(R[0, 0], abs=1e-9) == 0.90
+        # FORG: 0.90 − 0.75 = 0.15 (not −0.25 if the corruption had won)
+        assert pytest.approx(m.forgetting(), abs=1e-9) == 0.15
+
     def test_wf_single_eval_per_task(self):
         """With only one eval per task, windowed metrics are 0 (no pairs to compare)."""
         m = ContinualMetrics()
