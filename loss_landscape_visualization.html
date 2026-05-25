@@ -205,6 +205,7 @@
             <label><input type="checkbox" id="showHessianDirs"> Hessian Crosshairs</label>
             <label><input type="checkbox" id="showStraightLine" checked> Show Dotted Interpolation</label>
             <label><input type="checkbox" id="showGDLine" checked> Show GD Trajectory</label>
+            <label><input type="checkbox" id="showGradMag"> Show Gradient Magnitudes (√-scaled)</label>
         </div>
     </div>
 
@@ -364,7 +365,8 @@
             showHessianDirs: document.getElementById('showHessianDirs'),
             lambdaSlider: document.getElementById('lambdaSlider'),
             showStraightLine: document.getElementById('showStraightLine'),
-            showGDLine: document.getElementById('showGDLine')
+            showGDLine: document.getElementById('showGDLine'),
+            showGradMag: document.getElementById('showGradMag')
         };
 
         let isRendering = false;
@@ -586,17 +588,24 @@
             bgCurr = generateHeatmap(ls.z_curr, 180 - (80 * lambdaVal), 0, 150 * lambdaVal);
         }
 
-        function drawArrow(ctx, p, raw_grad, color, lineWidth = 3) {
+        function drawArrow(ctx, p, raw_grad, color, lineWidth = 3, useMag = true) {
+            let mag = Math.hypot(raw_grad.x, raw_grad.y);
             let desc = norm({ x: -raw_grad.x, y: -raw_grad.y });
+            let len = arrow_scale;
+            if (useMag && controls.showGradMag && controls.showGradMag.checked) {
+                // √-scaled: |g|=4 → arrow_scale, clamped so heads never dominate or escape panel
+                len = Math.max(arrow_scale * 0.15, Math.min(arrow_scale * 2.0, arrow_scale * Math.sqrt(mag) / 2));
+            }
+            let headSize = Math.min(10, Math.max(5, len * (width / 6) * 0.25));
             let px1 = mathToPx(p.x), py1 = mathToPy(p.y);
-            let px2 = mathToPx(p.x + desc.x * arrow_scale), py2 = mathToPy(p.y + desc.y * arrow_scale);
+            let px2 = mathToPx(p.x + desc.x * len), py2 = mathToPy(p.y + desc.y * len);
             let angle = Math.atan2(py2 - py1, px2 - px1);
             ctx.beginPath(); ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
             ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(px2, py2);
-            ctx.lineTo(px2 - 10 * Math.cos(angle - Math.PI / 7), py2 - 10 * Math.sin(angle - Math.PI / 7));
-            ctx.lineTo(px2 - 10 * Math.cos(angle + Math.PI / 7), py2 - 10 * Math.sin(angle + Math.PI / 7));
+            ctx.lineTo(px2 - headSize * Math.cos(angle - Math.PI / 7), py2 - headSize * Math.sin(angle - Math.PI / 7));
+            ctx.lineTo(px2 - headSize * Math.cos(angle + Math.PI / 7), py2 - headSize * Math.sin(angle + Math.PI / 7));
             ctx.fillStyle = color; ctx.fill();
         }
 
@@ -735,7 +744,7 @@
                         if (pred < min_change) { min_change = pred; best_v = v; }
                     }
                     drawWedge(ctx, p, { x: -desc_joint.x, y: -desc_joint.y }, 'rgba(255, 255, 0, 0.3)', wAngle);
-                    drawArrow(ctx, p, { x: -best_v.x, y: -best_v.y }, 'gold', 3);
+                    drawArrow(ctx, p, { x: -best_v.x, y: -best_v.y }, 'gold', 3, false);
                 }
 
                 if (controls.showHessianDirs.checked) {
