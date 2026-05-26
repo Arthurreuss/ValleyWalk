@@ -10,7 +10,50 @@ The core argument is built on two intuitive pillars:
 \subsection{Part A: The perfect path never overshoots}
 \label{subsec:partA_summary}
 
-Imagine an "optimum path" ($\Theta^*(\lambda)$) that perfectly tracks the exact bottom of the combined loss valley as the curriculum transitions from pure replay ($\lambda=0$) to the joint task ($\lambda=1$).
+Imagine an "optimum path" ($\Theta^*(\lambda)$) that perfectly tracks the exact bottom of the combined loss valley as the curriculum transitions from pure replay ($\lambda=0$) to the joint task ($\lambda=1$). Figure~\ref{fig:lambda_evolution} shows this path directly: as $\lambda$ grows, the minimiser of the curriculum loss $L_\lambda = A + \lambda B$ migrates smoothly from the old-task optimum $A$ to the joint optimum $A{+}B$, so a model that follows it rides a moving valley floor rather than jumping between the two.
+
+\begin{figure*}[t]
+    \centering
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0.png}\\
+        {\scriptsize $0$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_005.png}\\
+        {\scriptsize $0.005$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_025.png}\\
+        {\scriptsize $0.025$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_07.png}\\
+        {\scriptsize $0.07$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_175.png}\\
+        {\scriptsize $0.175$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_35.png}\\
+        {\scriptsize $0.35$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_499.png}\\
+        {\scriptsize $0.499$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_0_749.png}\\
+        {\scriptsize $0.749$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.105\textwidth}\centering
+        \includegraphics[width=\linewidth]{img/joint_loss_lambda_evolution/joint_loss_lambda_1.png}\\
+        {\scriptsize $1$}
+    \end{minipage}
+
+    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$ over a shared two-dimensional parameter space. Left to right, the weight on the new task ramps from $\lambda = 0$ (pure replay) to $\lambda = 1$ (the joint loss); the value of $\lambda$ is printed beneath each panel. $A$ and $B$ mark the two single-task minima and $A{+}B$ the joint minimum. As $\lambda$ increases the contours morph continuously from the old-task basin around $A$ to the joint basin around $A{+}B$, and the current minimiser (\emph{Curr}) slides along the gold chain from $A$ toward $A{+}B$. That chain is the optimum path $\Theta^*(\lambda)$ of Section~\ref{subsec:partA_summary}. The opposing red and blue arrows at the current minimiser are the replay- and current-task gradient contributions, which cancel there by the first-order condition $\nabla L_{\text{replay}} + \lambda\, \nabla L_{\text{current}} = 0$. Because the minimiser never jumps --- it only drifts as $\lambda$ grows --- a model that tracks it rides the moving valley floor instead of being teleported across the landscape.}
+    \label{fig:lambda_evolution}
+\end{figure*}
 
 If the model were capable of perfectly walking this ideal path, the replay loss would never experience a sudden spike. As proven in the Appendix using the envelope theorem, the rate of change of the replay loss along this path is mathematically guaranteed to be non-negative:
 \begin{equation}
