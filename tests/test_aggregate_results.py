@@ -195,6 +195,7 @@ class TestBuildSummaryDf:
             "WF10": 0.08, "WF100": 0.10, "WP10": 0.05, "WP100": 0.07,
             "WC_ACC": 0.78,
             "stab_gap_max_drop": 0.10, "stab_gap_depth": 0.08, "stab_gap_area": 4.5,
+            "stab_gap_area_w250": 9.0,
             "stab_gap_recovery_steps": 50,
             "true_grad_cosine_mean": 0.71, "true_grad_cosine_min": 0.31,
             "true_grad_mag_ratio_mean": 0.95,

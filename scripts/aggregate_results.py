@@ -7,7 +7,7 @@ Usage
     python scripts/aggregate_results.py \\
         --run-dir outputs/ \\
         [--outdir outputs/] \\
-        [--seeds 42,123,456,789,1337]
+        [--seeds 1,2,3,4,5]
 
 Produces
 --------
@@ -15,6 +15,7 @@ Produces
     One row per run.  Columns: run_id, method, dataset, ablation_key,
     ablation_value, seed, ACC, FORG, min_ACC, WF10, WF100, WP10, WP100,
     WC_ACC, stab_gap_max_drop, stab_gap_depth, stab_gap_area,
+    stab_gap_area_w250,
     stab_gap_recovery_steps, true_grad_cosine_mean, true_grad_cosine_min,
     true_grad_mag_ratio_mean, wall_clock_total, run_dir, wandb_run_url,
     git_commit, status.  This is the single source of truth for all
@@ -49,7 +50,7 @@ MASTER_COLUMNS: List[str] = [
     "run_id", "method", "dataset", "ablation_key", "ablation_value",
     "seed", "ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100",
     "WC_ACC",
-    "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area",
+    "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area", "stab_gap_area_w250",
     "stab_gap_recovery_steps",
     "true_grad_cosine_mean", "true_grad_cosine_min", "true_grad_mag_ratio_mean",
     "wall_clock_total", "run_dir", "wandb_run_url", "git_commit", "status",
@@ -57,12 +58,23 @@ MASTER_COLUMNS: List[str] = [
 
 METRIC_COLUMNS: List[str] = [
     "ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100", "WC_ACC",
-    "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area",
+    "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area", "stab_gap_area_w250",
     "stab_gap_recovery_steps",
     "true_grad_cosine_mean", "true_grad_cosine_min", "true_grad_mag_ratio_mean",
 ]
 
 GROUP_COLUMNS: List[str] = ["method", "ablation_key", "ablation_value"]
+
+# Per-ablation_key overrides of the expected seed set.  Most blocks run the
+# full default seed set, but a few are deliberately run at fewer seeds — the
+# completeness check uses these overrides so those groups are not flagged as
+# missing the seeds they were never meant to have.
+#
+#   cifar_generalization — run at 3 seeds (SEEDS_GEN="1,2,3" in
+#                          scripts/run_cifar.sh), not the full headline set.
+EXPECTED_SEEDS_BY_KEY: Dict[str, List[int]] = {
+    "cifar_generalization": [1, 2, 3],
+}
 
 _METRIC_LABELS: Dict[str, str] = {
     "ACC":                    "ACC",
@@ -76,6 +88,7 @@ _METRIC_LABELS: Dict[str, str] = {
     "stab_gap_max_drop":      "$\\Delta_{\\max}$",
     "stab_gap_depth":         "$G_{\\text{depth}}$",
     "stab_gap_area":          "$G_{\\text{area}}$",
+    "stab_gap_area_w250":     "$G_{\\text{area}}^{250}$",
     "stab_gap_recovery_steps": "Recov.",
     "true_grad_cosine_mean":  "$\\bar{\\cos}$",
     "true_grad_cosine_min":   "$\\cos_{\\min}$",
@@ -128,6 +141,7 @@ def parse_manifest(manifest_path: Path) -> Dict[str, Any]:
         "stab_gap_max_drop":        final.get("stability_gap_max_drop"),
         "stab_gap_depth":           final.get("stability_gap_depth"),
         "stab_gap_area":            final.get("stability_gap_area"),
+        "stab_gap_area_w250":       final.get("stability_gap_area_w250"),
         "stab_gap_recovery_steps":  final.get("stability_gap_recovery_steps"),
         "true_grad_cosine_mean":    final.get("true_grad_cosine_mean"),
         "true_grad_cosine_min":     final.get("true_grad_cosine_min"),
@@ -239,7 +253,11 @@ def write_latex_table(summary: pd.DataFrame, dataset: str, out_path: Path) -> No
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def check_completeness(df: pd.DataFrame, expected_seeds: List[int]) -> pd.DataFrame:
+def check_completeness(
+    df: pd.DataFrame,
+    expected_seeds: List[int],
+    expected_seeds_by_key: Optional[Dict[str, List[int]]] = None,
+) -> pd.DataFrame:
     """Return a DataFrame of missing or non-completed runs.
 
     Checks two kinds of problems:
@@ -253,13 +271,20 @@ def check_completeness(df: pd.DataFrame, expected_seeds: List[int]) -> pd.DataFr
     df:
         The master index DataFrame.
     expected_seeds:
-        Seeds that every (method, dataset, ablation) combo is expected to have.
+        Seeds that every (method, dataset, ablation) combo is expected to have,
+        unless overridden for its ``ablation_key`` via *expected_seeds_by_key*.
+    expected_seeds_by_key:
+        Optional per-``ablation_key`` override of the expected seed set, for
+        blocks deliberately run at fewer seeds (e.g. ``cifar_generalization``).
+        Defaults to :data:`EXPECTED_SEEDS_BY_KEY`.
 
     Returns
     -------
     pd.DataFrame with columns: method, dataset, ablation_key, ablation_value,
     seed, issue.  Empty when everything is in order.
     """
+    if expected_seeds_by_key is None:
+        expected_seeds_by_key = EXPECTED_SEEDS_BY_KEY
     issues = []
     group_cols = ["method", "dataset", "ablation_key", "ablation_value"]
 
@@ -277,7 +302,8 @@ def check_completeness(df: pd.DataFrame, expected_seeds: List[int]) -> pd.DataFr
     for key, grp in df.groupby(group_cols, dropna=False):
         method, dataset, ablation_key, ablation_value = key
         present_seeds = set(grp["seed"].dropna().apply(lambda x: int(x)).tolist())
-        for seed in expected_seeds:
+        group_expected = expected_seeds_by_key.get(ablation_key, expected_seeds)
+        for seed in group_expected:
             if seed not in present_seeds:
                 issues.append({
                     "method":        method,
@@ -303,8 +329,9 @@ def main() -> None:
         help="Output directory for master_index.csv and summary_tables/. Defaults to --run-dir.",
     )
     parser.add_argument(
-        "--seeds", metavar="N,N,...", default="42,123,456,789,1337",
-        help="Comma-separated expected seeds for the completeness check. Default: 42,123,456,789,1337.",
+        "--seeds", metavar="N,N,...", default="1,2,3,4,5",
+        help="Comma-separated expected seeds for the completeness check. Default: 1,2,3,4,5. "
+             "Per-block overrides (e.g. cifar_generalization at 3 seeds) are applied automatically.",
     )
     args = parser.parse_args()
 
