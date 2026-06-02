@@ -1,0 +1,28 @@
+\section{Motivating a Landscape-Shaping Approach}
+\label{sec:motivation}
+
+This thesis defends one claim: in its dominant components, the stability gap is the downstream symptom of the discontinuity at the task boundary (Section~\ref{sec:introduction}). We make the claim precise in two steps. First we decompose the gap into three contributors (Section~\ref{subsec:decomposition}). We then contrast the two ways one can intervene on the discontinuity (Section~\ref{subsec:pathfinding_vs_shaping}), which is what motivates the landscape-shaping approach the rest of the thesis develops.
+
+\subsection{Decomposing the Stability Gap}
+\label{subsec:decomposition}
+
+We unify the causes scattered across the literature --- gradient imbalance, the finite-buffer estimator, and the trajectory effect (Sections~\ref{subsec:experience_replay} and~\ref{subsec:stability_gap}) --- into a single decomposition of three forces. We isolate and measure each empirically in Section~\ref{sec:methods}.
+
+
+\paragraph{Magnitude asymmetry ($G_{\text{mag}}$).}
+Consider the first step of vanilla Experience Replay (ER) at the start of a new task, $T_1$, taken from the previous task's optimum $\theta_0^*$. Because $\theta_0^*$ is a stationary point of the replay loss, the true replay gradient there is near zero, so the update is driven almost entirely by the new-task gradient. This large and unopposed new-task gradient carries the iterate out of the replay basin. The replay loss rises the further the iterate moves from $\theta_0^*$, until it grows strong enough to pull the iterate back and the old task is relearned. Because the imbalance is fixed by the relative gradient magnitudes at this first step, it is the dominant contributor to the gap, and corresponds to the gradient-imbalance effect observed by \citet{delange2023continualevaluationlifelonglearning}.
+
+
+\paragraph{Estimator variance ($G_{\text{est}}$).} In any individual training run, the replay buffer provides only a finite-sample estimate of the past data (Section~\ref{subsec:experience_replay}) \cite{aljundi2019gradientbasedsampleselection}. This per-step sampling noise creates a baseline loss degradation that persists regardless of the learning schedule, as it is independent of how the loss terms are composed.
+
+\paragraph{Trajectory effect ($G_{\text{traj}}$).} Even in an idealized scenario where magnitude asymmetry is corrected and buffer noise is eliminated, a geometric penalty remains: an instantaneous switch in objectives forces the iterate off the optimal path of the joint loss (Section~\ref{subsec:stability_gap}). Along this new trajectory, the replay loss is strictly higher than it would be at the joint-loss optimum $\theta_{\text{joint}}^*$.
+
+Crucially, these three components dominate at different timescales: $G_{\text{mag}}$ drives the massive disruption at step one, $G_{\text{traj}}$ dictates the curve over the first equilibration window, and $G_{\text{est}}$ provides constant noise across all steps.
+
+\subsection{Path-Finding versus Landscape-Shaping}
+\label{subsec:pathfinding_vs_shaping}
+There are two ways to intervene, distinguished by what they do with the discontinuity.
+
+\paragraph{Path-finding:} accepts the discontinuity. The objective still jumps at the boundary, from the replay loss alone to the sum of the replay and current-task losses, and the intervention instead reshapes \emph{how} the optimiser moves across that jump. Rather than taking a plain gradient step, it reweights each update using information about the past tasks, steering the optimiser away from directions that would sharply raise the replay loss. This past-task information takes different forms: the curvature estimate of EWC \cite{Kirkpatrick_2017}, the posterior precision of NCL \cite{kao2021naturalcontinuallearningsuccess}, or the gradient projection of GEM \cite{lopezpaz2022gradientepisodicmemorycontinual}. The path-finding methods of Section~\ref{subsec:path_finding} all sit here.
+
+\paragraph{Landscape-shaping:} removes the discontinuity. It modifies the objective near the boundary so the surface the optimiser descends is continuous through the transition, leaving the geometry of each step to SGD's natural step-size adaptation. The $\lambda$-curriculum is the canonical example: instead of switching the objective from the replay loss to the joint loss in a single step, it ramps the weight on the current-task loss up from zero to one over a continuous schedule, while holding the replay loss fixed. Two consequences distinguish it from path-finding. A preconditioner rescales the gradient and so breaks SGD's step-size adaptation, whereas the curriculum only reweights the loss and leaves the step size untouched; and where a preconditioned update must build past-task information into every step, the curriculum adds nothing more than a single changing weight. Section~\ref{sec:theory} shows that this continuity is enough to remove the trajectory contributor $G_{\text{traj}}$, and that it simultaneously tempers $G_{\text{mag}}$ by introducing the new-task gradient gradually rather than all at once.

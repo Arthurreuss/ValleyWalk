@@ -1,7 +1,7 @@
 \section{Methods}
 \label{sec:methods}
 
-This section describes the empirical testbed (Section~\ref{subsec:testbed}), the metrics that summarise each run (Section~\ref{subsec:metrics}), and the full set of conditions (Sections~\ref{subsec:overview}--\ref{subsec:cifar}) that test the predictions of Sections~\ref{sec:account} and~\ref{sec:theory}. Each experimental block maps to one of the research questions of Section~\ref{sec:proposed_approach} and to a falsifiable prediction derived earlier.
+This section describes the empirical testbed (Section~\ref{subsec:testbed}), the metrics that summarise each run (Section~\ref{subsec:metrics}), and the full set of conditions (Sections~\ref{subsec:overview}--\ref{subsec:cifar}) that test the predictions of Sections~\ref{sec:motivation} and~\ref{sec:theory}. Each experimental block maps to one of the research questions of Section~\ref{sec:proposed_approach} and to a falsifiable prediction derived earlier.
 
 \subsection{Testbed}
 \label{subsec:testbed}
@@ -151,7 +151,7 @@ Across conditions we compare metrics with the paired Wilcoxon signed-rank test o
 \subsection{Overview of Experiments}
 \label{subsec:overview}
 
-Each block tests one or more predictions of Sections~\ref{sec:account} and~\ref{sec:theory} and answers one research question (Table~\ref{tab:overview}). All conditions use five seeds and the training protocol of Section~\ref{subsec:testbed} unless noted otherwise.
+Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\ref{sec:theory} and answers one research question (Table~\ref{tab:overview}). All conditions use five seeds and the training protocol of Section~\ref{subsec:testbed} unless noted otherwise.
 
 \begin{table*}[htbp]
     \centering
@@ -165,7 +165,8 @@ Each block tests one or more predictions of Sections~\ref{sec:account} and~\ref{
         Adaptive $\lambda$-curriculum & \ref{subsec:curriculum} & RQ2 & \texttt{gap\_depth} falls relative to vanilla ER with no explicit knob $N$ & adaptive schedule from $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ \\
         $\lambda_{\min}$ refinement & \ref{subsec:curriculum} & RQ4 & A floor $\lambda_{\min} > 0$ recovers early velocity without inflating depth to vanilla-ER levels & $\lambda_{\min} \in \{0.05, 0.10, 0.20\}$ on adaptive \\
         Momentum cross-cut & \ref{subsec:momentum} & RQ3 & Momentum tightens depth on top of the curriculum, but momentum alone does not reduce depth & every rot-MNIST condition repeated at momentum $0.9$ \\
-        CIFAR-10 generalisation & \ref{subsec:cifar} & all & Headline contrasts carry to a stronger task shift and a deeper backbone & vanilla ER, NCL, adaptive $\lambda_{\min}{=}0.20$, adaptive $\lambda_{\min}{=}0.10$ \\
+        Long-sequence rot-MNIST & \ref{subsec:longseq} & all & The curriculum holds across several transitions, not just one & vanilla ER, NCL, adaptive $\lambda_{\min}{\in}\{0,0.10\}$; 5 tasks \\
+        CIFAR-10 generalisation & \ref{subsec:cifar} & all & Headline contrasts carry to a stronger task shift and a deeper backbone & vanilla ER, NCL, adaptive $\lambda_{\min}{=}0.20$, each at BatchNorm and GroupNorm; plus a novel-corruption block \\
         \hline
     \end{tabular}
     \caption{Overview of the experimental blocks, the research question each answers, and the prediction each tests.}
@@ -278,6 +279,32 @@ The contrast between balanced ER (G3) and linear $N{=}200$ isolates the differen
 
 \paragraph{Expectation.} On top of the curriculum, momentum should reduce the seed-to-seed standard deviation in \texttt{gap\_depth} and the per-step oscillation amplitude on the $T_0$ accuracy curve, without changing the depth mean by much. Without the curriculum, momentum should not reduce \texttt{gap\_depth}: depth for vanilla ER at momentum $0.9$ should match depth at momentum $0.0$. A null result here is the falsifiable prediction. The contrast (linear $N{=}200$, momentum on) versus (linear $N{=}200$, momentum off) measures the residual momentum cleans up; the contrast (vanilla ER, momentum on) versus (vanilla ER, momentum off) tests the falsification.
 
+\subsection{Long-Sequence rot-MNIST}
+\label{subsec:longseq}
+
+\paragraph{Aim.} The two-task design isolates a single transition, which keeps the decomposition clean but leaves two questions open: whether the curriculum still suppresses the gap across several consecutive boundaries, and whether NCL recovers the advantage that \citet{kao2021naturalcontinuallearningsuccess} report at the higher task counts where path-finding methods are strongest.
+
+\paragraph{Design.} A five-task rot-MNIST sequence with rotations $[0, 30, 60, 90, 120]^\circ$, giving four consecutive transitions over a uniform $30^\circ$ step. The backbone, online regime, and dense per-step evaluation are those of the two-task block (Section~\ref{subsec:testbed}). Momentum is fixed at $0.9$: the C-series and the G1/G1$_M$ contrast already characterise the momentum trade at a single transition, so running both legs here would add little. Four conditions (Table~\ref{tab:longseq}) --- vanilla ER, tuned NCL, and the adaptive curriculum at $\lambda_{\min} \in \{0, 0.10\}$ --- each at five seeds. Gap-depth and accuracy are averaged over the four transitions.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{p{1.0cm} p{3.6cm} p{2.0cm}}
+        \hline
+        Label & Method & $\lambda_{\min}$ \\
+        \hline
+        L1 & Vanilla ER & --- \\
+        L2 & NCL (tuned) & --- \\
+        L3 & ER + adaptive curriculum & $0.00$ \\
+        L4 & ER + adaptive curriculum & $0.10$ \\
+        \hline
+    \end{tabular}
+    \caption{Five-task rot-MNIST conditions (rotations $[0,30,60,90,120]^\circ$, four transitions, momentum $0.9$).}
+    \label{tab:longseq}
+\end{table}
+
+\paragraph{Expectation.} The adaptive curriculum should keep a reduced gap depth across all four transitions at no accuracy cost relative to vanilla ER. NCL may reach a lower depth at this higher task count, consistent with \citet{kao2021naturalcontinuallearningsuccess}, but is expected to carry the accuracy cost it shows at a single transition.
+
 \subsection{Generalisation: CIFAR-10}
 \label{subsec:cifar}
 
@@ -285,25 +312,45 @@ The contrast between balanced ER (G3) and linear $N{=}200$ isolates the differen
 
 \paragraph{Dataset.} A two-task domain-shift CIFAR-10: $T_0$ uses clean CIFAR-10 and $T_1$ uses the Gaussian-noise corruption at severity $3$. Both tasks share the same ten classes, so only the input distribution shifts. As in rot-MNIST, two tasks produce exactly one transition.
 
-\paragraph{Training protocol.} A CIFAR-adapted ResNet-18 ($3\times3$ stem, no max-pool stem; see Appendix~\ref{app:implementation}), ten epochs per task --- at this depth ResNet-18 needs more than one pass to converge before the transition --- batch size $256$, SGD with learning rate $0.1$, and momentum $0.9$ only. The momentum cross of Section~\ref{subsec:momentum} is not repeated; momentum $0.9$ is locked in as the better-performing leg from rot-MNIST. The dense evaluation cadence is coarsened to every $50$ steps over a $250$-step window (Section~\ref{subsubsec:eval_protocol}).
+\paragraph{Training protocol.} A CIFAR-adapted ResNet-18 ($3\times3$ stem, no max-pool stem; see Appendix~\ref{app:implementation}), ten epochs per task --- at this depth ResNet-18 needs more than one pass to converge before the transition --- batch size $256$, SGD with learning rate $0.1$, momentum $0.9$ only, and a replay buffer of $5{,}000$ samples. The momentum cross of Section~\ref{subsec:momentum} is not repeated; momentum $0.9$ is locked in as the better-performing leg from rot-MNIST. The dense evaluation cadence is coarsened to every $50$ steps over a $250$-step window (Section~\ref{subsubsec:eval_protocol}).
 
-\paragraph{Conditions.} Four headline conditions only, not the full sweep (Table~\ref{tab:cifar}). A linear curriculum is not run on CIFAR; only the two best-performing adaptive variants from the rot-MNIST $\lambda_{\min}$ refinement are carried over, alongside the two reference points. NCL hyperparameters are pinned to the values that won the rot-MNIST tuning sweep (Appendix~\ref{app:implementation}).
+\paragraph{Headline conditions.} The headline block is six conditions: three methods --- vanilla ER, NCL, and the adaptive curriculum at $\lambda_{\min}=0.20$ --- each run under both BatchNorm and GroupNorm (Table~\ref{tab:cifar}). A linear curriculum is not run on CIFAR; $\lambda_{\min}=0.20$ is the single carried-over curriculum setting, the adaptive variant that gave the best final accuracy in the rot-MNIST $\lambda_{\min}$ sweep. NCL hyperparameters are pinned to the values that won the rot-MNIST tuning sweep (Appendix~\ref{app:implementation}). The two normalisations are crossed in deliberately: they govern the post-switch recovery dynamics. BatchNorm running statistics are disrupted by the input shift and re-adapt over the first steps of the new task, whereas GroupNorm carries no cross-batch statistics, so the pair separates the normalisation-driven part of the dip from the optimisation-driven part the curriculum targets.
 
 \begin{table}[H]
     \centering
     \small
-    \begin{tabular}{p{2.4cm} p{3.4cm} p{1.4cm}}
+    \begin{tabular}{p{0.8cm} p{3.6cm} p{1.8cm} p{1.0cm}}
         \hline
-        Condition & Method & Tests \\
+        Label & Method & Norm & Tests \\
         \hline
-        D1 --- Vanilla ER & ER ($1$k reservoir) & reference \\
-        D2 --- NCL & NCL (tuned) & reference path-finding \\
-        D3 --- Adaptive, $\lambda_{\min}{=}0.20$ & ER + adaptive curriculum & RQ4 carry-over \\
-        D4 --- Adaptive, $\lambda_{\min}{=}0.10$ & ER + adaptive curriculum & RQ4 carry-over \\
+        D1 & Vanilla ER & BatchNorm & reference \\
+        D2 & NCL (tuned) & BatchNorm & reference \\
+        D3 & Adaptive $\lambda_{\min}{=}0.20$ & BatchNorm & carry-over \\
+        D4 & Vanilla ER & GroupNorm & reference \\
+        D5 & NCL (tuned) & GroupNorm & reference \\
+        D6 & Adaptive $\lambda_{\min}{=}0.20$ & GroupNorm & carry-over \\
         \hline
     \end{tabular}
-    \caption{CIFAR-10 headline conditions. Only the two best adaptive variants from rot-MNIST are carried over, with vanilla ER and NCL as references.}
+    \caption{CIFAR-10 headline conditions: three methods crossed with two normalisations, buffer $5{,}000$, momentum $0.9$, five seeds. The shipped curriculum is the adaptive schedule at $\lambda_{\min}=0.20$.}
     \label{tab:cifar}
 \end{table}
 
-\paragraph{Expectation.} Qualitative carry-over of the rot-MNIST result: the adaptive curriculum should reduce gap depth relative to vanilla ER and at least match NCL on depth while preserving ACC. The quantitative $O(1/N)$ scaling of the bound is not expected to hold tightly at this depth; deviations are reported and discussed alongside the results.
+\paragraph{Generalisation block.} A second CIFAR block tests whether the headline finding depends on the particular corruption or on having only a single transition. It pairs the shipped curriculum (adaptive $\lambda_{\min}=0.20$, buffer $5{,}000$) against a vanilla-ER control on three further settings: a two-task shot-noise shift, a two-task contrast shift, and a three-task sequence $[\text{none}, \text{Gaussian noise}, \text{shot noise}]$ (Table~\ref{tab:cifar_gen}). Each shift is run at both normalisations over three seeds. The paired vanilla control on every shift keeps the comparison interpretable: the question is whether the curriculum still beats vanilla on data it was not tuned on.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{p{3.4cm} p{1.2cm} p{2.6cm}}
+        \hline
+        Shift & Tasks & Conditions \\
+        \hline
+        Shot noise & $2$ & ship vs.\ vanilla \\
+        Contrast & $2$ & ship vs.\ vanilla \\
+        Gaussian noise $+$ shot noise & $3$ & ship vs.\ vanilla \\
+        \hline
+    \end{tabular}
+    \caption{CIFAR-10 generalisation block. Each shift is run with the ship config (adaptive $\lambda_{\min}{=}0.20$) and a paired vanilla-ER control, at both BatchNorm and GroupNorm, three seeds.}
+    \label{tab:cifar_gen}
+\end{table}
+
+\paragraph{Expectation.} Qualitative carry-over of the rot-MNIST result: the adaptive curriculum should reduce gap depth relative to vanilla ER and at least match NCL on depth while preserving ACC, under both normalisations, and should keep beating its vanilla control on the novel corruptions of the generalisation block. The quantitative $O(1/N)$ scaling of the bound is not expected to hold tightly at this depth; deviations are reported and discussed alongside the results.

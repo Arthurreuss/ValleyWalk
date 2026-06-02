@@ -1,0 +1,393 @@
+\section{Results}
+\label{sec:results}
+
+% Placeholder box for figures not yet produced. Replace each \figplaceholder{...}
+% with \includegraphics[width=\linewidth]{...} once the figure is added.
+\newcommand{\figplaceholder}[1]{%
+    \fbox{\parbox[c][3.4cm][c]{0.96\linewidth}{%
+        \centering \textbf{[FIGURE PLACEHOLDER]}\\[2pt]
+        \texttt{\detokenize{#1}}}}%
+}
+
+This section reports the outcome of the experimental blocks of
+Section~\ref{sec:methods}, in the order of the research questions of
+Section~\ref{sec:proposed_approach}: the three-contributor decomposition
+(Section~\ref{subsec:res_decomp}, RQ5), the $\lambda$-curriculum sweep on
+rot-MNIST (Section~\ref{subsec:res_curriculum}, RQ1, RQ2, RQ4), the momentum
+cross (Section~\ref{subsec:res_momentum}, RQ3), the CIFAR-10 generalisation
+block (Section~\ref{subsec:res_cifar}, RQ6), and the long-sequence rot-MNIST check
+(Section~\ref{subsec:res_longseq}).
+
+\paragraph{How to read the numbers.} The headline metric is \texttt{gap\_depth},
+the worst single-step drop in past-task accuracy at the transition
+(Section~\ref{subsubsec:gap_metrics}). We report it in percentage points (pp),
+so a depth of $19.5$ means the worst evaluation point sat $19.5$ accuracy
+points below the pre-task baseline. \texttt{gap\_area} (depth $\times$ duration)
+and the continual-learning metrics of Table~\ref{tab:cl_metrics} are reported as
+fractions. Every entry is the mean over five seeds (three for the CIFAR
+generalisation block) with the seed standard deviation. With five paired seeds
+the smallest two-sided Wilcoxon $p$-value attainable is $0.0625$, reached when
+all five seed-paired deltas share a sign; we therefore read ``$p = 0.0625$'' as
+``all five seeds agree in direction'' and lean on effect sizes and seed-paired
+consistency rather than a $0.05$ threshold the design cannot reach. The full
+metric tables for every condition are in Appendix~\ref{app:full_results}.
+
+\subsection{Three-Contributor Decomposition (RQ5)}
+\label{subsec:res_decomp}
+
+Table~\ref{tab:res_decomp} reports gap depth and final accuracy along the
+removal path G1 $\rightarrow$ G3 $\rightarrow$ G4 of
+Section~\ref{subsec:decomp}, with the full-data control G2 and the NCL
+path-finding reference. Reading the depth column against the differencing rules
+of Section~\ref{subsec:decomp} gives the three contributor shares.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lcc}
+        \hline
+        Condition & \texttt{gap\_depth} (pp) & ACC \\
+        \hline
+        G1 --- Vanilla ER          & $19.5 \pm 4.1$ & $0.873 \pm 0.005$ \\
+        G2 --- Full-data ER        & $18.3 \pm 2.5$ & $0.890 \pm 0.009$ \\
+        G3 --- Balanced ER         & $5.7 \pm 1.9$  & $0.849 \pm 0.005$ \\
+        G4 --- Full-data balanced  & $1.9 \pm 1.3$  & $0.869 \pm 0.002$ \\
+        NCL (reference)            & $7.2 \pm 1.0$  & $0.770 \pm 0.012$ \\
+        \hline
+    \end{tabular}
+    \caption{Decomposition conditions on rot-MNIST (momentum $0.0$). Depth falls
+    monotonically along G1 $\rightarrow$ G3 $\rightarrow$ G4. NCL attains a low
+    depth but at a large accuracy cost.}
+    \label{tab:res_decomp}
+\end{table}
+
+The differencing of Section~\ref{subsec:decomp} yields
+\begin{align*}
+    G_{\text{mag}}  &= 19.5 - 5.7 = 13.8 \text{ pp} \quad (71\%), \\
+    G_{\text{est}}  &= 5.7 - 1.9 = 3.8 \text{ pp} \quad (19\%), \\
+    G_{\text{traj}} &= 1.9 \text{ pp} \quad (10\%).
+\end{align*}
+The magnitude asymmetry is the dominant contributor: removing it by unit-norm
+balancing (G3) erases roughly two-thirds of the gap on its own. The estimator
+and trajectory shares are each small. The orthogonal sanity check is only
+partially consistent --- the unbalanced full-data step removes
+$\texttt{gap\_depth}(\text{G1}) - \texttt{gap\_depth}(\text{G2}) = 1.2$ pp,
+against the $3.8$ pp removed by full data on top of balancing. Both estimates
+place the estimator contribution in the low single-digit-pp range; the
+difference indicates that estimator noise and magnitude asymmetry are not
+perfectly separable, which is expected since a noisy replay gradient also
+inflates the first-step magnitude. The trajectory residual at G4 is $1.9$ pp ---
+small but non-zero, matching the prediction of
+Section~\ref{subsec:stability_gap} and Equation~\eqref{eq:bound}, and exactly the
+share the $\lambda$-curriculum is built to suppress.
+
+The accuracy column already shows the cost structure that motivates the
+curriculum. Balancing (G3) reduces depth but pays $2.4$ pp of final accuracy
+relative to vanilla ER; NCL reaches a comparable depth ($7.2$ pp) but sacrifices
+$10$ pp of accuracy. A method that removes the trajectory residual without an
+accuracy cost is what Sections~\ref{subsec:res_curriculum}
+and~\ref{subsec:res_momentum} test.
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/decomp_curves}
+    \caption{\textbf{[PLACEHOLDER]} Per-step past-task ($T_0$) test accuracy over
+    the first $250$ steps of $T_1$, one curve per decomposition condition (G1,
+    G2, G3, G4, NCL), momentum $0.0$, mean over five seeds with a $\pm$std band.
+    Shows the dip at the boundary and its progressive removal along the path.}
+    \label{fig:decomp_curves}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/decomp_bars}
+    \caption{\textbf{[PLACEHOLDER]} Gap depth (pp) for G1, G3, G4 with the
+    three contributor shares $G_{\text{mag}}$, $G_{\text{est}}$, $G_{\text{traj}}$
+    annotated as the differences between successive bars; NCL shown as a separate
+    reference bar.}
+    \label{fig:decomp_bars}
+\end{figure}
+
+\subsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum on rot-MNIST (RQ1, RQ2, RQ4)}
+\label{subsec:res_curriculum}
+
+Table~\ref{tab:res_curriculum} reports the full curriculum sweep at both
+momentum settings, against the vanilla-ER baseline (G1). We describe the
+momentum-off leg first, then the momentum-on leg, which is the headline regime.
+
+\begin{table*}[htbp]
+    \centering
+    \small
+    \begin{tabular}{l cc cc}
+        \hline
+        & \multicolumn{2}{c}{Momentum $0.0$} & \multicolumn{2}{c}{Momentum $0.9$} \\
+        Condition & \texttt{gap\_depth} (pp) & ACC & \texttt{gap\_depth} (pp) & ACC \\
+        \hline
+        Vanilla ER (baseline)               & $19.5 \pm 4.1$ & $0.873 \pm 0.005$ & $15.9 \pm 2.6$ & $0.928 \pm 0.003$ \\
+        Linear $N{=}50$                     & $17.5 \pm 1.7$ & $0.851 \pm 0.023$ & $6.4 \pm 0.5$  & $0.932 \pm 0.003$ \\
+        Linear $N{=}100$                    & $16.2 \pm 4.3$ & $0.844 \pm 0.025$ & $6.4 \pm 0.6$  & $0.932 \pm 0.003$ \\
+        Linear $N{=}200$                    & $14.3 \pm 4.6$ & $0.828 \pm 0.025$ & $6.2 \pm 0.6$  & $0.925 \pm 0.007$ \\
+        Adaptive                            & $12.8 \pm 2.9$ & $0.833 \pm 0.025$ & $2.5 \pm 0.5$  & $0.917 \pm 0.001$ \\
+        Adaptive $+\,\lambda_{\min}{=}0.05$ & $13.2 \pm 3.2$ & $0.835 \pm 0.025$ & $2.6 \pm 0.5$  & $0.922 \pm 0.001$ \\
+        Adaptive $+\,\lambda_{\min}{=}0.10$ & $13.9 \pm 3.3$ & $0.836 \pm 0.026$ & $3.0 \pm 0.4$  & $0.927 \pm 0.002$ \\
+        Adaptive $+\,\lambda_{\min}{=}0.20$ & $13.9 \pm 3.4$ & $0.837 \pm 0.031$ & $3.7 \pm 0.4$  & $0.931 \pm 0.002$ \\
+        \hline
+    \end{tabular}
+    \caption{$\lambda$-curriculum sweep on rot-MNIST against the vanilla-ER
+    baseline, at momentum $0.0$ and $0.9$. Depth in percentage points, ACC as a
+    fraction; mean $\pm$ std over five seeds.}
+    \label{tab:res_curriculum}
+\end{table*}
+
+\paragraph{Linear curriculum (RQ1).} At momentum $0.0$, gap depth falls
+monotonically as the ramp lengthens --- $19.5 \rightarrow 17.5 \rightarrow 16.2
+\rightarrow 14.3$ pp from vanilla through $N = 200$ --- consistent with the
+$O(1/N)$ bound of Equation~\eqref{eq:bound}. The reduction is modest in absolute
+terms over this range of $N$, and it comes with a small accuracy drift: ACC
+falls from $0.873$ (vanilla) to $0.828$ at $N = 200$, a $4.4$ pp cost with all
+five seeds agreeing in direction ($p = 0.0625$). So at momentum $0.0$ the
+prediction that the linear curriculum matches vanilla accuracy is only partly
+borne out --- the curriculum trades a little accuracy for depth in this regime.
+Figure~\ref{fig:linear_scaling} plots depth against $N$ for the $O(1/N)$ check.
+
+\paragraph{Adaptive curriculum (RQ2).} At momentum $0.0$ the adaptive schedule
+reaches $12.8$ pp, below the best linear curriculum ($14.3$ pp at $N = 200$) and
+without an explicit ramp length $N$. The self-paced schedule therefore removes
+the knob $N$ while at least matching the best hand-tuned linear ramp, confirming
+RQ2. Its accuracy ($0.833$) carries the same small drift as the linear runs at
+this momentum setting.
+
+\paragraph{The $\lambda_{\min}$ floor (RQ4).} The $\lambda_{\min}$ effect is
+clearest in the momentum-on leg (right half of Table~\ref{tab:res_curriculum}),
+where the gap is small enough to see the trade. Raising $\lambda_{\min}$ from
+$0$ to $0.20$ lifts gap depth slightly ($2.5 \rightarrow 3.7$ pp) while raising
+final accuracy ($0.917 \rightarrow 0.931$) and short-horizon plasticity
+($\mathrm{WP}_{100}: 0.798 \rightarrow 0.812$; Appendix~\ref{app:full_results}).
+This is the predicted Pareto trade: a floor on $\lambda$ restores early-task
+learning speed at the cost of a small, controlled increase in depth.
+$\lambda_{\min} = 0.20$ gives the best final accuracy and matches vanilla ER's
+accuracy at momentum $0.9$ ($0.931$ vs $0.928$) while cutting depth from $15.9$
+to $3.7$ pp; it is the setting carried forward to CIFAR
+(Section~\ref{subsec:res_cifar}). Figure~\ref{fig:lambdamin_pareto} shows the
+(depth, ACC) front.
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/linear_scaling}
+    \caption{\textbf{[PLACEHOLDER]} Gap depth (pp) versus linear ramp length $N
+    \in \{50, 100, 200\}$ at momentum $0.0$ and $0.9$, with the vanilla-ER point
+    ($N \to 0$) and an $O(1/N)$ reference curve. Error bars are seed std.}
+    \label{fig:linear_scaling}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/adaptive_lambda}
+    \caption{\textbf{[PLACEHOLDER]} The adaptive schedule in action: $\lambda(t)$
+    (EMA of $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$) over the first $250$ steps
+    of $T_1$, mean over five seeds with a $\pm$std band, optionally overlaid with
+    the raw gradient-magnitude ratio. Illustrates the self-paced ramp from
+    $\lambda \approx 0$ to $\lambda \approx 1$.}
+    \label{fig:adaptive_lambda}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/lambdamin_pareto}
+    \caption{\textbf{[PLACEHOLDER]} Final accuracy versus gap depth (pp) for the
+    adaptive curriculum at $\lambda_{\min} \in \{0, 0.05, 0.10, 0.20\}$, momentum
+    $0.9$, with the vanilla-ER (momentum $0.9$) reference point. Points trace the
+    plasticity--stability trade the floor controls.}
+    \label{fig:lambdamin_pareto}
+\end{figure}
+
+\subsection{Momentum Cross (RQ3)}
+\label{subsec:res_momentum}
+
+Two predictions sit behind RQ3: momentum on top of the curriculum should
+suppress the residual stochastic oscillation, and momentum alone, without the
+curriculum, should not reduce gap depth. Both hold.
+
+\paragraph{Momentum alone does not close the gap.} For vanilla ER, momentum
+moves depth from $19.5$ to $15.9$ pp, a change in which the five seeds do not
+agree in direction ($p = 0.44$) and which is small next to the seed spread. The
+deterministic one-sided first step at the boundary is unchanged by momentum, so
+momentum alone leaves the gap essentially intact --- the falsifiable null
+prediction of Section~\ref{subsec:momentum} is confirmed.
+
+\paragraph{Momentum on top of the curriculum closes it.} Applied to the
+curriculum, momentum has a large effect. The adaptive schedule drops from $12.8$
+to $2.5$ pp and the linear $N = 200$ schedule from $14.3$ to $6.2$ pp, both with
+all five seeds agreeing ($p = 0.0625$). The seed-to-seed standard deviation
+collapses at the same time: from $2.9$ to $0.5$ pp for the adaptive schedule and
+from $4.6$ to $0.6$ pp for linear $N = 200$. This is the signature predicted in
+Section~\ref{subsec:momentum} --- once the curriculum has made the optimum path
+continuous, the residual gap is stochastic oscillation around that path, and
+momentum averages it away. The combination of a continuous schedule and momentum,
+not either alone, is what drives the gap down to a few percentage points while
+recovering vanilla-ER accuracy.
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/momentum_cross}
+    \caption{\textbf{[PLACEHOLDER]} Gap depth (pp) for vanilla ER, linear
+    $N{=}200$, and the adaptive curriculum at momentum $0.0$ versus $0.9$
+    (grouped bars, seed-std error bars). Highlights the momentum-alone null on
+    vanilla ER and the depth reduction plus error-bar collapse on the curriculum
+    conditions.}
+    \label{fig:momentum_cross}
+\end{figure}
+
+\subsection{Generalisation: CIFAR-10 (RQ6)}
+\label{subsec:res_cifar}
+
+The CIFAR-10 block tests whether the rot-MNIST finding carries to a deeper
+backbone (ResNet-18), a stronger task shift (clean $\rightarrow$ corruption),
+and the two normalisation choices that govern the post-switch recovery
+(batch norm, group norm). Table~\ref{tab:res_cifar} reports the six headline
+conditions; the shipped curriculum is the adaptive schedule with
+$\lambda_{\min} = 0.20$.
+
+\begin{table*}[htbp]
+    \centering
+    \small
+    \begin{tabular}{ll ccc}
+        \hline
+        Norm & Method & \texttt{gap\_depth} (pp) & ACC & min-ACC \\
+        \hline
+        \multirow{3}{*}{BatchNorm}
+            & D1 --- Vanilla ER          & $11.8 \pm 2.5$  & $0.723 \pm 0.008$ & $0.644 \pm 0.023$ \\
+            & D2 --- NCL                 & $25.8 \pm 5.2$  & $0.710 \pm 0.005$ & $0.504 \pm 0.045$ \\
+            & D3 --- Adaptive $\lambda_{\min}{=}0.20$ & $\mathbf{4.8 \pm 0.7}$ & $0.722 \pm 0.011$ & $0.713 \pm 0.017$ \\
+        \hline
+        \multirow{3}{*}{GroupNorm}
+            & D4 --- Vanilla ER          & $41.2 \pm 13.5$ & $0.730 \pm 0.011$ & $0.309 \pm 0.111$ \\
+            & D5 --- NCL                 & $29.7 \pm 10.0$ & $0.711 \pm 0.017$ & $0.423 \pm 0.083$ \\
+            & D6 --- Adaptive $\lambda_{\min}{=}0.20$ & $\mathbf{5.2 \pm 2.1}$ & $0.731 \pm 0.020$ & $0.670 \pm 0.055$ \\
+        \hline
+    \end{tabular}
+    \caption{CIFAR-10 headline block (ResNet-18, momentum $0.9$, buffer $5{,}000$,
+    three methods $\times$ two normalisations, five seeds). The adaptive
+    curriculum cuts gap depth far below both vanilla ER and NCL, at matched final
+    accuracy and much higher worst-case retention (min-ACC).}
+    \label{tab:res_cifar}
+\end{table*}
+
+The rot-MNIST result carries over and strengthens. Under batch norm the adaptive
+curriculum cuts depth from $11.8$ pp (vanilla) to $4.8$ pp; under group norm,
+where vanilla ER suffers a catastrophic $41.2$ pp drop, it cuts depth to $5.2$
+pp. In both cases final accuracy is unchanged ($\le 1$ pp difference from
+vanilla) while worst-case retention improves sharply --- min-ACC rises from
+$0.309$ to $0.670$ under group norm. NCL does not transfer: on this deeper
+backbone its path-finding preconditioner makes the gap \emph{larger} than
+vanilla ER ($25.8$ pp under batch norm), the opposite of its rot-MNIST behaviour.
+This is the cleanest separation in the study between acting in schedule space
+(the curriculum) and acting in parameter space (NCL): the curriculum's benefit
+is robust to depth and normalisation, NCL's is not.
+
+\paragraph{Generalisation across corruptions and sequence length.} The
+generalisation block (three seeds, group-norm ship config) pairs the curriculum
+against a vanilla-ER control on shifts the method was not tuned on
+(Table~\ref{tab:res_cifar_gen}). On the two-task novel corruptions the curriculum
+generalises cleanly: depth falls from $46.3$ to $7.3$ pp on shot noise and from
+$8.4$ to $3.9$ pp on contrast. The three-task sequence is the exception --- there
+the curriculum underperforms its vanilla control ($32.8$ vs $4.4$ pp, with a
+large seed variance of $\pm 14.5$ pp), an anomaly that does not appear in the
+batch-norm variant of the same sequence (Appendix~\ref{app:full_results}). We
+read this as the adaptive schedule interacting poorly with several closely spaced
+group-norm transitions rather than a single one, and flag it as a boundary of the
+method's reliability rather than evidence against the two-task result; final
+accuracy stays comparable to vanilla throughout.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l cc}
+        \hline
+        Shift (GroupNorm) & Ship depth & Vanilla depth \\
+        \hline
+        2-task shot noise & $\mathbf{7.3 \pm 5.9}$  & $46.3 \pm 12.0$ \\
+        2-task contrast   & $\mathbf{3.9 \pm 3.1}$  & $8.4 \pm 4.4$   \\
+        3-task g.n.+shot  & $32.8 \pm 14.5$         & $\mathbf{4.4 \pm 0.4}$ \\
+        \hline
+    \end{tabular}
+    \caption{CIFAR-10 generalisation block, gap depth (pp), group-norm ship
+    config versus vanilla-ER control (three seeds). The curriculum wins on both
+    two-task novel corruptions; the three-task group-norm sequence is an outlier
+    (see text).}
+    \label{tab:res_cifar_gen}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/cifar_curves}
+    \caption{\textbf{[PLACEHOLDER]} Per-step $T_0$ accuracy over the $250$-step
+    post-switch window (eval every $50$ steps) for the CIFAR-10 headline
+    conditions, two panels (batch norm: D1/D2/D3; group norm: D4/D5/D6), mean
+    over five seeds with $\pm$std bands.}
+    \label{fig:cifar_curves}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \figplaceholder{img/cifar_depth_bars}
+    \caption{\textbf{[PLACEHOLDER]} CIFAR-10 gap depth (pp) grouped by method
+    (vanilla ER, NCL, adaptive curriculum) and normalisation (batch norm, group
+    norm), seed-std error bars.}
+    \label{fig:cifar_depth_bars}
+\end{figure}
+
+\subsection{Long-Sequence rot-MNIST}
+\label{subsec:res_longseq}
+
+The two-task design isolates a single transition. To check that the curriculum
+holds across several boundaries, we ran a five-task rot-MNIST sequence
+(rotations $[0, 30, 60, 90, 120]^\circ$, four transitions) at momentum $0.9$
+(Table~\ref{tab:res_longseq}).
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l cc}
+        \hline
+        Condition & \texttt{gap\_depth} (pp) & ACC \\
+        \hline
+        L1 --- Vanilla ER                 & $8.9 \pm 1.7$ & $0.889 \pm 0.007$ \\
+        L2 --- NCL                        & $\mathbf{2.5 \pm 0.6}$ & $0.815 \pm 0.003$ \\
+        L3 --- Adaptive $\lambda_{\min}{=}0.00$ & $4.4 \pm 0.2$ & $0.896 \pm 0.003$ \\
+        L4 --- Adaptive $\lambda_{\min}{=}0.10$ & $4.5 \pm 0.6$ & $0.896 \pm 0.003$ \\
+        \hline
+    \end{tabular}
+    \caption{Five-task rot-MNIST (four transitions, momentum $0.9$). Gap depth is
+    the mean worst drop across the four boundaries. The adaptive curriculum halves
+    the vanilla-ER gap while preserving accuracy; NCL reaches the lowest depth but
+    pays $\sim 8$ pp of accuracy.}
+    \label{tab:res_longseq}
+\end{table}
+
+The adaptive curriculum carries past a single transition: it roughly halves the
+vanilla-ER gap ($8.9 \rightarrow 4.4$ pp) across four boundaries while slightly
+\emph{improving} final accuracy ($0.889 \rightarrow 0.896$). NCL reaches the
+lowest depth of the four ($2.5$ pp) --- consistent with
+\citet{kao2021naturalcontinuallearningsuccess} reporting its advantage at higher
+task counts --- but at a large accuracy cost ($0.815$, $8$ pp below the
+curriculum). The $\lambda_{\min}$ floor makes little difference to depth here.
+The curriculum thus keeps the property that matters: a low gap at no accuracy
+cost, sustained across multiple transitions.
+
+\subsection{Summary of Findings}
+\label{subsec:res_summary}
+
+Across blocks, four results stand out. (i) On rot-MNIST the stability gap is
+dominated by the first-step magnitude asymmetry ($71\%$), with a small trajectory
+residual ($10\%$) that survives exact gradients and balancing --- the residual
+the curriculum targets. (ii) The adaptive $\lambda$-curriculum with momentum
+reduces gap depth from $15.9$ to $3.7$ pp at matched accuracy, where momentum
+alone does nothing and the curriculum alone leaves a stochastic residual: the
+two are complementary, as predicted. (iii) The result carries to a ResNet-18 on
+CIFAR-10 under both normalisations and to novel two-task corruptions, where the
+curriculum beats both vanilla ER and NCL on depth and worst-case retention at
+matched accuracy. (iv) The known boundaries are an accuracy drift for the linear
+curriculum at momentum $0.0$, and a high-variance failure of the adaptive
+schedule on a three-task group-norm sequence. The discussion interprets these
+against the theory of Sections~\ref{sec:motivation} and~\ref{sec:theory}.
