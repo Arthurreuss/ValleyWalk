@@ -1,20 +1,18 @@
 \section{Research Questions}
 \label{sec:proposed_approach}
 
-The decomposition of Section~\ref{subsec:decomposition} and the bound of Section~\ref{sec:theory} make a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We test these predictions on rotated MNIST with a small multilayer perceptron, the regime in which the envelope-theorem bound is sharply testable, using vanilla and gradient-balanced Experience Replay as baselines, and then ask whether the resulting findings survive a deeper backbone and a stronger task shift. Six research questions structure the experiments.
+The decomposition of Section~\ref{subsec:decomposition} and the bound of Section~\ref{sec:theory} make a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We test them on rotated MNIST with a small multilayer perceptron and then ask whether the findings survive a deeper backbone and a stronger task shift. The experiments are organised around three primary questions, the second of which carries four sub-questions probing the individual ingredients of the curriculum.
 
+\paragraph{RQ1 --- The cause.} Does the stability gap decompose into the magnitude, estimator, and trajectory contributions of Section~\ref{subsec:decomposition}, and is the discontinuity their dominant source?
+
+\paragraph{RQ2 --- The fix.} Does removing the discontinuity with the $\lambda$-curriculum reduce the stability gap without final-accuracy cost? Four sub-questions probe how:
 \begin{description}
-    \item[RQ1 (linear curriculum).] Does the linear $\lambda$-curriculum applied to standard ER monotonically reduce stability-gap depth as the ramp length $N$ grows, and does it do so without the final-accuracy cost incurred by gradient balancing?
-
-    \item[RQ2 (adaptive curriculum).] Does an adaptive $\lambda$-schedule, which sets $\lambda$ from the live ratio of replay-to-current gradient magnitudes and so removes the explicit knob $N$, reduce gap depth without that final-accuracy cost?
-
-    \item[RQ3 (momentum).] Does adding momentum on top of the curriculum reduce the residual depth fluctuation predicted by the discrete-time stochastic argument? And does momentum on its own, without the curriculum, produce any comparable benefit --- the prediction being that it does not, since the one-sided first step is deterministic?
-
-    \item[RQ4 ($\lambda_{\min}$).] Does a small floor $\lambda_{\min} > 0$ on the adaptive schedule recover early-task learning speed without re-introducing the depth pathology the curriculum was designed to remove?
-
-    \item[RQ5 (decomposition).] How does the gap depth decompose into the magnitude, estimator, and trajectory contributions of Section~\ref{subsec:decomposition}, and what does each share reveal about why a curriculum is the right shape of fix?
-
-    \item[RQ6 (generalisation).] Do the rot-MNIST findings carry over to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption)? Specifically, does the adaptive curriculum still reduce gap depth relative to vanilla ER, and at least match NCL, while preserving final accuracy --- under both BatchNorm and GroupNorm and on corruptions it was not tuned on? The qualitative carry-over is the prediction; the $O(1/N)$ scaling of the bound is not expected to hold tightly at this depth.
+    \item[RQ2a (linear ramp).] Does the linear curriculum reduce gap depth monotonically as the ramp length $N$ grows?
+    \item[RQ2b (adaptive schedule).] Does an adaptive schedule achieve the same reduction while removing the explicit ramp-length knob $N$?
+    \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early-task learning speed without re-introducing the depth the curriculum was designed to remove?
+    \item[RQ2d (momentum).] Does momentum suppress the residual depth fluctuation on top of the curriculum, while (as a control) doing nothing on its own, since the first step at the boundary is deterministic?
 \end{description}
+
+\paragraph{RQ3 --- Generalisation.} Do these findings carry over to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption)?\\
 
 Section~\ref{sec:methods} describes the testbed, the metrics used to measure gap depth and final accuracy, and the full set of conditions that isolate each contributor and test each prediction.

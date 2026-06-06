@@ -1,198 +1,113 @@
-\section{Complete Results}
-\label{app:full_results}
+\section{Implementation Details}
+\label{app:implementation}
 
-This appendix gives the full metric set for every condition, as recorded by the
-aggregation pipeline of Section~\ref{subsec:metrics}. Each row is the mean over
-five seeds (three for the CIFAR generalisation block) with the seed standard
-deviation. Accuracy-type metrics (ACC, FORG, min-ACC, $\mathrm{WF}_{100}$,
-$\mathrm{WP}_{100}$, WC-ACC) are fractions; \texttt{gap\_depth} is in percentage
-points (pp); \texttt{gap\_area} is the depth$\times$duration integral
-(accuracy-fraction $\times$ steps); ``Recov.'' is \texttt{recovery\_steps}, with
-``---'' marking conditions where every past task stayed above the $90\%$ recovery
-threshold for the whole window (no recovery event to time).
+This appendix records the implementation specifics that the methods of
+Section~\ref{sec:methods} depend on but that would interrupt the argument in the
+main text: the experience-replay variants, and the NCL realisation together with
+the hyperparameters fixed by the rot-MNIST tuning sweep.
 
-\subsection{rot-MNIST: Decomposition (G-series)}
-\label{app:decomp_full}
+\subsection{Datasets}
+\label{app:impl_data}
 
-\begin{table*}[htbp]
-    \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l ccc cc c cc c}
-        \hline
-        Condition & ACC & FORG & min-ACC & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC & Depth & Area & Recov. \\
-        \hline
-        \multicolumn{10}{l}{\emph{Momentum $0.0$}} \\
-        G1 vanilla & 0.873\,$\pm$\,0.005 & 0.019\,$\pm$\,0.020 & 0.706\,$\pm$\,0.056 & 0.147\,$\pm$\,0.029 & 0.736\,$\pm$\,0.020 & 0.794\,$\pm$\,0.028 & 19.5\,$\pm$\,4.1 & 10.5 & 3.6\,$\pm$\,0.9 \\
-        G2 fulldata & 0.890\,$\pm$\,0.009 & -0.016\,$\pm$\,0.009 & 0.719\,$\pm$\,0.039 & 0.126\,$\pm$\,0.020 & 0.736\,$\pm$\,0.018 & 0.801\,$\pm$\,0.022 & 18.3\,$\pm$\,2.5 & 6.0 & 3.0\,$\pm$\,1.2 \\
-        G3 balanced & 0.849\,$\pm$\,0.005 & 0.031\,$\pm$\,0.018 & 0.824\,$\pm$\,0.006 & 0.045\,$\pm$\,0.002 & 0.721\,$\pm$\,0.004 & 0.836\,$\pm$\,0.004 & 5.7\,$\pm$\,1.9 & 7.9 & --- \\
-        G4 fulldata balanced & 0.869\,$\pm$\,0.002 & -0.014\,$\pm$\,0.013 & 0.862\,$\pm$\,0.002 & 0.030\,$\pm$\,0.007 & 0.710\,$\pm$\,0.003 & 0.852\,$\pm$\,0.002 & 1.9\,$\pm$\,1.3 & 1.7 & --- \\
-        NCL reference & 0.770\,$\pm$\,0.012 & 0.057\,$\pm$\,0.013 & 0.809\,$\pm$\,0.022 & 0.109\,$\pm$\,0.023 & 0.639\,$\pm$\,0.012 & 0.762\,$\pm$\,0.011 & 7.2\,$\pm$\,1.0 & 13.0 & 125.0 \\
-        \hline
-        \multicolumn{10}{l}{\emph{Momentum $0.9$}} \\
-        G1 vanilla & 0.928\,$\pm$\,0.003 & 0.058\,$\pm$\,0.007 & 0.797\,$\pm$\,0.028 & 0.092\,$\pm$\,0.016 & 0.808\,$\pm$\,0.012 & 0.878\,$\pm$\,0.014 & 15.9\,$\pm$\,2.6 & 13.6 & 12.6\,$\pm$\,1.7 \\
-        G2 fulldata & 0.964\,$\pm$\,0.002 & -0.010\,$\pm$\,0.003 & 0.807\,$\pm$\,0.009 & 0.082\,$\pm$\,0.004 & 0.808\,$\pm$\,0.012 & 0.885\,$\pm$\,0.004 & 14.9\,$\pm$\,0.9 & 3.0 & 10.6\,$\pm$\,1.1 \\
-        G3 balanced & 0.932\,$\pm$\,0.005 & 0.038\,$\pm$\,0.003 & 0.897\,$\pm$\,0.006 & 0.040\,$\pm$\,0.003 & 0.822\,$\pm$\,0.011 & 0.922\,$\pm$\,0.003 & 5.9\,$\pm$\,0.6 & 8.2 & --- \\
-        G4 fulldata balanced & 0.967\,$\pm$\,0.001 & -0.022\,$\pm$\,0.003 & 0.942\,$\pm$\,0.005 & 0.016\,$\pm$\,0.004 & 0.834\,$\pm$\,0.010 & 0.950\,$\pm$\,0.002 & 1.3\,$\pm$\,0.4 & 0.1 & --- \\
-        NCL reference & 0.810\,$\pm$\,0.019 & 0.021\,$\pm$\,0.004 & 0.871\,$\pm$\,0.012 & 0.218\,$\pm$\,0.014 & 0.686\,$\pm$\,0.012 & 0.778\,$\pm$\,0.022 & 8.5\,$\pm$\,1.1 & 4.9 & 5.0 \\
-        \hline
-    \end{tabular}
-    \caption{rot-MNIST decomposition block, full metrics, at both momentum
-    settings. Buffer-fidelity diagnostics for these runs are in
-    Table~\ref{tab:app_grad}.}
-    \label{tab:app_decomp}
-\end{table*}
+rot-MNIST rotates each $28\times28$ image by the per-task angle and feeds the
+flattened greyscale vector to the MLP. The CIFAR-10 domain shifts are generated
+with the \texttt{imagecorruptions} package, which implements the standard
+common-corruptions benchmark of \citet{hendrycks2019robustness}; the Gaussian
+noise, shot noise, and contrast shifts are applied at severity $3$ on the
+benchmark's $1$--$5$ scale, per sample at load time, followed by the standard
+CIFAR-10 channel normalisation. The clean task (``none'') applies the
+normalisation only.
 
-\subsection{rot-MNIST: \texorpdfstring{$\lambda$}{lambda}-Curriculum (C-series)}
-\label{app:curr_full}
+\subsection{Experience replay}
+\label{app:impl_er}
 
-\begin{table*}[htbp]
-    \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l ccc cc c cc c}
-        \hline
-        Condition & ACC & FORG & min-ACC & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC & Depth & Area & Recov. \\
-        \hline
-        \multicolumn{10}{l}{\emph{Momentum $0.0$}} \\
-        C1 linear N50 & 0.851\,$\pm$\,0.023 & 0.042\,$\pm$\,0.021 & 0.707\,$\pm$\,0.019 & 0.148\,$\pm$\,0.011 & 0.748\,$\pm$\,0.006 & 0.784\,$\pm$\,0.021 & 17.5\,$\pm$\,1.7 & 10.0 & 35.8\,$\pm$\,6.3 \\
-        C2 linear N100 & 0.844\,$\pm$\,0.025 & 0.046\,$\pm$\,0.023 & 0.719\,$\pm$\,0.033 & 0.140\,$\pm$\,0.025 & 0.730\,$\pm$\,0.006 & 0.786\,$\pm$\,0.019 & 16.2\,$\pm$\,4.3 & 8.9 & 64.0\,$\pm$\,8.6 \\
-        C3 linear N200 & 0.828\,$\pm$\,0.025 & 0.054\,$\pm$\,0.024 & 0.739\,$\pm$\,0.048 & 0.128\,$\pm$\,0.043 & 0.688\,$\pm$\,0.004 & 0.784\,$\pm$\,0.034 & 14.3\,$\pm$\,4.6 & 6.8 & 132.8\,$\pm$\,43.4 \\
-        C4 adaptive & 0.833\,$\pm$\,0.025 & 0.050\,$\pm$\,0.019 & 0.754\,$\pm$\,0.025 & 0.111\,$\pm$\,0.016 & 0.703\,$\pm$\,0.007 & 0.794\,$\pm$\,0.020 & 12.8\,$\pm$\,2.9 & 7.2 & 88.8\,$\pm$\,6.1 \\
-        C5 adaptive lmin0.05 & 0.835\,$\pm$\,0.025 & 0.048\,$\pm$\,0.019 & 0.749\,$\pm$\,0.027 & 0.113\,$\pm$\,0.016 & 0.702\,$\pm$\,0.006 & 0.793\,$\pm$\,0.020 & 13.2\,$\pm$\,3.2 & 7.2 & 88.8\,$\pm$\,6.1 \\
-        C6 adaptive lmin0.10 & 0.836\,$\pm$\,0.026 & 0.048\,$\pm$\,0.021 & 0.743\,$\pm$\,0.026 & 0.120\,$\pm$\,0.019 & 0.700\,$\pm$\,0.007 & 0.791\,$\pm$\,0.019 & 13.9\,$\pm$\,3.3 & 7.4 & 88.4\,$\pm$\,11.0 \\
-        C7 adaptive lmin0.20 & 0.837\,$\pm$\,0.031 & 0.049\,$\pm$\,0.024 & 0.743\,$\pm$\,0.030 & 0.119\,$\pm$\,0.023 & 0.710\,$\pm$\,0.010 & 0.792\,$\pm$\,0.024 & 13.9\,$\pm$\,3.4 & 7.9 & 64.8\,$\pm$\,8.2 \\
-        \hline
-        \multicolumn{10}{l}{\emph{Momentum $0.9$}} \\
-        C1 linear N50 & 0.932\,$\pm$\,0.003 & 0.053\,$\pm$\,0.005 & 0.892\,$\pm$\,0.004 & 0.041\,$\pm$\,0.004 & 0.830\,$\pm$\,0.012 & 0.927\,$\pm$\,0.003 & 6.4\,$\pm$\,0.5 & 10.6 & --- \\
-        C2 linear N100 & 0.932\,$\pm$\,0.003 & 0.051\,$\pm$\,0.008 & 0.892\,$\pm$\,0.005 & 0.036\,$\pm$\,0.003 & 0.826\,$\pm$\,0.012 & 0.926\,$\pm$\,0.002 & 6.4\,$\pm$\,0.6 & 9.6 & --- \\
-        C3 linear N200 & 0.925\,$\pm$\,0.007 & 0.051\,$\pm$\,0.006 & 0.893\,$\pm$\,0.004 & 0.031\,$\pm$\,0.004 & 0.819\,$\pm$\,0.010 & 0.920\,$\pm$\,0.006 & 6.2\,$\pm$\,0.6 & 8.0 & --- \\
-        C4 adaptive & 0.917\,$\pm$\,0.001 & 0.019\,$\pm$\,0.004 & 0.931\,$\pm$\,0.005 & 0.016\,$\pm$\,0.003 & 0.798\,$\pm$\,0.010 & 0.915\,$\pm$\,0.001 & 2.5\,$\pm$\,0.5 & 4.2 & --- \\
-        C5 adaptive lmin0.05 & 0.922\,$\pm$\,0.001 & 0.023\,$\pm$\,0.004 & 0.930\,$\pm$\,0.005 & 0.016\,$\pm$\,0.002 & 0.802\,$\pm$\,0.009 & 0.921\,$\pm$\,0.001 & 2.6\,$\pm$\,0.5 & 4.7 & --- \\
-        C6 adaptive lmin0.10 & 0.927\,$\pm$\,0.002 & 0.028\,$\pm$\,0.005 & 0.926\,$\pm$\,0.004 & 0.017\,$\pm$\,0.003 & 0.806\,$\pm$\,0.009 & 0.927\,$\pm$\,0.002 & 3.0\,$\pm$\,0.4 & 5.5 & --- \\
-        C7 adaptive lmin0.20 & 0.931\,$\pm$\,0.002 & 0.035\,$\pm$\,0.005 & 0.919\,$\pm$\,0.003 & 0.021\,$\pm$\,0.004 & 0.812\,$\pm$\,0.009 & 0.930\,$\pm$\,0.001 & 3.7\,$\pm$\,0.4 & 6.8 & --- \\
-        \hline
-    \end{tabular}
-    \caption{rot-MNIST $\lambda$-curriculum sweep, full metrics, at both momentum
-    settings. All conditions applied on top of standard ER (1\,k reservoir).}
-    \label{tab:app_curr}
-\end{table*}
+The replay buffer uses reservoir sampling \citep{vitter1985random}, so the stored
+set is a uniform sample of the past stream at any budget. Three modes appear in
+the experiments:
 
-\subsection{rot-MNIST: Buffer-Fidelity Diagnostics}
-\label{app:grad_full}
+\begin{itemize}
+    \item \emph{Standard ER} (the G1 and all C-series conditions): each step takes
+          one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
+          with half the mini-batch drawn from the current task and half sampled
+          with replacement from the buffer.
+    \item \emph{Balanced ER} (G3): two separate backward passes whose gradients are
+          individually unit-normalised before being combined $50/50$, removing the
+          magnitude asymmetry between $g_{\text{new}}$ and $g_{\text{replay}}$.
+    \item \emph{Full-data replay} (G2, G4): the replay gradient is computed on
+          \emph{every} stored sample exactly once per step (no sub-sampling). Paired
+          with a buffer equal to the full past-task training set ($60{,}000$ for
+          rot-MNIST $T_0$), this yields the deterministic empirical past-task
+          gradient at the current parameters, removing estimator variance.
+\end{itemize}
 
-The gradient diagnostics of Section~\ref{subsubsec:grad_metrics} were logged for
-the decomposition block only. The full-data conditions (G2, G4) reach exact
-fidelity by construction --- the replay gradient equals the deterministic
-empirical past-task gradient, so cosine and magnitude ratio are $1.000$. The
-finite-buffer conditions (G1, G3) show the directional and magnitude error a
-$1{,}000$-sample reservoir incurs against $g_{\text{true}}$.
+The $\lambda$-curriculum re-weights only the current-task term, minimising
+$L_\lambda = L_{\text{replay}} + \lambda(t)\, L_{\text{current}}$; the adaptive
+schedule reads $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ through an exponential
+moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$.
+
+\subsection{Natural Continual Learning}
+\label{app:impl_ncl}
+
+NCL follows \citet{kao2021naturalcontinuallearningsuccess} (their Eq.~8 and
+Algorithm~1). The update preconditions the new-task gradient by the prior
+covariance $\Lambda_{k-1}^{-1}$ and adds the Bayesian restoring term,
+\begin{equation*}
+    \theta \leftarrow \theta - \eta \left[ \Lambda_{k-1}^{-1} \nabla L_k(\theta) + (\theta - \mu_{k-1}) \right],
+\end{equation*}
+with $\Lambda_{k-1}$ summarised by a K-FAC factorisation $F \approx A \otimes G$
+per linear layer and an identity prior $p_w = \alpha\, I$. The trust radius of the
+paper's Eq.~7 is absorbed into the learning rate; we log a \texttt{tr\_scale}
+diagnostic but do not clip the step.
+
+\paragraph{Tuned hyperparameters.} The values used in every NCL condition are
+those that won the rot-MNIST tuning sweep below (Table~\ref{tab:ncl_hparams}). The
+paper-literal prior $\alpha = 1.0$ over-regularises on rot-MNIST and the damping
+$\varepsilon$ is a numerical safeguard only --- the identity prior, not the
+damping, is what bounds $\Lambda^{-1}$.
 
 \begin{table}[H]
     \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l ccc}
+    \small
+    \begin{tabular}{@{}l l l@{}}
         \hline
-        Condition & $\bar{\cos}$ & $\cos_{\min}$ & $\bar{r}$ \\
+        Hyperparameter             & Symbol               & Value      \\
         \hline
-        G1 vanilla ($\mu{=}0$) & 0.711\,$\pm$\,0.035 & 0.086\,$\pm$\,0.103 & 1.040\,$\pm$\,0.039 \\
-        G3 balanced ($\mu{=}0$) & 0.665\,$\pm$\,0.043 & 0.025\,$\pm$\,0.140 & 1.137\,$\pm$\,0.060 \\
-        G1 vanilla ($\mu{=}0.9$) & 0.551\,$\pm$\,0.033 & 0.135\,$\pm$\,0.069 & 0.418\,$\pm$\,0.014 \\
-        G3 balanced ($\mu{=}0.9$) & 0.441\,$\pm$\,0.039 & -0.052\,$\pm$\,0.117 & 0.265\,$\pm$\,0.024 \\
-        G2, G4 (full data) & 1.000 & 1.000 & 1.000 \\
+        Prior precision            & $\alpha$ (\texttt{prior\_init}) & $0.1$      \\
+        Damping                    & $\varepsilon$ (\texttt{damping})  & $1\mathrm{e}{-3}$ \\
+        Fisher samples (K-FAC)     & \texttt{fisher\_samples}          & $1{,}000$  \\
+        Trust radius (diagnostic)  & $r$ (\texttt{trust\_radius})      & $1.0$      \\
+        Learning rate              & $\eta$                            & $0.1$      \\
+        Momentum                   & ---                               & $0.9$      \\
         \hline
     \end{tabular}
-    \caption{Buffer-fidelity diagnostics for the decomposition block:
-    $\bar{\cos}$ and $\cos_{\min}$ are the mean and minimum of
-    $\cos(g_{\text{replay}}, g_{\text{true}})$ over the window; $\bar{r}$ is the
-    mean of $\|g_{\text{replay}}\|/\|g_{\text{true}}\|$.}
-    \label{tab:app_grad}
+    \caption{NCL hyperparameters fixed for all conditions, from the rot-MNIST
+    tuning sweep of Table~\ref{tab:ncl_sweep}.}
+    \label{tab:ncl_hparams}
 \end{table}
 
-\subsection{CIFAR-10: Headline Block}
-\label{app:cifar_headline_full}
+\paragraph{Tuning sweep.} The prior precision $\alpha$ was tuned on the two-task
+rot-MNIST/MLP setting (Table~\ref{tab:ncl_sweep}), holding damping at
+$1\mathrm{e}{-3}$ and \texttt{fisher\_samples} at $1{,}000$. Smaller $\alpha$
+improves over the paper-literal $\alpha = 1.0$, but the gain saturates: $\alpha =
+0.1$ gives the best stability--accuracy trade-off, while $\alpha \leq 0.03$ becomes
+unstable at $\eta = 0.1$ (the natural gradient amplifies the raw gradient by up to
+$1/\alpha$ in any direction), and halving the learning rate does not recover it.
 
-\begin{table*}[htbp]
+\begin{table}[H]
     \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l ccc cc c cc}
+    \small
+    \begin{tabular}{@{}l l l l@{}}
         \hline
-        Condition & ACC & FORG & min-ACC & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC & Depth & Area \\
+        Config             & $\alpha$ & $\eta$ & Momentum \\
         \hline
-        D1 vanilla BN & 0.723\,$\pm$\,0.008 & 0.010\,$\pm$\,0.019 & 0.644\,$\pm$\,0.023 & 0.127\,$\pm$\,0.015 & 0.484\,$\pm$\,0.020 & 0.667\,$\pm$\,0.016 & 11.8\,$\pm$\,2.5 & 34.8 \\
-        D2 NCL BN & 0.710\,$\pm$\,0.005 & 0.064\,$\pm$\,0.026 & 0.504\,$\pm$\,0.045 & 0.167\,$\pm$\,0.031 & 0.513\,$\pm$\,0.018 & 0.611\,$\pm$\,0.020 & 25.8\,$\pm$\,5.2 & 162.6 \\
-        D3 adaptive BN & 0.722\,$\pm$\,0.011 & 0.006\,$\pm$\,0.016 & 0.713\,$\pm$\,0.017 & 0.070\,$\pm$\,0.010 & 0.469\,$\pm$\,0.016 & 0.698\,$\pm$\,0.013 & 4.8\,$\pm$\,0.7 & 7.5 \\
-        D4 vanilla GN & 0.730\,$\pm$\,0.011 & -0.023\,$\pm$\,0.030 & 0.309\,$\pm$\,0.111 & 0.294\,$\pm$\,0.097 & 0.415\,$\pm$\,0.058 & 0.507\,$\pm$\,0.054 & 41.2\,$\pm$\,13.5 & 26.3 \\
-        D5 NCL GN & 0.711\,$\pm$\,0.017 & 0.012\,$\pm$\,0.028 & 0.423\,$\pm$\,0.083 & 0.200\,$\pm$\,0.062 & 0.391\,$\pm$\,0.055 & 0.563\,$\pm$\,0.038 & 29.7\,$\pm$\,10.0 & 59.0 \\
-        D6 adaptive GN & 0.731\,$\pm$\,0.020 & -0.026\,$\pm$\,0.026 & 0.670\,$\pm$\,0.055 & 0.095\,$\pm$\,0.033 & 0.340\,$\pm$\,0.052 & 0.687\,$\pm$\,0.037 & 5.2\,$\pm$\,2.1 & 0.7 \\
+        \textbf{alpha\_0.1} (chosen) & $0.1$   & $0.1$  & $0.9$ \\
+        alpha\_0.03        & $0.03$  & $0.1$  & $0.9$ \\
+        alpha\_0.01        & $0.01$  & $0.1$  & $0.9$ \\
+        alpha\_0.003       & $0.003$ & $0.1$  & $0.9$ \\
+        alpha\_0.03\_lowlr & $0.03$  & $0.05$ & $0.9$ \\
         \hline
     \end{tabular}
-    \caption{CIFAR-10 headline block, full metrics (ResNet-18, momentum $0.9$,
-    buffer $5{,}000$, five seeds). ``adaptive'' is the shipped curriculum with
-    $\lambda_{\min} = 0.20$.}
-    \label{tab:app_cifar_headline}
-\end{table*}
-
-\subsection{CIFAR-10: Generalisation Block}
-\label{app:cifar_gen_full}
-
-Each shift pairs the shipped curriculum (``ship'': adaptive $\lambda_{\min} =
-0.20$, buffer $5{,}000$) against a vanilla-ER control on the same shift, at the
-indicated normalisation, over three seeds.
-
-\begin{table*}[htbp]
-    \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l ccc c cc}
-        \hline
-        Condition & ACC & FORG & min-ACC & WC-ACC & Depth & Area \\
-        \hline
-        \multicolumn{7}{l}{\emph{BatchNorm}} \\
-        shot noise --- vanilla & 0.724\,$\pm$\,0.011 & 0.017\,$\pm$\,0.010 & 0.633\,$\pm$\,0.017 & 0.663\,$\pm$\,0.014 & 13.1\,$\pm$\,3.0 & 37.6 \\
-        shot noise --- ship & 0.723\,$\pm$\,0.014 & 0.010\,$\pm$\,0.010 & 0.708\,$\pm$\,0.032 & 0.697\,$\pm$\,0.016 & 5.6\,$\pm$\,1.0 & 8.7 \\
-        contrast --- vanilla & 0.671\,$\pm$\,0.026 & -0.008\,$\pm$\,0.006 & 0.610\,$\pm$\,0.063 & 0.586\,$\pm$\,0.048 & 15.4\,$\pm$\,3.9 & 24.8 \\
-        contrast --- ship & 0.671\,$\pm$\,0.044 & -0.012\,$\pm$\,0.007 & 0.727\,$\pm$\,0.034 & 0.643\,$\pm$\,0.048 & 3.7\,$\pm$\,1.1 & 1.5 \\
-        3-task --- vanilla & 0.740\,$\pm$\,0.006 & -0.011\,$\pm$\,0.013 & 0.670\,$\pm$\,0.015 & 0.691\,$\pm$\,0.010 & 3.3\,$\pm$\,0.4 & 16.1 \\
-        3-task --- ship & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7 & 7.9 \\
-        \hline
-        \multicolumn{7}{l}{\emph{GroupNorm}} \\
-        shot noise --- vanilla & 0.718\,$\pm$\,0.021 & -0.036\,$\pm$\,0.036 & 0.244\,$\pm$\,0.075 & 0.469\,$\pm$\,0.032 & 46.3\,$\pm$\,12.0 & 41.0 \\
-        shot noise --- ship & 0.705\,$\pm$\,0.061 & -0.028\,$\pm$\,0.012 & 0.638\,$\pm$\,0.108 & 0.656\,$\pm$\,0.087 & 7.3\,$\pm$\,5.9 & 0.9 \\
-        contrast --- vanilla & 0.777\,$\pm$\,0.022 & -0.067\,$\pm$\,0.021 & 0.641\,$\pm$\,0.061 & 0.710\,$\pm$\,0.040 & 8.4\,$\pm$\,4.4 & 1.4 \\
-        contrast --- ship & 0.778\,$\pm$\,0.032 & -0.070\,$\pm$\,0.013 & 0.668\,$\pm$\,0.077 & 0.724\,$\pm$\,0.054 & 3.9\,$\pm$\,3.1 & 0.5 \\
-        3-task --- vanilla & 0.722\,$\pm$\,0.020 & -0.023\,$\pm$\,0.015 & 0.468\,$\pm$\,0.043 & 0.550\,$\pm$\,0.023 & 4.4\,$\pm$\,0.4 & 18.3 \\
-        3-task --- ship & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 41.7 \\
-        \hline
-    \end{tabular}
-    \caption{CIFAR-10 generalisation block, full metrics. The two-task novel
-    corruptions (shot noise, contrast) favour the curriculum under both
-    normalisations; the three-task group-norm sequence is the outlier discussed
-    in Section~\ref{subsec:res_cifar}.}
-    \label{tab:app_cifar_gen}
-\end{table*}
-
-\subsection{Long-Sequence rot-MNIST (L-series)}
-\label{app:longseq_full}
-
-\begin{table*}[htbp]
-    \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l ccc cc c cc}
-        \hline
-        Condition & ACC & FORG & min-ACC & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC & Depth & Area \\
-        \hline
-        L1 vanilla ER & 0.889\,$\pm$\,0.007 & 0.096\,$\pm$\,0.008 & 0.845\,$\pm$\,0.007 & 0.065\,$\pm$\,0.008 & 0.317\,$\pm$\,0.006 & 0.870\,$\pm$\,0.006 & 8.9\,$\pm$\,1.7 & 35.7 \\
-        L2 NCL & 0.815\,$\pm$\,0.003 & -0.033\,$\pm$\,0.004 & 0.811\,$\pm$\,0.006 & 0.159\,$\pm$\,0.009 & 0.423\,$\pm$\,0.006 & 0.783\,$\pm$\,0.006 & 2.5\,$\pm$\,0.6 & 4.5 \\
-        L3 adaptive lmin0.00 & 0.896\,$\pm$\,0.003 & 0.037\,$\pm$\,0.003 & 0.877\,$\pm$\,0.003 & 0.030\,$\pm$\,0.001 & 0.426\,$\pm$\,0.005 & 0.883\,$\pm$\,0.003 & 4.4\,$\pm$\,0.2 & 21.0 \\
-        L4 adaptive lmin0.10 & 0.896\,$\pm$\,0.003 & 0.060\,$\pm$\,0.003 & 0.877\,$\pm$\,0.006 & 0.034\,$\pm$\,0.004 & 0.384\,$\pm$\,0.005 & 0.890\,$\pm$\,0.005 & 4.5\,$\pm$\,0.6 & 22.9 \\
-        \hline
-    \end{tabular}
-    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
-    transitions, momentum $0.9$, five seeds). Depth and area are means over the
-    four task boundaries.}
-    \label{tab:app_longseq}
-\end{table*}
+    \caption{NCL prior-precision tuning sweep on two-task rot-MNIST. Damping
+    ($1\mathrm{e}{-3}$) and \texttt{fisher\_samples} ($1{,}000$) held fixed.}
+    \label{tab:ncl_sweep}
+\end{table}

@@ -1,146 +1,78 @@
-\section*{Detailed Step-by-Step Proof of the Trajectory Bound}
-\label{app:detailed_proof}
+\section{Metric Definitions}
+\label{app:metric_defs}
 
-\subsection*{The Mathematical Setup \& Definitions}
+This appendix gives the full definitions of every metric recorded by the
+evaluation pipeline of Section~\ref{subsec:metrics}. The main text explains the
+measures the argument turns on; the tables below are the look-up reference for
+the complete set.
 
-\paragraph{1. The Combined Loss.}
-The total loss function at any point $\lambda \in [0,1]$ in the curriculum is defined as:
-\begin{equation}
-    L_\lambda(\theta) = L_{\text{replay}}(\theta) + \lambda \cdot L_{\text{current}}(\theta)
-\end{equation}
+\paragraph{Stability-gap metrics.} Computed from the dense per-step evaluation.
+Write $a_j^{\text{pre}}$ for the pre-task accuracy on task $j$ and $a_j(t)$ for
+its accuracy at step $t$ of the new task.
 
-\paragraph{2. Defining the Hessians ($\nabla^2$).}
-When we take the derivative of a gradient ($\nabla$), we obtain the second derivative matrix, called the Hessian ($H$).
-\begin{itemize}
-    \item $H_{\text{replay}} = \nabla^2 L_{\text{replay}}(\theta)$ (The curvature of the old task)
-    \item $H_{\text{current}} = \nabla^2 L_{\text{current}}(\theta)$ (The curvature of the new task)
-\end{itemize}
-Therefore, the Hessian of our combined loss, $H_\lambda$, is defined by applying the second derivative operator to the total loss function:
-\begin{align*}
-    H_\lambda & = \nabla^2 \left[ L_{\text{replay}}(\theta) + \lambda \cdot L_{\text{current}}(\theta) \right] \\
-    H_\lambda & = \nabla^2 L_{\text{replay}}(\theta) + \lambda \cdot \nabla^2 L_{\text{current}}(\theta)       \\
-    H_\lambda & = H_{\text{replay}} + \lambda \cdot H_{\text{current}}
-\end{align*}
+\begin{table*}[htbp]
+    \centering
+    \small
+    \begin{tabular}{@{}p{2.3cm} p{7.9cm} p{4.4cm}@{}}
+        \hline
+        Metric                   & Definition                                                                                                              & Role                                                 \\
+        \hline
+        \texttt{gap\_depth}      & $\max_j \left( a_j^{\text{pre}} - \min_t a_j(t) \right)$ over the full record window                                    & Primary metric --- worst single point of instability \\
+        \texttt{gap\_area}       & $\sum_j \int_0^{T} \max\!\left(0,\, a_j^{\text{pre}} - a_j(t)\right) dt$, trapezoidal over the full new-task record (to task end $T$); accuracy at or above baseline contributes $0$ & Depth $\times$ duration of the below-baseline shortfall (units: accuracy $\cdot$ steps) \\
+        \texttt{max\_drop}       & \texttt{gap\_depth} restricted to the first $200$ steps                                                                 & Fixed-window metric, kept for back-comparability     \\
+        \texttt{recovery\_steps} & Given a record has dipped below the threshold, the first step --- counted from the transition --- at which \emph{every} past task is simultaneously at $\geq 90\%$ of its pre-task baseline & None if no sub-threshold dip occurs, or if recovery is not reached within the record \\
+        \hline
+    \end{tabular}
+    \caption{Stability-gap metrics, recorded from dense per-step evaluation. \texttt{gap\_depth} is the headline measure used in every contrast.}
+    \label{tab:gap_metrics}
+\end{table*}
 
-\subsection*{Part A: The Perfect Path Never Spikes}
+\paragraph{Continual-learning metrics.} Following
+\citet{delange2023continualevaluationlifelonglearning}, computed at task
+boundaries and over the full record. Let $A(E_j, f_n)$ be the accuracy on the
+test set of task $j$ evaluated at the model $f_n$ after training stage $n$, and
+let $N$ be the number of tasks. The full task-boundary accuracy matrix
+$R[i,j] = A(E_j, f_{T_i})$ is logged for every run, so any downstream metric can
+be reconstructed.
 
-Let $\Theta^*(\lambda)$ be the ``Optimum Path''---the exact parameter state that perfectly minimises $L_\lambda(\theta)$ for any given $\lambda$.
+\begin{table*}[htbp]
+    \centering
+    \small
+    \begin{tabular}{@{}p{1.8cm} p{8.5cm} p{4.3cm}@{}}
+        \hline
+        Metric          & Definition                                                                                                      & Role                                              \\
+        \hline
+        ACC             & $\frac{1}{N} \sum_j A(E_j, f_{T_{N-1}})$                                                                        & Average task accuracy at the final model          \\
+        FORG            & $\frac{1}{N-1} \sum_{i<N-1} \left[ A(E_i, f_{T_i}) - A(E_i, f_{T_{N-1}}) \right]$                               & Average drop from right-after-learning to final   \\
+        min-ACC         & $\frac{1}{N-1} \sum_{i<N-1} \min\{ A(E_i, f_n) : n > T_i \}$                                                    & Worst-case retention since learning               \\
+        $\mathrm{WF}_w$ & Mean over tasks of the largest accuracy drop in any window of $w$ consecutive evaluations ($w \in \{10, 100\}$) & Worst-case stability over short / medium horizons \\
+        $\mathrm{WP}_w$ & Symmetric counterpart of $\mathrm{WF}_w$: the largest accuracy gain ($w \in \{10, 100\}$)                       & Plasticity / learning velocity                    \\
+        WC-ACC          & $\frac{1}{N} A(E_{N-1}, f_{T_{N-1}}) + \left(1 - \frac{1}{N}\right)\text{min-ACC}$                              & Worst-case trade-off --- a lower bound on ACC     \\
+        \hline
+    \end{tabular}
+    \caption{Continual-learning metrics of \citet{delange2023continualevaluationlifelonglearning}, recorded at task boundaries and over the full record.}
+    \label{tab:cl_metrics}
+\end{table*}
 
-\paragraph{Step 1: The First-Order Condition.}
-Because $\Theta^*(\lambda)$ is the perfect minimum, the gradient (slope) of the total loss evaluated at that exact point must be zero. We define this as our starting equilibrium:
-\begin{align*}
-    \nabla \left[ L_\lambda(\Theta^*(\lambda)) \right]                                                               & = 0 \\
-    \nabla \left[ L_{\text{replay}}(\Theta^*(\lambda)) + \lambda \cdot L_{\text{current}}(\Theta^*(\lambda)) \right] & = 0
-\end{align*}
-Distributing the gradient operator to both terms gives us the fundamental First-Order Condition:
-\begin{equation}
-    \nabla L_{\text{replay}}(\Theta^*(\lambda)) + \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) = 0
-    \label{eq:foc_detailed}
-\end{equation}
+\paragraph{Gradient-fidelity diagnostics.} Recorded at the dense cadence for the
+decomposition conditions only. The tracker compares the replay-buffer gradient
+$g_{\text{replay}}$ against the true past-task gradient $g_{\text{true}}$,
+computed at every step by a separate forward and backward pass over the entire
+past-task training set (no sub-sampling, so $g_{\text{true}}$ is the
+deterministic empirical past-task gradient at the current parameters).
 
-\paragraph{Step 2: Implicit Differentiation to Find Path Movement.}
-We want to know how the optimal path $\Theta^*$ moves as $\lambda$ changes. We apply the derivative operator $\frac{d}{d\lambda}$ to the entire First-Order Condition:
-\begin{equation*}
-    \frac{d}{d\lambda} \left[ \nabla L_{\text{replay}}(\Theta^*(\lambda)) + \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right] = \frac{d}{d\lambda} [0]
-\end{equation*}
-Distributing the operator to each term:
-\begin{equation*}
-    \frac{d}{d\lambda} \left[ \nabla L_{\text{replay}}(\Theta^*(\lambda)) \right] + \frac{d}{d\lambda} \left[ \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right] = 0
-\end{equation*}
-Evaluating the first term via the multivariable chain rule:
-\begin{equation*}
-    \frac{d}{d\lambda} \left[ \nabla L_{\text{replay}}(\Theta^*(\lambda)) \right] = \nabla^2 L_{\text{replay}}(\Theta^*(\lambda)) \cdot \frac{d\Theta^*}{d\lambda}
-\end{equation*}
-Evaluating the second term via the product rule and chain rule:
-\begin{equation*}
-    \frac{d}{d\lambda} \left[ \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right] = (1) \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) + \lambda \cdot \left( \nabla^2 L_{\text{current}}(\Theta^*(\lambda)) \cdot \frac{d\Theta^*}{d\lambda} \right)
-\end{equation*}
-Substituting these expanded terms back into the equation:
-\begin{equation*}
-    \left[ \nabla^2 L_{\text{replay}}(\Theta^*) \cdot \frac{d\Theta^*}{d\lambda} \right] + \left[ \nabla L_{\text{current}}(\Theta^*) + \lambda \cdot \nabla^2 L_{\text{current}}(\Theta^*) \cdot \frac{d\Theta^*}{d\lambda} \right] = 0
-\end{equation*}
-Grouping the terms that share the path movement $\frac{d\Theta^*}{d\lambda}$:
-\begin{equation*}
-    \left( \nabla^2 L_{\text{replay}}(\Theta^*) + \lambda \cdot \nabla^2 L_{\text{current}}(\Theta^*) \right) \cdot \frac{d\Theta^*}{d\lambda} + \nabla L_{\text{current}}(\Theta^*) = 0
-\end{equation*}
-Recognising the definition of the combined Hessian $H_\lambda$ inside the parentheses:
-\begin{equation*}
-    H_\lambda \cdot \frac{d\Theta^*}{d\lambda} + \nabla L_{\text{current}}(\Theta^*(\lambda)) = 0
-\end{equation*}
-Solving algebraically for the path movement $\frac{d\Theta^*}{d\lambda}$:
-\begin{equation}
-    \frac{d\Theta^*}{d\lambda} = -H_\lambda^{-1} \cdot \nabla L_{\text{current}}(\Theta^*(\lambda))
-    \label{eq:path_movement}
-\end{equation}
-
-\paragraph{Step 3: Calculating the Change in Task 0 Loss.}
-How does the Replay loss specifically change as $\lambda$ increases along this perfect path? We apply the derivative operator:
-\begin{equation*}
-    \frac{d}{d\lambda} \left[ L_{\text{replay}}(\Theta^*(\lambda)) \right] = \nabla L_{\text{replay}}(\Theta^*(\lambda))^\top \cdot \frac{d\Theta^*(\lambda)}{d\lambda}
-\end{equation*}
-We perform two substitutions here. First, from \eqref{eq:foc_detailed}, we know $\nabla L_{\text{replay}} = -\lambda \cdot \nabla L_{\text{current}}$. Second, from \eqref{eq:path_movement}, we substitute the path movement.
-\begin{align*}
-    \frac{d}{d\lambda} L_{\text{replay}}(\Theta^*(\lambda)) & = \left( -\lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right)^\top \cdot \left( -H_\lambda^{-1} \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right) \\
-                                                            & = \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda))^\top \cdot H_\lambda^{-1} \cdot \nabla L_{\text{current}}(\Theta^*(\lambda))
-\end{align*}
-Because $H_\lambda$ is positive-definite (strict minimum assumption), $H_\lambda^{-1}$ is positive-definite. The quadratic form $v^\top M v$ is therefore guaranteed to be $\ge 0$. Since $\lambda \ge 0$, the entire equation satisfies:
-\begin{equation*}
-    \frac{d}{d\lambda} L_{\text{replay}}(\Theta^*(\lambda)) \ge 0
-\end{equation*}
-\emph{Conclusion for Part A:} The Replay loss mathematically never decreases along the perfect path, meaning it can never overshoot its final joint-optimum value.
-
-\subsection*{Part B: The Clumsy Network Tracks the Perfect Path}
-
-Let $\theta(t)$ be the actual position of the model parameters at time $t$. We define the tracking error $\delta(t)$:
-\begin{equation*}
-    \delta(t) = \theta(t) - \Theta^*(\lambda(t))
-\end{equation*}
-
-\paragraph{Step 1: Differentiating the Error.}
-We apply the time derivative operator $\frac{d}{dt}$ to our error definition:
-\begin{equation*}
-    \frac{d}{dt} \left[ \delta(t) \right] = \frac{d}{dt} \left[ \theta(t) \right] - \frac{d}{dt} \left[ \Theta^*(\lambda(t)) \right]
-\end{equation*}
-The model moves via gradient descent, so $\frac{d\theta}{dt} = -\nabla L_{\lambda(t)}(\theta(t))$. The perfect path moves via the chain rule $\frac{d\Theta^*}{dt} = \frac{d\Theta^*}{d\lambda} \cdot \frac{d\lambda}{dt}$. Because the curriculum has a constant velocity over $N$ steps, $\frac{d\lambda}{dt} = \frac{1}{N}$.
-\begin{equation*}
-    \frac{d\delta}{dt} = -\nabla L_{\lambda(t)}(\theta(t)) - \left( \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \right)
-\end{equation*}
-
-\paragraph{Step 2: Taylor Expansion of the Actual Gradient.}
-We approximate the gradient at the actual position $\theta(t)$ by Taylor-expanding it around the perfect position $\Theta^*$:
-\begin{equation*}
-    \nabla L_\lambda(\theta) \approx \nabla L_\lambda(\Theta^*) + \nabla \left[ \nabla L_\lambda(\Theta^*) \right] \cdot (\theta - \Theta^*)
-\end{equation*}
-Since the gradient at the perfect minimum is zero ($\nabla L_\lambda(\Theta^*) = 0$) and the derivative of the gradient is the Hessian ($\nabla^2 L_\lambda = H_\lambda$), this collapses to:
-\begin{equation*}
-    \nabla L_\lambda(\theta) \approx H_\lambda \cdot \delta
-\end{equation*}
-
-\paragraph{Step 3: The Final Steady State.}
-Substitute this expanded gradient back into our differential equation:
-\begin{equation*}
-    \frac{d\delta}{dt} \approx -H_\lambda \cdot \delta - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
-\end{equation*}
-At a steady-state tracking lag, the error stops growing ($\frac{d\delta}{dt} \approx 0$):
-\begin{align*}
-    0                      & \approx -H_\lambda \cdot \delta - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \\
-    H_\lambda \cdot \delta & \approx -\frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}                          \\
-    \delta                 & \approx -H_\lambda^{-1} \cdot \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
-\end{align*}
-Taking the norm, we see the lag distance is mathematically bounded by the curriculum length $N$:
-\begin{equation}
-    \|\delta\| = O\left(\frac{1}{N}\right)
-\end{equation}
-
-\subsection*{The Grand Finale: Expanding the Actual Loss}
-
-To find the maximum Replay loss the model will actually experience, we Taylor expand the loss of the actual trajectory around the perfect position:
-\begin{align*}
-    L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot (\theta - \Theta^*) \\
-    L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot \delta
-\end{align*}
-From Part A, $L_{\text{replay}}(\Theta^*)$ cannot exceed the final joint optimum loss $L_{\text{replay}}(\theta_{\text{joint}}^*)$. From Part B, the lag $\delta$ is $O(1/N)$. Substituting these limits yields the final mathematical guarantee:
-\begin{equation}
-    \sup_t L_{\text{replay}}(\theta(t)) \le L_{\text{replay}}(\theta_{\text{joint}}^*) + O\left(\frac{1}{N}\right)
-\end{equation}
-\emph{Conclusion:} The transient stability gap is entirely contained within the $O(1/N)$ term, meaning a sufficiently slow continuous curriculum eliminates the discrete-time overshoot.
+\begin{table*}[htbp]
+    \centering
+    \small
+    \begin{tabular}{@{}p{4.2cm} p{3.0cm} p{7.2cm}@{}}
+        \hline
+        Diagnostic                                    & Logged name                     & Role                                                                                               \\
+        \hline
+        $\cos(g_{\text{replay}}, g_{\text{true}})$    & \texttt{true\_grad\_cosine}     & Buffer-side directional fidelity --- the estimator-bias contributor of Section~\ref{subsec:decomp} \\
+        $\|g_{\text{replay}}\| / \|g_{\text{true}}\|$ & \texttt{true\_grad\_mag\_ratio} & Buffer-side magnitude fidelity                                                                     \\
+        $\|g_{\text{new}}\| / \|g_{\text{replay}}\|$  & \texttt{grad\_ratio}            & Update-side magnitude asymmetry --- large at step $1$ when $\|g_{\text{replay}}\| \approx 0$       \\
+        \hline
+    \end{tabular}
+    \caption{Gradient-fidelity diagnostics, recorded over the new task's first ${\sim}500$ steps. Each is logged as a per-step series together with its mean (and minimum, for the cosine). The first two carry the \texttt{true\_grad} prefix because they are measured against $g_{\text{true}}$; \texttt{grad\_ratio} compares $g_{\text{replay}}$ to the current-task gradient $g_{\text{new}}$ and its inverse drives the adaptive curriculum of Section~\ref{subsec:curriculum}.}
+    \label{tab:grad_metrics}
+\end{table*}
