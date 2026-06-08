@@ -27,6 +27,48 @@ Therefore, the Hessian of our combined loss, $H_\lambda$, is defined by applying
     H_\lambda & = H_{\text{replay}} + \lambda \cdot H_{\text{current}}
 \end{align*}
 
+\paragraph{3. The Local-Minimum Assumption.}
+The derivation does not require the loss to be a single global convex bowl.
+Positive-definiteness of $H_\lambda$ is used in only three places --- inverting
+$H_\lambda$ to obtain the path velocity (Part~A, Step~2), fixing the sign of the
+quadratic form (Part~A, Step~3), and contracting the tracking error (Part~B,
+Step~3) --- and each is a property of the single point $\Theta^*(\lambda)$ on the
+followed path. We therefore replace the global assumption with the local
+\emph{second-order sufficient condition along the branch}:
+\begin{quote}
+    $L_{\text{replay}}, L_{\text{current}} \in C^2$ in a neighbourhood of the
+    path; there is a $C^1$ branch $\lambda \mapsto \Theta^*(\lambda)$ of critical
+    points of $L_\lambda$ with $\Theta^*(0) = \theta_0^*$, along which
+    $H_\lambda(\Theta^*(\lambda)) \succ 0$ for every $\lambda \in [0,1]$.
+\end{quote}
+This is the statement that the iterate tracks a continuously connected family of
+\emph{strict local} minima, strictly weaker than global convexity. Near
+$\lambda = 0$ it holds for free: $\theta_0^*$ being a non-degenerate local
+minimum of $L_{\text{replay}}$ (ordinary convergence on $T_0$) gives
+$H_0 = H_{\text{replay}}(\theta_0^*) \succ 0$, the implicit function theorem then
+produces a unique smooth branch in a neighbourhood of $\lambda = 0$, and Weyl's
+inequality on $H_\lambda = H_{\text{replay}} + \lambda H_{\text{current}}$ bounds
+how far it persists:
+\begin{equation*}
+    \lambda_{\min}(H_\lambda) \;\ge\; \lambda_{\min}(H_{\text{replay}}) + \lambda\, \lambda_{\min}(H_{\text{current}}).
+\end{equation*}
+If the new task is also locally convex at the relevant points
+($H_{\text{current}} \succeq 0$), positive-definiteness holds for all
+$\lambda \ge 0$ with no global assumption. If $H_{\text{current}}$ carries
+negative curvature ($\mu_- := \lambda_{\min}(H_{\text{current}}) < 0$), it is
+guaranteed at least while
+\begin{equation}
+    \lambda < \lambda^\star = \frac{\lambda_{\min}(H_{\text{replay}})}{-\lambda_{\min}(H_{\text{current}})}.
+    \label{eq:lambda_star}
+\end{equation}
+Beyond $\lambda^\star$ the branch can reach a $\lambda$ where $H_\lambda$ turns
+singular --- a fold bifurcation, where the path velocity
+$\frac{d\Theta^*}{d\lambda} = -H_\lambda^{-1} \nabla L_{\text{current}}$ diverges,
+the optimum path jumps discontinuously, and the no-overshoot guarantee genuinely
+fails. This is the regime, flagged for the deeper CIFAR backbone in
+Section~\ref{subsec:cifar}, where the new task's negative curvature overpowers
+the old task's least curvature and the bound is expected to weaken.
+
 \subsection*{Part A: The Perfect Path Never Spikes}
 
 Let $\Theta^*(\lambda)$ be the ``Optimum Path''---the exact parameter state that perfectly minimises $L_\lambda(\theta)$ for any given $\lambda$.
@@ -88,7 +130,7 @@ We perform two substitutions here. First, from \eqref{eq:foc_detailed}, we know 
     \frac{d}{d\lambda} L_{\text{replay}}(\Theta^*(\lambda)) & = \left( -\lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right)^\top \cdot \left( -H_\lambda^{-1} \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right) \\
                                                             & = \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda))^\top \cdot H_\lambda^{-1} \cdot \nabla L_{\text{current}}(\Theta^*(\lambda))
 \end{align*}
-Because $H_\lambda$ is positive-definite (strict minimum assumption), $H_\lambda^{-1}$ is positive-definite. The quadratic form $v^\top M v$ is therefore guaranteed to be $\ge 0$. Since $\lambda \ge 0$, the entire equation satisfies:
+Because $H_\lambda$ is positive-definite along the followed branch of local minima (the Local-Minimum Assumption, valid at least for $\lambda < \lambda^\star$ of Equation~\eqref{eq:lambda_star}), $H_\lambda^{-1}$ is positive-definite. The quadratic form $v^\top M v$ is therefore guaranteed to be $\ge 0$. Since $\lambda \ge 0$, the entire equation satisfies:
 \begin{equation*}
     \frac{d}{d\lambda} L_{\text{replay}}(\Theta^*(\lambda)) \ge 0
 \end{equation*}
@@ -149,3 +191,82 @@ From Part A, $L_{\text{replay}}(\Theta^*)$ cannot exceed the final joint optimum
     \sup_t L_{\text{replay}}(\theta(t)) \le L_{\text{replay}}(\theta_{\text{joint}}^*) + O\left(\frac{1}{N}\right)
 \end{equation}
 \emph{Conclusion:} The transient stability gap is entirely contained within the $O(1/N)$ term, meaning a sufficiently slow continuous curriculum eliminates the discrete-time overshoot.
+
+\subsection*{Why the Gap Is Large for Small $N$: Two Mechanisms}
+
+The bound above explains why the gap \emph{vanishes} as $N \to \infty$. The
+complementary question --- why a small $N$ (in the limit, the instantaneous jump
+$N = 1$) produces a large gap --- has a two-part answer, and the two parts map
+onto the two empirical readouts: the instantaneous \texttt{gap\_depth} and the
+sustained \texttt{gap\_area}/\texttt{recovery\_steps}.
+
+Write $g := \nabla L_{\text{current}}(\theta_0^*)$ for the new-task gradient at
+the boundary (large, because $T_1$ is unfit), and use convergence on the old
+task, $\nabla L_{\text{replay}}(\theta_0^*) = 0$ and
+$H_0 = H_{\text{replay}}(\theta_0^*) \succ 0$. For a linear ramp
+$\lambda_k = k/N$ the first applied weight is $\lambda_1 = 1/N$. Linearising the
+iterate error $e_k = \theta_k - \Theta^*(\lambda_k)$ around the path gives the
+forced recursion
+\begin{equation}
+    e_{k+1} = (I - \eta H_{\lambda_k})\, e_k + r_k,
+    \label{eq:error_recursion}
+\end{equation}
+whose two contributions --- the initial transient and the particular solution
+under the forcing $r_k$ --- are the two mechanisms.
+
+\paragraph{Mechanism 1: the first-step magnitude overshoot (depth).}
+Because $\nabla L_{\text{replay}}(\theta_0^*) = 0$, the first update is
+\emph{one-sided}: the replay gradient contributes nothing and the step is driven
+entirely by the new task,
+\begin{equation*}
+    \theta_1 - \theta_0^* = -\eta\, \lambda_1\, g,
+\end{equation*}
+which is precisely the magnitude asymmetry $G_{\text{mag}}$ of
+Section~\ref{subsec:decomposition}. Any displacement $d$ away from the replay
+minimum raises the replay loss purely through curvature, since the first-order
+term vanishes at $\theta_0^*$:
+\begin{equation}
+    L_{\text{replay}}(\theta_1) - L_{\text{replay}}(\theta_0^*)
+    \;\approx\; \tfrac{1}{2}\, d^\top H_{\text{replay}}\, d
+    \;=\; \tfrac{1}{2}\, \eta^2 \lambda_1^2\; g^\top H_0\, g
+    \;=\; O(\lambda_1^2).
+    \label{eq:depth_scaling}
+\end{equation}
+This is the worst single point of instability --- \texttt{gap\_depth}. It scales
+as $\lambda_1^2$: $O(1)$ for the jump ($\lambda_1 = 1$) and $O(1/N^2)$ for a ramp.
+The spike then closes geometrically as the homogeneous part of
+Equation~\eqref{eq:error_recursion} pulls the iterate back into the basin,
+$(I - \eta H_0)^k$, at rate $\eta\, \lambda_{\min}(H_0)$ --- the recovery. No
+path-tracking argument enters here; the depth is first step $\times$ curvature.
+
+\paragraph{Mechanism 2: the trajectory lag (the hanging tail).}
+Even with the first-step kick removed, the iterate cannot sit on the
+\emph{moving} minimiser. The particular solution of
+Equation~\eqref{eq:error_recursion} is the sustained lag of Part~B,
+\begin{equation*}
+    \delta_{\text{ss}} = -H_\lambda^{-1}\, \frac{d\Theta^*}{d\lambda}\, \frac{1}{N} = O\!\left(\tfrac{1}{N}\right),
+\end{equation*}
+held across the \emph{entire} ramp rather than at one step. It is therefore a
+broad, slowly-closing deviation --- the dip below the recovered level measured by
+\texttt{gap\_area}, and the delay measured by \texttt{recovery\_steps} --- the
+hanging tail rather than the notch.
+
+\paragraph{The combined small-$N$ picture.}
+Both forcings are governed by the same $N$: the trajectory forcing is
+$\propto 1/N$, and the first-step weight is $\lambda_1 = 1/N$. At the
+instantaneous jump ($N = 1$) the optimum-path velocity is effectively infinite
+and the boundary kick is full strength, so both mechanisms fire at $O(1)$ and the
+gap is maximal. Growing $N$ attenuates them at \emph{different} rates ---
+$O(1/N^2)$ for the depth spike (Equation~\eqref{eq:depth_scaling}) versus
+$O(1/N)$ for the tail --- which is why the trajectory term is the bottleneck in
+the combined bound of Equation~\eqref{eq:bound} and why the curriculum tightens
+\texttt{gap\_area} more cleanly than \texttt{gap\_depth}.
+
+\paragraph{Reconciliation with the measured depth.}
+Equation~\eqref{eq:depth_scaling} predicts the \emph{schedule-dependent} part of
+depth should fall as $1/N^2$. The measured depth (conditions C1--C3) only drifts
+from ${\approx}17.5$ to ${\approx}14.3$ rather than vanishing, because what
+remains is the estimator-variance floor $G_{\text{est}}$ --- a property of the
+finite buffer, untouched by $\lambda(t)$ --- which the decomposition isolates as
+the residual depth at G4. The theory thus predicts the controllable component of
+depth, and the observed floor is exactly the schedule-independent contributor.

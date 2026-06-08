@@ -65,6 +65,8 @@ If the model were capable of perfectly walking this ideal path, the replay loss 
 \end{equation}
 Because the replay loss can only strictly rise (or stay flat) as it accommodates the new task, it can never decrease. Therefore, it is physically impossible for the loss to spike up and come back down. It simply rises monotonically until it reaches its permanent, unavoidable baseline at the joint optimum ($\theta_{\text{joint}}^*$).
 
+This argument needs no global convexity. It requires only that the tracked path stays a family of \emph{local} minima --- that the combined Hessian remains positive-definite along the branch the iterate follows --- which holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's, the point at which the bound is expected to weaken (Appendix~\ref{app:detailed_proof}).
+
 \subsection{Part B: A slow ramp keeps the model on the path}
 \label{subsec:partB_summary}
 
@@ -84,5 +86,7 @@ By combining the "no-overshoot" rule of the perfect path (Part A) with the track
     \label{eq:bound}
 \end{equation}
 The first term is the genuine plasticity--stability trade-off: the permanent capacity cost of learning both tasks. The second term is the transient stability gap.
+
+Read in the other direction, the same two parts explain why a \emph{small} $N$ --- in the limit the instantaneous jump --- produces a large gap, through two distinct mechanisms that map onto the two empirical readouts. The one-sided first step, driven by the new-task gradient while the replay gradient is still zero, gives an instantaneous curvature-cost spike that scales as $1/N^2$ and registers as \texttt{gap\_depth}; the trajectory lag behind the moving optimum is sustained across the whole ramp, scales as $1/N$, and registers as the slowly-closing \texttt{gap\_area}. At the jump both are $O(1)$ and the gap is maximal. The full decomposition is in Appendix~\ref{app:detailed_proof}.
 
 Because the transient gap shrinks proportionally with $1/N$, a sufficiently slow continuous curriculum physically drives the trajectory overshoot to zero. The bound formally concerns only the trajectory contributor $G_{\text{traj}}$, but the same gradual introduction also tempers the magnitude asymmetry $G_{\text{mag}}$: ramping the current-task loss up from zero lets its gradient enter in small increments rather than dominating the first step, so the iterate is never thrown as far out of the replay basin. Only the estimator variance $G_{\text{est}}$, a property of the finite buffer rather than the schedule, is left untouched. The model's step-size adaptation is preserved throughout, cleanly resolving the gap without the need for complex path-finding interventions.

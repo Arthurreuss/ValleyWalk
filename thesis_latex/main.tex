@@ -22,14 +22,16 @@
 
 \begin{document}
 
-\twocolumn[
-  \maketitle
-  \begin{@twocolumnfalse}
-    \input{./sections/1_abstract}
-  \end{@twocolumnfalse}
-]
-
+\onecolumn
+\maketitle
 \thispagestyle{firststyle}
+\input{./sections/1_abstract}
+
+\vspace{2ex}
+\setcounter{tocdepth}{2} % sections and subsections
+\tableofcontents
+
+\twocolumn
 
 \input{sections/2_introduction}
 \input{sections/3_literature}
@@ -38,7 +40,7 @@
 \input{sections/6_research_question}
 \input{sections/7_methods}
 \input{sections/8_results}
-% \input{sections/9_discussion}
+\input{sections/9_discussion}
 
 
 
@@ -48,6 +50,7 @@
 \bibliography{ref}
 
 \clearpage
+\onecolumn
 
 \begin{appendices}
   \input{sections/appendixA.tex} % Implementation Details

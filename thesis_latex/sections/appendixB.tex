@@ -10,22 +10,22 @@ the complete set.
 Write $a_j^{\text{pre}}$ for the pre-task accuracy on task $j$ and $a_j(t)$ for
 its accuracy at step $t$ of the new task.
 
-\begin{table*}[htbp]
+\begin{table}[H]
     \centering
     \small
     \begin{tabular}{@{}p{2.3cm} p{7.9cm} p{4.4cm}@{}}
         \hline
-        Metric                   & Definition                                                                                                              & Role                                                 \\
+        Metric                   & Definition                                                                                                                                                                                                                                                                                                                                        & Role                                                                                                                                        \\
         \hline
-        \texttt{gap\_depth}      & $\max_j \left( a_j^{\text{pre}} - \min_t a_j(t) \right)$ over the full record window                                    & Primary metric --- worst single point of instability \\
-        \texttt{gap\_area}       & $\sum_j \int_0^{T} \max\!\left(0,\, a_j^{\text{pre}} - a_j(t)\right) dt$, trapezoidal over the full new-task record (to task end $T$); accuracy at or above baseline contributes $0$ & Depth $\times$ duration of the below-baseline shortfall (units: accuracy $\cdot$ steps) \\
-        \texttt{max\_drop}       & \texttt{gap\_depth} restricted to the first $200$ steps                                                                 & Fixed-window metric, kept for back-comparability     \\
-        \texttt{recovery\_steps} & Given a record has dipped below the threshold, the first step --- counted from the transition --- at which \emph{every} past task is simultaneously at $\geq 90\%$ of its pre-task baseline & None if no sub-threshold dip occurs, or if recovery is not reached within the record \\
+        \texttt{gap\_depth}      & $\max_j \left( a_j^{\text{pre}} - \min_t a_j(t) \right)$ over the full record window                                                                                                                                                                                                                                                              & Primary metric --- worst single point of instability                                                                                        \\
+        \texttt{gap\_area}       & $\sum_j \int_0^{T} \max\!\left(0,\, b_j - a_j(t)\right) dt$, trapezoidal over the full new-task record (to task end $T$), with $b_j = \min\!\left(a_j^{\text{pre}},\, \bar a_j^{\text{end}}\right)$ and $\bar a_j^{\text{end}}$ the trailing-window mean (last $\max(5, \lceil 0.1 n\rceil)$ samples); accuracy at or above $b_j$ contributes $0$ & Transient \emph{bend}: dip below the recovered level, excluding permanent forgetting and continued learning (units: accuracy $\cdot$ steps) \\
+        \texttt{max\_drop}       & \texttt{gap\_depth} restricted to the first $200$ steps                                                                                                                                                                                                                                                                                           & Fixed-window metric, kept for back-comparability                                                                                            \\
+        \texttt{recovery\_steps} & Given a record has dipped below the threshold, the first step --- counted from the transition --- at which \emph{every} past task is simultaneously at $\geq 90\%$ of its pre-task baseline                                                                                                                                                       & None if no sub-threshold dip occurs, or if recovery is not reached within the record                                                        \\
         \hline
     \end{tabular}
     \caption{Stability-gap metrics, recorded from dense per-step evaluation. \texttt{gap\_depth} is the headline measure used in every contrast.}
     \label{tab:gap_metrics}
-\end{table*}
+\end{table}
 
 \paragraph{Continual-learning metrics.} Following
 \citet{delange2023continualevaluationlifelonglearning}, computed at task
@@ -35,7 +35,7 @@ let $N$ be the number of tasks. The full task-boundary accuracy matrix
 $R[i,j] = A(E_j, f_{T_i})$ is logged for every run, so any downstream metric can
 be reconstructed.
 
-\begin{table*}[htbp]
+\begin{table}[H]
     \centering
     \small
     \begin{tabular}{@{}p{1.8cm} p{8.5cm} p{4.3cm}@{}}
@@ -52,7 +52,7 @@ be reconstructed.
     \end{tabular}
     \caption{Continual-learning metrics of \citet{delange2023continualevaluationlifelonglearning}, recorded at task boundaries and over the full record.}
     \label{tab:cl_metrics}
-\end{table*}
+\end{table}
 
 \paragraph{Gradient-fidelity diagnostics.} Recorded at the dense cadence for the
 decomposition conditions only. The tracker compares the replay-buffer gradient
@@ -61,7 +61,7 @@ computed at every step by a separate forward and backward pass over the entire
 past-task training set (no sub-sampling, so $g_{\text{true}}$ is the
 deterministic empirical past-task gradient at the current parameters).
 
-\begin{table*}[htbp]
+\begin{table}[H]
     \centering
     \small
     \begin{tabular}{@{}p{4.2cm} p{3.0cm} p{7.2cm}@{}}
@@ -75,4 +75,4 @@ deterministic empirical past-task gradient at the current parameters).
     \end{tabular}
     \caption{Gradient-fidelity diagnostics, recorded over the new task's first ${\sim}500$ steps. Each is logged as a per-step series together with its mean (and minimum, for the cosine). The first two carry the \texttt{true\_grad} prefix because they are measured against $g_{\text{true}}$; \texttt{grad\_ratio} compares $g_{\text{replay}}$ to the current-task gradient $g_{\text{new}}$ and its inverse drives the adaptive curriculum of Section~\ref{subsec:curriculum}.}
     \label{tab:grad_metrics}
-\end{table*}
+\end{table}
