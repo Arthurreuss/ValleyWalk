@@ -28,18 +28,19 @@ spec = importlib.util.spec_from_file_location("aggregate_results", _SCRIPT_PATH)
 _mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(_mod)
 
-find_manifests   = _mod.find_manifests
-parse_manifest   = _mod.parse_manifest
+find_manifests = _mod.find_manifests
+parse_manifest = _mod.parse_manifest
 build_summary_df = _mod.build_summary_df
 write_latex_table = _mod.write_latex_table
 check_completeness = _mod.check_completeness
-MASTER_COLUMNS   = _mod.MASTER_COLUMNS
-METRIC_COLUMNS   = _mod.METRIC_COLUMNS
+MASTER_COLUMNS = _mod.MASTER_COLUMNS
+METRIC_COLUMNS = _mod.METRIC_COLUMNS
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_manifest(
     tmp_path: Path,
@@ -56,34 +57,34 @@ def _make_manifest(
     run_dir = tmp_path / subdir
     run_dir.mkdir(parents=True, exist_ok=True)
     manifest: Dict[str, Any] = {
-        "run_id":                  f"{method}_{dataset}_seed{seed}",
-        "method":                  method,
-        "dataset":                 dataset,
-        "seed":                    seed,
-        "ablation_key":            ablation_key,
-        "ablation_value":          ablation_value,
-        "status":                  status,
-        "git_commit":              "abc1234",
-        "git_dirty":               False,
-        "wandb_run_id":            None,
-        "wandb_run_url":           None,
+        "run_id": f"{method}_{dataset}_seed{seed}",
+        "method": method,
+        "dataset": dataset,
+        "seed": seed,
+        "ablation_key": ablation_key,
+        "ablation_value": ablation_value,
+        "status": status,
+        "git_commit": "abc1234",
+        "git_dirty": False,
+        "wandb_run_id": None,
+        "wandb_run_url": None,
         "wall_clock_total_seconds": 120.5,
         "final_metrics": {
-            "ACC":                          acc,
-            "FORG":                         0.06,
-            "min_ACC":                      0.75,
-            "WF10":                         0.08,
-            "WF100":                        0.10,
-            "WP10":                         0.05,
-            "WP100":                        0.07,
-            "WC_ACC":                       0.78,
-            "stability_gap_max_drop":       0.12,
-            "stability_gap_depth":          0.10,
-            "stability_gap_area":           5.2,
+            "ACC": acc,
+            "FORG": 0.06,
+            "min_ACC": 0.75,
+            "WF10": 0.08,
+            "WF100": 0.10,
+            "WP10": 0.05,
+            "WP100": 0.07,
+            "WC_ACC": 0.78,
+            "stability_gap_max_drop": 0.12,
+            "stability_gap_depth": 0.10,
+            "stability_gap_area": 5.2,
             "stability_gap_recovery_steps": 80,
-            "true_grad_cosine_mean":        0.71,
-            "true_grad_cosine_min":         0.31,
-            "true_grad_mag_ratio_mean":     0.95,
+            "true_grad_cosine_mean": 0.71,
+            "true_grad_cosine_min": 0.31,
+            "true_grad_mag_ratio_mean": 0.95,
         },
     }
     manifest_path = run_dir / "run_manifest.json"
@@ -94,6 +95,7 @@ def _make_manifest(
 # ---------------------------------------------------------------------------
 # Tests: find_manifests
 # ---------------------------------------------------------------------------
+
 
 class TestFindManifests:
     def test_finds_single_manifest(self, tmp_path):
@@ -120,6 +122,7 @@ class TestFindManifests:
 # ---------------------------------------------------------------------------
 # Tests: parse_manifest
 # ---------------------------------------------------------------------------
+
 
 class TestParseManifest:
     def test_all_master_columns_present(self, tmp_path):
@@ -182,25 +185,49 @@ class TestParseManifest:
 # Tests: build_summary_df
 # ---------------------------------------------------------------------------
 
+
 class TestBuildSummaryDf:
     def _make_df(self, rows):
         return pd.DataFrame(rows, columns=MASTER_COLUMNS)
 
-    def _base_row(self, seed, acc, method="cacl", dataset="rot_mnist",
-                  ablation_key=None, ablation_value=None):
+    def _base_row(
+        self,
+        seed,
+        acc,
+        method="cacl",
+        dataset="rot_mnist",
+        ablation_key=None,
+        ablation_value=None,
+    ):
         return {
-            "run_id": f"r{seed}", "method": method, "dataset": dataset,
-            "ablation_key": ablation_key, "ablation_value": ablation_value,
-            "seed": seed, "ACC": acc, "FORG": 0.06, "min_ACC": 0.75,
-            "WF10": 0.08, "WF100": 0.10, "WP10": 0.05, "WP100": 0.07,
+            "run_id": f"r{seed}",
+            "method": method,
+            "dataset": dataset,
+            "ablation_key": ablation_key,
+            "ablation_value": ablation_value,
+            "seed": seed,
+            "ACC": acc,
+            "FORG": 0.06,
+            "min_ACC": 0.75,
+            "WF10": 0.08,
+            "WF100": 0.10,
+            "WP10": 0.05,
+            "WP100": 0.07,
             "WC_ACC": 0.78,
-            "stab_gap_max_drop": 0.10, "stab_gap_depth": 0.08, "stab_gap_area": 4.5,
+            "stab_gap_max_drop": 0.10,
+            "stab_gap_depth": 0.08,
+            "stab_gap_area": 4.5,
             "stab_gap_area_w250": 9.0,
+            "stab_gap_area_end": 3.2,
             "stab_gap_recovery_steps": 50,
-            "true_grad_cosine_mean": 0.71, "true_grad_cosine_min": 0.31,
+            "true_grad_cosine_mean": 0.71,
+            "true_grad_cosine_min": 0.31,
             "true_grad_mag_ratio_mean": 0.95,
-            "wall_clock_total": 120.0, "run_dir": "/tmp", "wandb_run_url": None,
-            "git_commit": "abc", "status": "completed",
+            "wall_clock_total": 120.0,
+            "run_dir": "/tmp",
+            "wandb_run_url": None,
+            "git_commit": "abc",
+            "status": "completed",
         }
 
     def test_returns_empty_for_unknown_dataset(self, tmp_path):
@@ -215,7 +242,9 @@ class TestBuildSummaryDf:
         assert "±" not in result.loc[("cacl", "", ""), "ACC"]
 
     def test_multiple_seeds_mean_std(self):
-        rows = [self._base_row(s, a) for s, a in [(42, 0.80), (123, 0.82), (456, 0.84)]]  # noqa: E501
+        rows = [
+            self._base_row(s, a) for s, a in [(42, 0.80), (123, 0.82), (456, 0.84)]
+        ]  # noqa: E501
         df = pd.DataFrame(rows)
         result = build_summary_df(df, "rot_mnist")
         cell = result.loc[("cacl", "", ""), "ACC"]
@@ -254,6 +283,7 @@ class TestBuildSummaryDf:
 # ---------------------------------------------------------------------------
 # Tests: write_latex_table
 # ---------------------------------------------------------------------------
+
 
 class TestWriteLatexTable:
     def _make_summary(self):
@@ -327,28 +357,46 @@ class TestWriteLatexTable:
 # Tests: check_completeness
 # ---------------------------------------------------------------------------
 
+
 class TestCheckCompleteness:
     def _make_df(self, records):
         rows = []
         for method, dataset, ablation_key, ablation_value, seed, status in records:
-            rows.append({
-                "run_id": f"r{seed}", "method": method, "dataset": dataset,
-                "ablation_key": ablation_key, "ablation_value": ablation_value,
-                "seed": seed, "ACC": 0.8, "FORG": 0.06, "min_ACC": 0.75,
-                "WF10": 0.08, "WF100": 0.10, "WP10": 0.05, "WP100": 0.07,
-                "WC_ACC": 0.78,
-                "stab_gap_max_drop": 0.1, "stab_gap_depth": 0.08, "stab_gap_area": 4.5,
-                "stab_gap_recovery_steps": 50,
-                "true_grad_cosine_mean": 0.71, "true_grad_cosine_min": 0.31,
-                "true_grad_mag_ratio_mean": 0.95,
-                "wall_clock_total": 100.0, "run_dir": "/tmp", "wandb_run_url": None,
-                "git_commit": "abc", "status": status,
-            })
+            rows.append(
+                {
+                    "run_id": f"r{seed}",
+                    "method": method,
+                    "dataset": dataset,
+                    "ablation_key": ablation_key,
+                    "ablation_value": ablation_value,
+                    "seed": seed,
+                    "ACC": 0.8,
+                    "FORG": 0.06,
+                    "min_ACC": 0.75,
+                    "WF10": 0.08,
+                    "WF100": 0.10,
+                    "WP10": 0.05,
+                    "WP100": 0.07,
+                    "WC_ACC": 0.78,
+                    "stab_gap_max_drop": 0.1,
+                    "stab_gap_depth": 0.08,
+                    "stab_gap_area": 4.5,
+                    "stab_gap_recovery_steps": 50,
+                    "true_grad_cosine_mean": 0.71,
+                    "true_grad_cosine_min": 0.31,
+                    "true_grad_mag_ratio_mean": 0.95,
+                    "wall_clock_total": 100.0,
+                    "run_dir": "/tmp",
+                    "wandb_run_url": None,
+                    "git_commit": "abc",
+                    "status": status,
+                }
+            )
         return pd.DataFrame(rows, columns=MASTER_COLUMNS)
 
     def test_no_issues_when_all_seeds_completed(self):
         records = [
-            ("er", "rot_mnist", None, None, 42,  "completed"),
+            ("er", "rot_mnist", None, None, 42, "completed"),
             ("er", "rot_mnist", None, None, 123, "completed"),
         ]
         df = self._make_df(records)
@@ -357,7 +405,7 @@ class TestCheckCompleteness:
 
     def test_flags_failed_status(self):
         records = [
-            ("er", "rot_mnist", None, None, 42,  "failed"),
+            ("er", "rot_mnist", None, None, 42, "failed"),
             ("er", "rot_mnist", None, None, 123, "completed"),
         ]
         df = self._make_df(records)
@@ -392,9 +440,9 @@ class TestCheckCompleteness:
     def test_separate_groups_checked_independently(self):
         # Group 1 has all seeds; group 2 is missing seed 456
         records = [
-            ("er",   "rot_mnist", None, None, 42,  "completed"),
-            ("er",   "rot_mnist", None, None, 123, "completed"),
-            ("cacl", "rot_mnist", None, None, 42,  "completed"),
+            ("er", "rot_mnist", None, None, 42, "completed"),
+            ("er", "rot_mnist", None, None, 123, "completed"),
+            ("cacl", "rot_mnist", None, None, 42, "completed"),
             ("cacl", "rot_mnist", None, None, 123, "completed"),
         ]
         df = self._make_df(records)
@@ -409,6 +457,7 @@ class TestCheckCompleteness:
 # Tests: end-to-end (master_index.csv + tables + completeness)
 # ---------------------------------------------------------------------------
 
+
 class TestEndToEnd:
     def test_creates_master_index_csv(self, tmp_path):
         """Five completed seeds → master_index.csv with 5 rows."""
@@ -421,9 +470,12 @@ class TestEndToEnd:
         old_argv = sys.argv
         sys.argv = [
             "aggregate_results.py",
-            "--run-dir", str(tmp_path),
-            "--outdir",  str(outdir),
-            "--seeds",   ",".join(str(s) for s in seeds),
+            "--run-dir",
+            str(tmp_path),
+            "--outdir",
+            str(outdir),
+            "--seeds",
+            ",".join(str(s) for s in seeds),
         ]
         try:
             _mod.main()
@@ -449,9 +501,12 @@ class TestEndToEnd:
         old_argv = sys.argv
         sys.argv = [
             "aggregate_results.py",
-            "--run-dir", str(tmp_path),
-            "--outdir",  str(outdir),
-            "--seeds",   ",".join(str(s) for s in seeds),
+            "--run-dir",
+            str(tmp_path),
+            "--outdir",
+            str(outdir),
+            "--seeds",
+            ",".join(str(s) for s in seeds),
         ]
         try:
             _mod.main()
@@ -473,9 +528,12 @@ class TestEndToEnd:
         old_argv = sys.argv
         sys.argv = [
             "aggregate_results.py",
-            "--run-dir", str(tmp_path),
-            "--outdir",  str(outdir),
-            "--seeds",   ",".join(str(s) for s in seeds),
+            "--run-dir",
+            str(tmp_path),
+            "--outdir",
+            str(outdir),
+            "--seeds",
+            ",".join(str(s) for s in seeds),
         ]
         try:
             _mod.main()
@@ -496,9 +554,12 @@ class TestEndToEnd:
         old_argv = sys.argv
         sys.argv = [
             "aggregate_results.py",
-            "--run-dir", str(tmp_path),
-            "--outdir",  str(outdir),
-            "--seeds",   "42,123,456,789,1337",
+            "--run-dir",
+            str(tmp_path),
+            "--outdir",
+            str(outdir),
+            "--seeds",
+            "42,123,456,789,1337",
         ]
         exit_code = None
         try:
@@ -519,8 +580,10 @@ class TestEndToEnd:
         old_argv = sys.argv
         sys.argv = [
             "aggregate_results.py",
-            "--run-dir", str(tmp_path),
-            "--outdir",  str(outdir),
+            "--run-dir",
+            str(tmp_path),
+            "--outdir",
+            str(outdir),
         ]
         try:
             _mod.main()
@@ -543,9 +606,12 @@ class TestEndToEnd:
         old_argv = sys.argv
         sys.argv = [
             "aggregate_results.py",
-            "--run-dir", str(tmp_path),
-            "--outdir",  str(outdir),
-            "--seeds",   "42",
+            "--run-dir",
+            str(tmp_path),
+            "--outdir",
+            str(outdir),
+            "--seeds",
+            "42",
         ]
         try:
             _mod.main()

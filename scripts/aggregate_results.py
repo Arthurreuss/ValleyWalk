@@ -47,20 +47,60 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 MASTER_COLUMNS: List[str] = [
-    "run_id", "method", "dataset", "ablation_key", "ablation_value",
-    "seed", "ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100",
+    "run_id",
+    "method",
+    "dataset",
+    "ablation_key",
+    "ablation_value",
+    "seed",
+    "ACC",
+    "FORG",
+    "min_ACC",
+    "WF10",
+    "WF100",
+    "WP10",
+    "WP100",
     "WC_ACC",
-    "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area", "stab_gap_area_w250",
+    "stab_gap_max_drop",
+    "stab_gap_depth",
+    "stab_gap_area",
+    "stab_gap_area_w250",
+    "stab_gap_max_drop",
+    "stab_gap_depth",
+    "stab_gap_area",
+    "stab_gap_area_end",
     "stab_gap_recovery_steps",
-    "true_grad_cosine_mean", "true_grad_cosine_min", "true_grad_mag_ratio_mean",
-    "wall_clock_total", "run_dir", "wandb_run_url", "git_commit", "status",
+    "true_grad_cosine_mean",
+    "true_grad_cosine_min",
+    "true_grad_mag_ratio_mean",
+    "wall_clock_total",
+    "run_dir",
+    "wandb_run_url",
+    "git_commit",
+    "status",
 ]
 
 METRIC_COLUMNS: List[str] = [
-    "ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100", "WC_ACC",
-    "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area", "stab_gap_area_w250",
+    "ACC",
+    "FORG",
+    "min_ACC",
+    "WF10",
+    "WF100",
+    "WP10",
+    "WP100",
+    "WC_ACC",
+    "stab_gap_max_drop",
+    "stab_gap_depth",
+    "stab_gap_area",
+    "stab_gap_area_w250",
+    "stab_gap_max_drop",
+    "stab_gap_depth",
+    "stab_gap_area",
+    "stab_gap_area_end",
     "stab_gap_recovery_steps",
-    "true_grad_cosine_mean", "true_grad_cosine_min", "true_grad_mag_ratio_mean",
+    "true_grad_cosine_mean",
+    "true_grad_cosine_min",
+    "true_grad_mag_ratio_mean",
 ]
 
 GROUP_COLUMNS: List[str] = ["method", "ablation_key", "ablation_value"]
@@ -77,21 +117,22 @@ EXPECTED_SEEDS_BY_KEY: Dict[str, List[int]] = {
 }
 
 _METRIC_LABELS: Dict[str, str] = {
-    "ACC":                    "ACC",
-    "FORG":                   "FORG",
-    "min_ACC":                "min-ACC",
-    "WF10":                   "WF$_{10}$",
-    "WF100":                  "WF$_{100}$",
-    "WP10":                   "WP$_{10}$",
-    "WP100":                  "WP$_{100}$",
-    "WC_ACC":                 "WC-ACC",
-    "stab_gap_max_drop":      "$\\Delta_{\\max}$",
-    "stab_gap_depth":         "$G_{\\text{depth}}$",
-    "stab_gap_area":          "$G_{\\text{area}}$",
-    "stab_gap_area_w250":     "$G_{\\text{area}}^{250}$",
+    "ACC": "ACC",
+    "FORG": "FORG",
+    "min_ACC": "min-ACC",
+    "WF10": "WF$_{10}$",
+    "WF100": "WF$_{100}$",
+    "WP10": "WP$_{10}$",
+    "WP100": "WP$_{100}$",
+    "WC_ACC": "WC-ACC",
+    "stab_gap_max_drop": "$\\Delta_{\\max}$",
+    "stab_gap_depth": "$G_{\\text{depth}}$",
+    "stab_gap_area": "$G_{\\text{area}}$",
+    "stab_gap_area_w250": "$G_{\\text{area}}^{250}$",
+    "stab_gap_area_end": "$G_{\\text{area}}^{\\text{end}}$",
     "stab_gap_recovery_steps": "Recov.",
-    "true_grad_cosine_mean":  "$\\bar{\\cos}$",
-    "true_grad_cosine_min":   "$\\cos_{\\min}$",
+    "true_grad_cosine_mean": "$\\bar{\\cos}$",
+    "true_grad_cosine_min": "$\\cos_{\\min}$",
     "true_grad_mag_ratio_mean": "$\\bar{r}$",
 }
 
@@ -115,8 +156,10 @@ def parse_manifest(manifest_path: Path) -> Dict[str, Any]:
         with open(manifest_path, encoding="utf-8") as fh:
             m = json.load(fh)
     except (OSError, json.JSONDecodeError) as exc:
-        print("WARNING: could not parse " + str(manifest_path) + ": " + str(exc),
-              file=sys.stderr)
+        print(
+            "WARNING: could not parse " + str(manifest_path) + ": " + str(exc),
+            file=sys.stderr,
+        )
         row = {col: None for col in MASTER_COLUMNS}
         row["status"] = "parse_error"
         row["run_dir"] = str(manifest_path.parent)
@@ -124,33 +167,34 @@ def parse_manifest(manifest_path: Path) -> Dict[str, Any]:
 
     final = m.get("final_metrics") or {}
     return {
-        "run_id":                   m.get("run_id"),
-        "method":                   m.get("method"),
-        "dataset":                  m.get("dataset"),
-        "ablation_key":             m.get("ablation_key"),
-        "ablation_value":           m.get("ablation_value"),
-        "seed":                     m.get("seed"),
-        "ACC":                      final.get("ACC"),
-        "FORG":                     final.get("FORG"),
-        "min_ACC":                  final.get("min_ACC"),
-        "WF10":                     final.get("WF10"),
-        "WF100":                    final.get("WF100"),
-        "WP10":                     final.get("WP10"),
-        "WP100":                    final.get("WP100"),
-        "WC_ACC":                   final.get("WC_ACC"),
-        "stab_gap_max_drop":        final.get("stability_gap_max_drop"),
-        "stab_gap_depth":           final.get("stability_gap_depth"),
-        "stab_gap_area":            final.get("stability_gap_area"),
-        "stab_gap_area_w250":       final.get("stability_gap_area_w250"),
-        "stab_gap_recovery_steps":  final.get("stability_gap_recovery_steps"),
-        "true_grad_cosine_mean":    final.get("true_grad_cosine_mean"),
-        "true_grad_cosine_min":     final.get("true_grad_cosine_min"),
+        "run_id": m.get("run_id"),
+        "method": m.get("method"),
+        "dataset": m.get("dataset"),
+        "ablation_key": m.get("ablation_key"),
+        "ablation_value": m.get("ablation_value"),
+        "seed": m.get("seed"),
+        "ACC": final.get("ACC"),
+        "FORG": final.get("FORG"),
+        "min_ACC": final.get("min_ACC"),
+        "WF10": final.get("WF10"),
+        "WF100": final.get("WF100"),
+        "WP10": final.get("WP10"),
+        "WP100": final.get("WP100"),
+        "WC_ACC": final.get("WC_ACC"),
+        "stab_gap_max_drop": final.get("stability_gap_max_drop"),
+        "stab_gap_depth": final.get("stability_gap_depth"),
+        "stab_gap_area": final.get("stability_gap_area"),
+        "stab_gap_area_w250": final.get("stability_gap_area_w250"),
+        "stab_gap_area_end": final.get("stability_gap_area_end"),
+        "stab_gap_recovery_steps": final.get("stability_gap_recovery_steps"),
+        "true_grad_cosine_mean": final.get("true_grad_cosine_mean"),
+        "true_grad_cosine_min": final.get("true_grad_cosine_min"),
         "true_grad_mag_ratio_mean": final.get("true_grad_mag_ratio_mean"),
-        "wall_clock_total":         m.get("wall_clock_total_seconds"),
-        "wandb_run_url":            m.get("wandb_run_url"),
-        "git_commit":               m.get("git_commit"),
-        "status":                   m.get("status", "unknown"),
-        "run_dir":                  str(manifest_path.parent),
+        "wall_clock_total": m.get("wall_clock_total_seconds"),
+        "wandb_run_url": m.get("wandb_run_url"),
+        "git_commit": m.get("git_commit"),
+        "status": m.get("status", "unknown"),
+        "run_dir": str(manifest_path.parent),
     }
 
 
@@ -290,14 +334,16 @@ def check_completeness(
 
     for _, row in df.iterrows():
         if row["status"] != "completed":
-            issues.append({
-                "method":        row["method"],
-                "dataset":       row["dataset"],
-                "ablation_key":  row["ablation_key"],
-                "ablation_value": row["ablation_value"],
-                "seed":          row["seed"],
-                "issue":         f"status={row['status']}",
-            })
+            issues.append(
+                {
+                    "method": row["method"],
+                    "dataset": row["dataset"],
+                    "ablation_key": row["ablation_key"],
+                    "ablation_value": row["ablation_value"],
+                    "seed": row["seed"],
+                    "issue": f"status={row['status']}",
+                }
+            )
 
     for key, grp in df.groupby(group_cols, dropna=False):
         method, dataset, ablation_key, ablation_value = key
@@ -305,14 +351,16 @@ def check_completeness(
         group_expected = expected_seeds_by_key.get(ablation_key, expected_seeds)
         for seed in group_expected:
             if seed not in present_seeds:
-                issues.append({
-                    "method":        method,
-                    "dataset":       dataset,
-                    "ablation_key":  ablation_key,
-                    "ablation_value": ablation_value,
-                    "seed":          seed,
-                    "issue":         "missing",
-                })
+                issues.append(
+                    {
+                        "method": method,
+                        "dataset": dataset,
+                        "ablation_key": ablation_key,
+                        "ablation_value": ablation_value,
+                        "seed": seed,
+                        "issue": "missing",
+                    }
+                )
 
     return pd.DataFrame(issues)
 
@@ -321,17 +369,25 @@ def main() -> None:
     """Aggregate run_manifest.json files into master_index.csv and per-dataset LaTeX/CSV summary tables."""
     parser = argparse.ArgumentParser(description=main.__doc__)
     parser.add_argument(
-        "--run-dir", metavar="DIR", type=Path, required=True,
+        "--run-dir",
+        metavar="DIR",
+        type=Path,
+        required=True,
         help="Root directory to search recursively for run_manifest.json files.",
     )
     parser.add_argument(
-        "--outdir", metavar="DIR", type=Path, default=None,
+        "--outdir",
+        metavar="DIR",
+        type=Path,
+        default=None,
         help="Output directory for master_index.csv and summary_tables/. Defaults to --run-dir.",
     )
     parser.add_argument(
-        "--seeds", metavar="N,N,...", default="1,2,3,4,5",
+        "--seeds",
+        metavar="N,N,...",
+        default="1,2,3,4,5",
         help="Comma-separated expected seeds for the completeness check. Default: 1,2,3,4,5. "
-             "Per-block overrides (e.g. cifar_generalization at 3 seeds) are applied automatically.",
+        "Per-block overrides (e.g. cifar_generalization at 3 seeds) are applied automatically.",
     )
     args = parser.parse_args()
 

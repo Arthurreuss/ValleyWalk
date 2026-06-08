@@ -11,14 +11,20 @@ several scalar summaries:
     the full record history — same as max_drop but without the 200-step cap.
   - **gap_area**: cumulative drop integrated over the *entire* recorded
     history (trapezoidal rule), summed across all previously seen tasks.
-    Useful for a full-run forgetting picture, but conflates the transient
-    dip with any permanent below-baseline drift: a run that recovers fully
-    in 50 steps but settles 0.2 pp below baseline will keep accruing area
-    for thousands of steps.
+    Two baselines are available via ``reference``:
+      - ``"pre"`` (default): drop measured against the pre-task accuracy.
+        Conflates the transient dip with any permanent below-baseline drift:
+        a run that recovers fully in 50 steps but settles 0.2 pp below
+        baseline keeps accruing area for thousands of steps.
+      - ``"end"``: drop measured against ``min(pre-task level, recovered
+        level)``, the recovered level being the trailing-window mean.
+        Isolates the transient dip-and-recover (the trajectory / hanging-tail
+        component) from both permanent forgetting (a drift to a lower plateau
+        scores ≈ 0) and continued learning (a task still rising at the switch
+        scores ≈ 0).
   - **gap_area_windowed(W)**: as above but integrated only over the first
-    ``W`` post-transition steps.  Cleanly isolates the transient gap from
-    permanent forgetting.  Default ``W = 250`` (matches the typical CIFAR
-    recovery time-constant); exposed in ``metrics_summary.json`` as
+    ``W`` post-transition steps.  Default ``W = 250`` (matches the typical
+    CIFAR recovery time-constant); exposed in ``metrics_summary.json`` as
     ``stability_gap_area_w250``.
   - **recovery_steps**: the earliest step at which *all* previously seen tasks
     simultaneously recover to ≥ 90 % of their pre-task accuracy.
@@ -206,28 +212,74 @@ class StabilityGapTracker:
                     max_d = drop
         return float(max_d)
 
-    def gap_area(self, window_steps: Optional[int] = None) -> float:
+    def gap_area(
+        self,
+        window_steps: Optional[int] = None,
+        reference: str = "pre",
+        tail_frac: float = 0.1,
+        tail_min: int = 5,
+    ) -> float:
         """Trapezoidal integral of the per-task drop curve, summed across tasks.
 
-        For each previously seen task *j* with a recorded baseline, defines
-        the per-step drop as ``max(0, pre_task_acc[j] - acc_j(step))`` —
-        only counting accuracy *below* the baseline (gains above it do not
-        offset losses).  Integrates each task's drop curve over the recorded
-        ``step_within_task`` axis using the trapezoidal rule, then sums
-        across tasks.
+        For each previously seen task *j* the per-step drop is
+        ``max(0, baseline_j - acc_j(step))`` — only accuracy *below* the
+        baseline is counted (gains above it do not offset losses).  Each
+        task's drop curve is integrated over the ``step_within_task`` axis by
+        the trapezoidal rule, then summed across tasks.
+
+        The choice of ``baseline_j`` is what ``reference`` selects:
+
+        * ``"pre"`` (default): the pre-task accuracy snapshot taken before the
+          new task began.  This is the historical ``gap_area`` and it
+          **bundles two things** — the transient dip *and* any permanent
+          below-baseline drift, since a run that settles even slightly below
+          its starting point keeps accruing area for the rest of the task.
+        * ``"end"``: ``min(pre_task_acc[j], recovered_j)``, where
+          ``recovered_j`` is the level the task *recovers to* — the
+          trailing-window mean of ``acc_j`` over the last
+          ``max(tail_min, ceil(tail_frac·n))`` records.  Only the excursion
+          below this level is integrated, so:
+            - a curve that drops to a lower plateau and stays there
+              (permanent forgetting, no bend) uses ``recovered_j`` and
+              contributes ≈ 0 — the permanent drop is *not* counted;
+            - a curve that ends *higher* than it started (the task was still
+              improving at the switch, common under group norm) is floored at
+              the pre-switch level ``pre_task_acc[j]`` and so does not count
+              ordinary continued learning as a gap;
+            - a genuine dip-and-recover (the trajectory / stability-gap
+              transient) is captured in full.
+          This isolates the *hanging tail* from both permanent forgetting and
+          continued learning; pair it with ACC/FORG, which carry the
+          permanent component.
 
         Args:
             window_steps: If given, only integrate over records with
-                ``step_within_task < window_steps``.  This is the recommended
-                "transient-only" mode: permanent below-baseline drift after
-                the dip recovers (or fails to recover) is excluded.  If
-                ``None``, integrates over the full history — kept for
-                backward compatibility with old summary files.
+                ``step_within_task < window_steps``.  The end-reference
+                baseline is still computed from the full task record (the
+                settled level), only the integration is windowed.
+            reference: ``"pre"`` or ``"end"`` (see above).
+            tail_frac: Fraction of trailing records used for the end baseline.
+            tail_min: Minimum number of trailing records for the end baseline.
 
         Returns:
             Non-negative float with units ``accuracy · steps``.  Returns 0.0
             if fewer than two records fall within the window.
         """
+        if reference not in ("pre", "end"):
+            raise ValueError(f"reference must be 'pre' or 'end', got {reference!r}")
+
+        if reference == "pre":
+            baselines = self._pre_task_acc
+        else:
+            recovered = self._end_baselines(tail_frac=tail_frac, tail_min=tail_min)
+            # Floor the recovered level at the pre-switch level: never credit a
+            # task for ending higher than it started (continued learning is not
+            # a stability gap), and never count permanent forgetting below the
+            # recovered level.
+            baselines = {
+                j: min(self._pre_task_acc[j], recovered[j]) for j in recovered
+            }
+
         records = (
             [r for r in self._records if r[0] < window_steps]
             if window_steps is not None
@@ -237,19 +289,51 @@ class StabilityGapTracker:
             return 0.0
 
         total = 0.0
-        for j, pre_acc_j in self._pre_task_acc.items():
+        for j, base_j in baselines.items():
             prev_step: Optional[int] = None
             prev_drop: float = 0.0
             for step, accs in records:
                 if j not in accs:
                     continue
-                drop = max(0.0, pre_acc_j - accs[j])
+                drop = max(0.0, base_j - accs[j])
                 if prev_step is not None:
                     dt = step - prev_step
                     total += dt * 0.5 * (drop + prev_drop)
                 prev_step = step
                 prev_drop = drop
         return float(total)
+
+    def _end_baselines(
+        self, tail_frac: float = 0.1, tail_min: int = 5
+    ) -> Dict[int, float]:
+        """Per-task settled accuracy: the trailing-window mean of each task's curve.
+
+        For each previously seen task *j*, collects ``acc_j`` over all records
+        in order and returns the mean of the last
+        ``max(tail_min, ceil(tail_frac · n_j))`` values — an estimate of the
+        level the task recovers to by the end of the new task's training.
+
+        Returns:
+            ``{task_id: settled_accuracy}``.  A task with no records falls back
+            to its pre-task baseline.
+        """
+        import math
+
+        series: Dict[int, List[float]] = {j: [] for j in self._pre_task_acc}
+        for _step, accs in self._records:
+            for j, acc in accs.items():
+                if j in series:
+                    series[j].append(acc)
+
+        baselines: Dict[int, float] = {}
+        for j, vals in series.items():
+            if not vals:
+                baselines[j] = self._pre_task_acc[j]
+                continue
+            k = max(tail_min, math.ceil(tail_frac * len(vals)))
+            tail = vals[-k:]
+            baselines[j] = sum(tail) / len(tail)
+        return baselines
 
     def recovery_steps(self) -> Optional[int]:
         """First step at which all previously seen tasks recover to ≥ 90 % of their baseline,

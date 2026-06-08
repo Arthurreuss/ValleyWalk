@@ -463,7 +463,7 @@ def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:
         columns=[
             "ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100", "WC_ACC",
             "stab_gap_max_drop", "stab_gap_depth", "stab_gap_area",
-            "stab_gap_recovery_steps",
+            "stab_gap_area_end", "stab_gap_recovery_steps",
         ],
         data=[[
             metrics.get("ACC"),
@@ -477,6 +477,7 @@ def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:
             metrics.get("stability_gap_max_drop"),
             metrics.get("stability_gap_depth"),
             metrics.get("stability_gap_area"),
+            metrics.get("stability_gap_area_end"),
             metrics.get("stability_gap_recovery_steps"),
         ]],
     )

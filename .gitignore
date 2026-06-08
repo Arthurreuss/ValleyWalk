@@ -12,6 +12,20 @@ checkpoints/
 archive/
 thesis_latex/
 thesis_draft/
+thesis_latex/indent.log
+thesis_latex/main.bbl
+thesis_latex/main.aux
+thesis_latex/main.blg
+thesis_latex/main.log
+thesis_latex/main.out
+thesis_latex/main.synctex.gz
+thesis_latex/main.fdb_latexmk
+thesis_latex/main.fls
+thesis_latex/main.brf
+texput.log
+.vscode/
+
+
 
 # Python bytecode
 __pycache__/

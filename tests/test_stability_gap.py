@@ -214,6 +214,80 @@ class TestStabilityGapTracker:
         assert self.tracker.gap_area(window_steps=251) > 0
 
     # -----------------------------------------------------------------------
+    # gap_area: end-referenced (transient-only) baseline
+    # -----------------------------------------------------------------------
+
+    def test_gap_area_end_zero_on_permanent_drop(self):
+        """A curve that drops to a lower plateau and stays scores ≈ 0 end-area.
+
+        This is the defining property: end-referencing measures the dip
+        *relative to where the task recovers to*, so permanent forgetting
+        (no bend) contributes nothing, whereas the pre-referenced area is
+        large because every step sits below the pre-task baseline.
+        """
+        with torch.no_grad():
+            self.model.weight.zero_()  # acc → 0.5 and stays there
+        for step in range(0, 200, 10):
+            self.tracker.record(step, self.test_loaders)
+
+        pre = self.tracker.gap_area(reference="pre")
+        end = self.tracker.gap_area(reference="end")
+
+        assert pre > 0.0                       # pre-baseline (1.0) → large area
+        assert end == pytest.approx(0.0, abs=1e-9)  # settles at 0.5 → no bend
+
+    def test_gap_area_end_captures_dip_and_recover(self):
+        """A genuine dip-and-recover is captured: end-area > 0.
+
+        Recovery is back to the pre-task level (1.0), so here the end and pre
+        baselines coincide and the two areas match — the metric keeps the
+        transient bend rather than discarding it.
+        """
+        with torch.no_grad():
+            self.model.weight.zero_()  # dip to 0.5
+        for step in range(0, 110, 10):
+            self.tracker.record(step, self.test_loaders)
+        with torch.no_grad():
+            self.model.weight.copy_(self.good_weights)  # recover to 1.0
+        for step in range(200, 310, 10):
+            self.tracker.record(step, self.test_loaders)
+
+        end = self.tracker.gap_area(reference="end")
+        pre = self.tracker.gap_area(reference="pre")
+        assert end > 0.0
+        assert end == pytest.approx(pre, abs=0.01)  # tail mean ≈ 1.0 == baseline
+
+    def test_gap_area_end_floors_at_pre_switch(self):
+        """A task that ends *higher* than it started scores ≈ 0 (continued learning).
+
+        Built on a degraded tracker (pre-task acc = 0.5) whose task then
+        improves to 1.0.  The recovered level is 1.0, but flooring at the
+        pre-switch level (0.5) means the rise is not counted as a gap —
+        unlike a naive end reference, which would integrate the whole climb.
+        """
+        with torch.no_grad():
+            self.model.weight.zero_()  # construct-time baseline → 0.5
+        tracker = StabilityGapTracker(
+            eval_freq_steps=10, model=self.model, test_loaders=self.test_loaders,
+        )
+        assert pytest.approx(tracker._pre_task_acc[0], abs=1e-6) == 0.5
+
+        # Task is still at 0.5 early, then climbs to 1.0 and settles there.
+        for step in range(0, 100, 10):
+            tracker.record(step, self.test_loaders)
+        with torch.no_grad():
+            self.model.weight.copy_(self.good_weights)  # → 1.0
+        for step in range(100, 220, 10):
+            tracker.record(step, self.test_loaders)
+
+        assert tracker.gap_area(reference="end") == pytest.approx(0.0, abs=1e-9)
+
+    def test_gap_area_invalid_reference_raises(self):
+        self.tracker.record(0, self.test_loaders)
+        with pytest.raises(ValueError):
+            self.tracker.gap_area(reference="middle")
+
+    # -----------------------------------------------------------------------
     # List interface
     # -----------------------------------------------------------------------
 
