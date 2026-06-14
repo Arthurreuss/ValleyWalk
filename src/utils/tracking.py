@@ -451,7 +451,8 @@ def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:
         Must contain keys: ``ACC``, ``FORG``, ``min_ACC``, ``WF10``, ``WF100``,
         ``WP10``, ``WP100``, ``WC_ACC``, ``stability_gap_max_drop``,
         ``stability_gap_depth``, ``stability_gap_area``,
-        ``stability_gap_recovery_steps``.  Missing keys produce ``None`` entries.
+        ``stability_gap_area_end``, ``stability_gap_recovery_steps``.
+        Missing keys produce ``None`` entries.
     run : wandb.Run | _NullRun
     """
     if isinstance(run, _NullRun):

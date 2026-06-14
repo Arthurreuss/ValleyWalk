@@ -56,8 +56,8 @@ from src.models.resnet import ResNet18
 from src.utils.diagnostics import CACLDiagnosticsWriter
 from src.utils.seeding import set_global_seed
 from src.utils.tracking import (
-    _NullRun,
     DualLogger,
+    _NullRun,
     init_tracking,
     log_accuracy_matrix_table,
     log_metrics_summary_table,
@@ -66,10 +66,10 @@ from src.utils.tracking import (
     write_run_manifest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Device resolution
 # ---------------------------------------------------------------------------
+
 
 def resolve_device(device_cfg: str) -> torch.device:
     """Resolve the ``device`` config field to a concrete ``torch.device``.
@@ -98,6 +98,7 @@ def resolve_device(device_cfg: str) -> torch.device:
 # Factory: model
 # ---------------------------------------------------------------------------
 
+
 def build_model(model_cfg):
     """Instantiate the model specified by ``model_cfg.name``.
 
@@ -124,6 +125,7 @@ def build_model(model_cfg):
 # ---------------------------------------------------------------------------
 # Diagnostic data sampling for g_true
 # ---------------------------------------------------------------------------
+
 
 def _load_full_past_task_data(dataset, task_id: int):
     """Concatenate every past task's full training set into a single (x, y).
@@ -166,6 +168,7 @@ def _load_full_past_task_data(dataset, task_id: int):
 # Factory: method
 # ---------------------------------------------------------------------------
 
+
 def build_method(cfg, model, buffer):
     """Instantiate the continual-learning method specified by ``cfg.method.name``.
 
@@ -200,14 +203,14 @@ def build_method(cfg, model, buffer):
     if name == "cacl":
         return CACL(model, cfg, buffer)
     raise ValueError(
-        f"Unknown method '{name}'. "
-        f"Supported: er, gem, agem, ncl, cacl"
+        f"Unknown method '{name}'. " f"Supported: er, gem, agem, ncl, cacl"
     )
 
 
 # ---------------------------------------------------------------------------
 # Main training loop
 # ---------------------------------------------------------------------------
+
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg: DictConfig) -> None:
@@ -264,7 +267,7 @@ def main(cfg: DictConfig) -> None:
 
     # ── Task loop ─────────────────────────────────────────────────────────
     task_timings = []
-    global_step = 0   # monotonically increasing across ALL tasks
+    global_step = 0  # monotonically increasing across ALL tasks
     gap_tracker = None  # re-instantiated at the start of each task > 0
 
     for task_id, train_loader, all_test_loaders in dataset.task_iterator():
@@ -272,7 +275,9 @@ def main(cfg: DictConfig) -> None:
 
         # ── Per-task dual-write loggers ────────────────────────────────────
         # csv_path=None disables local CSV; W&B logging still happens via run.
-        _curve_dir = f"{cfg.outputs.dir}/task_curves" if cfg.outputs.save_task_curves else None
+        _curve_dir = (
+            f"{cfg.outputs.dir}/task_curves" if cfg.outputs.save_task_curves else None
+        )
         train_logger = DualLogger(
             f"{_curve_dir}/task_{task_id:02d}_train.csv" if _curve_dir else None,
             run,
@@ -325,7 +330,7 @@ def main(cfg: DictConfig) -> None:
                 method.set_diagnostic_data(None, None)
 
         # ── Inner batch loop ───────────────────────────────────────────────
-        task_step = 0   # steps elapsed within this task (resets each task)
+        task_step = 0  # steps elapsed within this task (resets each task)
         steps_per_task = len(train_loader) * cfg.training.epochs_per_task
         for _epoch in range(cfg.training.epochs_per_task):
             for _batch_idx, (x, y) in enumerate(train_loader):
@@ -365,7 +370,9 @@ def main(cfg: DictConfig) -> None:
                     log_payload["true_grad_mag_ratio"] = true_grad_mag_ratio
                 if grad_tracker is not None and true_grad_cosine is not None:
                     grad_tracker.record(
-                        task_step, true_grad_cosine, true_grad_mag_ratio,
+                        task_step,
+                        true_grad_cosine,
+                        true_grad_mag_ratio,
                     )
 
                 # CACL run-level diagnostics (eigenvalue spectrum, trust radius,
@@ -401,16 +408,16 @@ def main(cfg: DictConfig) -> None:
                 #   • last pre_switch_steps steps of the current task (pre-switch)
                 # Both windows use eval_freq_steps; everything else uses eval_every_n_steps.
                 in_post_switch_window = task_step < cfg.eval.stability_gap.window_steps
-                in_pre_switch_window  = task_step >= steps_per_task - cfg.eval.stability_gap.pre_switch_steps
+                in_pre_switch_window = (
+                    task_step
+                    >= steps_per_task - cfg.eval.stability_gap.pre_switch_steps
+                )
                 sg_freq = (
                     cfg.eval.stability_gap.eval_freq_steps
                     if (in_post_switch_window or in_pre_switch_window)
                     else cfg.eval.eval_every_n_steps
                 )
-                if (
-                    gap_tracker is not None
-                    and global_step % sg_freq == 0
-                ):
+                if gap_tracker is not None and global_step % sg_freq == 0:
                     sg_accs = gap_tracker.record(global_step, all_test_loaders)
                     # Persist the fine-grained sample to the SAME sinks the
                     # regular eval block writes to — per-task CSV, combined
@@ -426,9 +433,7 @@ def main(cfg: DictConfig) -> None:
                     # identical, and re-writing would duplicate rows and (on
                     # W&B) be silently dropped anyway.
                     if global_step % cfg.eval.eval_every_n_steps != 0:
-                        sg_payload = {
-                            f"task_{j}_acc": v for j, v in sg_accs.items()
-                        }
+                        sg_payload = {f"task_{j}_acc": v for j, v in sg_accs.items()}
                         eval_logger.log(global_step, sg_payload)
                         combined_acc_writer.writerow(
                             {"step": global_step, **sg_payload}
@@ -438,6 +443,7 @@ def main(cfg: DictConfig) -> None:
                             metrics.record_step(j, global_step, acc)
                         if not isinstance(run, _NullRun):
                             import wandb  # noqa: PLC0415
+
                             wandb.log(sg_payload, step=global_step)
 
                 global_step += 1
@@ -460,18 +466,21 @@ def main(cfg: DictConfig) -> None:
             metrics.record_step(task_j=j, step=global_step, accuracy=acc)
         task_eval_time = time.time() - eval_start
 
-        task_timings.append({
-            "task_id": task_id,
-            "train_seconds": task_train_time,
-            "eval_seconds": task_eval_time,
-            "total_seconds": task_train_time + task_eval_time,
-        })
+        task_timings.append(
+            {
+                "task_id": task_id,
+                "train_seconds": task_train_time,
+                "eval_seconds": task_eval_time,
+                "total_seconds": task_train_time + task_eval_time,
+            }
+        )
 
         # ── Model + buffer checkpoint ──────────────────────────────────────
-        is_last_task = (task_id == dataset.num_tasks - 1)
+        is_last_task = task_id == dataset.num_tasks - 1
         should_checkpoint = (
-            (task_id + 1) % cfg.checkpointing.save_every_n_tasks == 0
-            or (is_last_task and cfg.checkpointing.save_final)
+            task_id + 1
+        ) % cfg.checkpointing.save_every_n_tasks == 0 or (
+            is_last_task and cfg.checkpointing.save_final
         )
         if should_checkpoint:
             save_and_log_checkpoint(model, task_id, run, cfg, cfg.checkpointing.dir)
@@ -513,11 +522,6 @@ def main(cfg: DictConfig) -> None:
         "stability_gap_area_end": (
             gap_tracker.gap_area(reference="end") if gap_tracker is not None else None
         ),
-        "stability_gap_area_w250": (
-            gap_tracker.gap_area(window_steps=250)
-            if gap_tracker is not None
-            else None
-        ),
         "stability_gap_recovery_steps": (
             gap_tracker.recovery_steps() if gap_tracker is not None else None
         ),
@@ -528,7 +532,9 @@ def main(cfg: DictConfig) -> None:
             grad_tracker.min_true_grad_cosine() if grad_tracker is not None else None
         ),
         "true_grad_mag_ratio_mean": (
-            grad_tracker.mean_true_grad_mag_ratio() if grad_tracker is not None else None
+            grad_tracker.mean_true_grad_mag_ratio()
+            if grad_tracker is not None
+            else None
         ),
     }
 
@@ -540,6 +546,7 @@ def main(cfg: DictConfig) -> None:
     # W&B summary scalars (shows up in the leaderboard-style run comparison)
     if not isinstance(run, _NullRun):
         import wandb  # noqa: PLC0415
+
         for k, v in final.items():
             wandb.summary[k] = v
 
@@ -552,6 +559,7 @@ def main(cfg: DictConfig) -> None:
         )
     if not isinstance(run, _NullRun):
         import wandb  # noqa: PLC0415
+
         wandb.summary["wall_clock_total"] = sum(
             t["total_seconds"] for t in task_timings
         )
