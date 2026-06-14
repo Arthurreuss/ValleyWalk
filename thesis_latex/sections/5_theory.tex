@@ -1,7 +1,7 @@
 \section{\texorpdfstring{The Envelope-Theorem Bound: Why a Linear $\lambda$-Ramp Works}{The Envelope-Theorem Bound: Why a Linear lambda-Ramp Works}}
 \label{sec:theory}
 
-When a model switches instantly from an old task to a new one ($\lambda$ jumps from $0$ to $1$), the sudden change causes the stability gap with a temporary spike in forgetting.
+When a model switches instantly from an old task to a new one ($\lambda$ jumps from $0$ to $1$), the sudden change causes the stability gap.
 
 This section outlines why replacing that sudden jump with a slow, continuous transition (a linear ramp over $N$ steps) mathematically eliminates this spike. The full, step-by-step mathematical derivation of this proof is provided in Appendix~\ref{app:detailed_proof}.
 
@@ -65,7 +65,7 @@ If the model were capable of perfectly walking this ideal path, the replay loss 
 \end{equation}
 Because the replay loss can only strictly rise (or stay flat) as it accommodates the new task, it can never decrease. Therefore, it is physically impossible for the loss to spike up and come back down. It simply rises monotonically until it reaches its permanent, unavoidable baseline at the joint optimum ($\theta_{\text{joint}}^*$).
 
-This argument needs no global convexity. It requires only that the tracked path stays a family of \emph{local} minima --- that the combined Hessian remains positive-definite along the branch the iterate follows --- which holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's, the point at which the bound is expected to weaken (Appendix~\ref{app:detailed_proof}).
+This guarantee rests on a local condition: the tracked path must stay a family of \emph{local} minima, with the combined Hessian positive-definite along the branch the iterate follows. That holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's, the point at which positive-definiteness, and with it the non-negativity guarantee, is no longer assured (Appendix~\ref{app:detailed_proof}).
 
 \subsection{Part B: A slow ramp keeps the model on the path}
 \label{subsec:partB_summary}
@@ -85,8 +85,9 @@ By combining the "no-overshoot" rule of the perfect path (Part A) with the track
     \max_t\, L_{\text{replay}}(\theta(t)) \;\le\; L_{\text{replay}}(\theta_{\text{joint}}^*) + O\!\left(\frac{1}{N}\right).
     \label{eq:bound}
 \end{equation}
-The first term is the genuine plasticity--stability trade-off: the permanent capacity cost of learning both tasks. The second term is the transient stability gap.
+The first term is the genuine plasticity--stability trade-off: the permanent capacity cost of learning both tasks. The second term is the transient stability gap.\\
 
-Read in the other direction, the same two parts explain why a \emph{small} $N$ --- in the limit the instantaneous jump --- produces a large gap, through two distinct mechanisms that map onto the two empirical readouts. The one-sided first step, driven by the new-task gradient while the replay gradient is still zero, gives an instantaneous curvature-cost spike that scales as $1/N^2$ and registers as \texttt{gap\_depth}; the trajectory lag behind the moving optimum is sustained across the whole ramp, scales as $1/N$, and registers as the slowly-closing \texttt{gap\_area}. At the jump both are $O(1)$ and the gap is maximal. The full decomposition is in Appendix~\ref{app:detailed_proof}.
+Conversely, an instantaneous task switch (small $N$) produces a large gap driven by two $O(1)$ boundary contributors (Section~\ref{subsec:decomposition}). First, the magnitude asymmetry ($G_{\text{mag}}$) causes a sharp initial spike: the new task's gradient dominates the first step, immediately throwing the iterate out of the replay basin. Second, the trajectory effect ($G_{\text{traj}}$) causes a sustained loss: the descent path bows outward (Figure~\ref{fig:loss_landscape_visualization}), forcing the iterate to cross through high-loss regions before reaching the joint minimum.
 
-Because the transient gap shrinks proportionally with $1/N$, a sufficiently slow continuous curriculum physically drives the trajectory overshoot to zero. The bound formally concerns only the trajectory contributor $G_{\text{traj}}$, but the same gradual introduction also tempers the magnitude asymmetry $G_{\text{mag}}$: ramping the current-task loss up from zero lets its gradient enter in small increments rather than dominating the first step, so the iterate is never thrown as far out of the replay basin. Only the estimator variance $G_{\text{est}}$, a property of the finite buffer rather than the schedule, is left untouched. The model's step-size adaptation is preserved throughout, cleanly resolving the gap without the need for complex path-finding interventions.
+Stretching the transition over $N$ steps elegantly resolves both issues. By introducing the new task at a weight of $\lambda \approx 1/N$, the initial gradient shock ($G_{\text{mag}}$) is dampened, shrinking quadratically as $O(1/N^2)$. Simultaneously, the descent trajectory straightens toward the optimal path $\Theta^*(\lambda)$, reducing $G_{\text{traj}}$ linearly as $O(1/N)$. Because the trajectory deviation closes more slowly, it dictates the overall $O(1/N)$ bound in~\eqref{eq:bound}. Ultimately, a sufficiently slow continuous curriculum drives both spatial overshoots to zero, leaving only the estimator variance $G_{\text{est}}$ inherent to the finite buffer. This preserves the model's step-size adaptation and resolves the gap without complex path-finding interventions (Appendix~\ref{app:detailed_proof}).
+
