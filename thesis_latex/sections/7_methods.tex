@@ -9,7 +9,7 @@ This section describes the empirical testbed (Section~\ref{subsec:testbed}), the
 \subsubsection{Testbed}
 \label{subsec:testbed}
 
-The experiments run on two testbeds of deliberately different scale. A small, fast testbed --- rotated MNIST on a two-layer MLP --- carries the dense mechanistic sweep, where the gap is probed step by step across many conditions and seeds. A larger testbed --- a domain-shift CIFAR-10 on a CIFAR-adapted ResNet-18 --- tests whether the findings survive a deeper backbone and a stronger task shift, the regime where the smoothness assumption behind the bound of Section~\ref{sec:theory} weakens. Both testbeds share one design choice: the label space and task structure are held fixed and only the input distribution shifts, and the headline sequences use the minimal two tasks, so there is exactly one transition and exactly one instance of the stability gap, with no interference between overlapping gaps.
+The experiments run on two testbeds of different scale. A small, fast testbed: rotated MNIST on a two-layer MLP. It carries the dense mechanistic sweep, where the gap is probed step by step across many conditions and seeds. A larger testbed: a domain-shift CIFAR-10 on a CIFAR-adapted ResNet-18. This tests whether the findings survive a deeper backbone and a stronger task shift, the regime where the smoothness assumption behind the bound of Section~\ref{sec:theory} weakens. Both testbeds share one design choice: the label space and task structure are held fixed and only the input distribution shifts, and the headline sequences use the minimal two tasks, so there is exactly one transition and exactly one instance of the stability gap, with no interference between overlapping gaps.
 
 \paragraph{Datasets.}
 
@@ -39,7 +39,7 @@ Each benchmark has its own backbone. The rot-MNIST sweep uses a two-layer multil
     \label{tab:mlp}
 \end{table}
 
-The MLP's loss landscape is simple and it trains in seconds, which matters because the sweep spans many conditions and seeds. It is also the setting where the assumption behind the bound of Section~\ref{sec:theory} is most plausible, that near the optimum the loss is close to a smooth, locally convex bowl.
+The MLP's loss landscape is simple and cheap to train, which matters because the sweep spans many conditions and seeds. It is also the setting where the assumption behind the bound of Section~\ref{sec:theory} is most plausible, since near the optimum the loss is smooth with positive local curvature along the path the curriculum follows.
 
 \begin{table}[htbp]
     \centering
@@ -56,11 +56,11 @@ The MLP's loss landscape is simple and it trains in seconds, which matters becau
         Total parameters & ${\approx}11.2$M                                                                                    \\
         \hline
     \end{tabular}
-    \caption{CIFAR-adapted ResNet-18 backbone used for the CIFAR-10 block (Section~\ref{subsec:cifar}). The $3\times3$ stride-$1$ stem and removed max-pool keep the feature map at $32\times32$; all other details follow the canonical ResNet-18.}
+    \caption{CIFAR-adapted ResNet-18 backbone used for the CIFAR-10 block (Section~\ref{subsec:cifar}). The $3\times3$ stride-$1$ stem and removed max-pool keep the feature map at $32\times32$; all other details follow the ResNet-18.}
     \label{tab:resnet}
 \end{table}
 
-ResNet-18 is the deeper, harder-to-analyse counterpart: it is used to see how far the findings carry once the locally convex picture is no longer guaranteed.
+ResNet-18 is the deeper, more realistic counterpart, used to test whether the findings generalise from the tractable MLP to a non-convex network of the kind used in practice.
 
 \paragraph{Training protocol.}
 
@@ -71,19 +71,19 @@ Table~\ref{tab:training} lists the training hyperparameters for both benchmarks.
     \small
     \begin{tabular}{@{}l p{0.27\columnwidth} p{0.27\columnwidth}@{}}
         \hline
-        Hyperparameter  & rot-MNIST (MLP)                                            & CIFAR-10 (ResNet-18)                 \\
+        Hyperparameter  & rot-MNIST (MLP)         & CIFAR-10 (ResNet-18) \\
         \hline
-        Epochs per task & $1$ (online)                                               & $10$                                 \\
-        Batch size      & $256$                                                      & $256$                                \\
-        Optimiser       & SGD                                                        & SGD                                  \\
-        Learning rate   & $0.1$                                                      & $0.1$                                \\
-        Momentum        & $0.0$ and $0.9$ (both legs)                                & $0.9$ only                           \\
-        Weight decay    & $0.0$                                                      & $0.0$                                \\
-        Replay buffer   & $1{,}000$ (reservoir); $60{,}000$ for full-data conditions & $5{,}000$ (reservoir)                \\
-        Seeds           & $5$ per condition                                          & $5$ (headline); $3$ (generalisation) \\
+        Epochs per task & $1$ (online)            & $10$                 \\
+        Batch size      & $256$                   & $256$                \\
+        Optimiser       & SGD                     & SGD                  \\
+        Learning rate   & $0.1$                   & $0.1$                \\
+        Momentum        & $0.0$ or $0.9$          & $0.9$.               \\
+        Weight decay    & $0.0$                   & $0.0$                \\
+        Replay buffer   & $1{,}000$ or $60{,}000$ & $5{,}000$            \\
+        Seeds           & $5$                     & $5$ or $3$           \\
         \hline
     \end{tabular}
-    \caption{Training protocol for both benchmarks. The $60{,}000$-sample full-data buffer is used only for the full-data decomposition conditions of Section~\ref{subsec:decomp}. The rot-MNIST momentum policy is detailed in Section~\ref{subsec:overview}.}
+    \caption{Training protocol for both benchmarks.}
     \label{tab:training}
 \end{table}
 
@@ -92,21 +92,21 @@ Table~\ref{tab:training} lists the training hyperparameters for both benchmarks.
 
 Throughout training, every task's test accuracy is evaluated every $10$ steps. At each task transition the cadence increases to every step, so the dip is recorded at full resolution where it occurs. The two benchmarks differ only in how long this per-step cadence is held. On rot-MNIST it runs for the entire new task: one online epoch is short (${\approx}234$ steps), so the whole post-transition trajectory is captured per step. On CIFAR-10, where a task spans ten epochs, the per-step cadence is held for the first $50$ steps after the transition, enough to cover the gap, and then drops back to every $10$ steps for the rest of the task.
 
-A stability-gap tracker snapshots the pre-task accuracy on each past task before the transition and records the resulting (step, accuracy) series, from which it computes the scalar summaries of Section~\ref{subsubsec:gap_metrics}. A gradient tracker records, at the same per-step cadence, the directional and magnitude fidelity of the replay-buffer gradient against the deterministic empirical past-task gradient $g_{\text{true}}$ (Section~\ref{subsubsec:grad_metrics}); it is enabled for the decomposition conditions only.
+A stability-gap tracker snapshots the pre-task accuracy on each past task before the transition and records the resulting (step, accuracy) series, from which it computes the scalar metrics of Section~\ref{subsubsec:gap_metrics}. A gradient tracker records, at the same per-step cadence, the directional and magnitude fidelity of the replay-buffer gradient against the deterministic empirical past-task gradient $g_{\text{true}}$ (Section~\ref{subsubsec:grad_metrics}); it is enabled for the decomposition conditions only.
 
 \subsubsection{Metrics}
 \label{subsec:metrics}
 
-All metrics are recorded automatically and aggregated later. Unless noted otherwise, each is reported as the seed mean $\pm$ sample standard deviation over a condition's seeds (five for the rot-MNIST and CIFAR headline blocks, three for the CIFAR generalisation block); \texttt{gap\_area} is reported as a seed mean only, and \texttt{recovery\_steps} only when a recovery occurs within the record. This section explains the most important ones; the complete definitions of every logged metric are collected in Appendix~\ref{app:metric_defs}.
+All metrics are recorded automatically and aggregated later. Unless noted otherwise, each is reported as the seed mean $\pm$ sample standard deviation over a condition's seeds (five for the rot-MNIST and CIFAR headline blocks, three for the CIFAR generalisation block); \texttt{gap\_area\_end} is reported as a seed mean only, and \texttt{recovery\_steps} only when a recovery occurs within the record. This section explains the most important ones; the complete definitions of every logged metric are collected in Appendix~\ref{app:metric_defs}.
 
 \paragraph{Stability-gap metrics.}
 \label{subsubsec:gap_metrics}
 
-These are computed from the dense per-step series. Writing $a_j^{\text{pre}}$ for the pre-task accuracy on past task $j$ and $a_j(t)$ for its accuracy at step $t$ of the new task, the headline measure is
+These are computed from the dense per-step series to summarize the performance gap along two complementary axes: how severe the drop is and how long it lasts. Let $a_j^{\text{pre}}$ denote the baseline accuracy on past task $j$ before the switch, and $a_j(t)$ denote its accuracy at step $t$ of the new task. The first metric, \texttt{gap\_depth}, captures the single worst point of instability across the observation window:
 \begin{equation*}
-    \texttt{gap\_depth} = \max_j \left( a_j^{\text{pre}} - \min_t a_j(t) \right),
+    \texttt{gap\_depth} = \max_j \left( a_j^{\text{pre}} - \min_t a_j(t) \right).
 \end{equation*}
-the worst single point of instability across the record window. It is the primary outcome in every contrast: each prediction of Sections~\ref{sec:motivation} and~\ref{sec:theory} is stated as a claim about how \texttt{gap\_depth} moves between conditions. A companion scalar, \texttt{gap\_area}, integrates the past-task accuracy shortfall over the new-task record, but measured against the level each task \emph{recovers to} --- the trailing-window mean of its own curve, floored at the pre-switch level $a_j^{\text{pre}}$ --- rather than against $a_j^{\text{pre}}$ itself. This makes it a measure of the transient cost of the gap: the dip below the recovered level that later closes, whether that dip is a sharp notch or a gradual bend. A task that drifts to a lower plateau without such a dip (permanent forgetting) contributes $\approx 0$, as does one still improving at the switch; only a genuine dip-and-recover registers. Permanent retention loss is read off ACC/FORG instead, so depth, area, and the accuracy metrics separate how deep the gap goes, how much it costs before recovering, and the permanent level. \texttt{recovery\_steps} reports how many steps after the transition every past task first returns to within $90\%$ of its pre-task baseline, and is undefined when no sub-threshold dip occurs. All are reported alongside depth but are secondary. Their precise definitions, and the fixed-window \texttt{max\_drop} kept only for back-comparability, are in Table~\ref{tab:gap_metrics}.
+The second metric, \texttt{gap\_area\_end}, quantifies the total transient cost of the dip by measuring how far and for how long the accuracy falls below its eventual recovered level. To calculate this, we use a reference point $b_j = \min\!\left(a_j^{\text{pre}},\, \bar{a}_j\right)$, where $\bar{a}_j$ is the stable accuracy the task eventually settles at. The \texttt{gap\_area\_end} then integrates the shortfall $\max\!\left(0,\, b_j - a_j(t)\right)$ over the duration of the new task and sums it across all past tasks. By anchoring to the recovered level rather than the pre-task baseline, we isolate temporary dips from permanent forgetting. If a task permanently degrades to a lower plateau without a sharp dip, it settles at $\bar{a}_j < a_j^{\text{pre}}$ and contributes approximately zero to the gap area. Only a true temporary dip registers here, while permanent loss is measured separately using standard ACC/FORG metrics. Therefore, \texttt{gap\_depth}, \texttt{gap\_area\_end}, and ACC/FORG cleanly decouple how deep a drop is, its cumulative cost before recovery, and the permanent damage it leaves behind. Finally, \texttt{recovery\_steps} measures the gap temporally: once a past task dips, this metric counts the steps required for every past task to climb back to within $90\%$ of its pre-task baseline (remaining undefined if no drop occurs). Precise definitions of every logged metric, including the secondary and legacy measures not used in the main analysis, are collected in Table~\ref{tab:gap_metrics}.
 
 \paragraph{Continual-learning metrics.}
 
@@ -117,7 +117,7 @@ To place the gap in the standard continual-learning frame, we also report the co
 
 For the decomposition block the gradient tracker compares the replay-buffer gradient $g_{\text{replay}}$ against the deterministic empirical past-task gradient $g_{\text{true}}$ (a separate full-data forward/backward pass, no sub-sampling). Two diagnostics measure how faithfully a finite buffer approximates the past data \citep{aljundi2019gradientbasedsampleselection}: the directional fidelity $\cos(g_{\text{replay}}, g_{\text{true}})$ and the magnitude fidelity $\|g_{\text{replay}}\|/\|g_{\text{true}}\|$. These supply the direct per-step evidence for the estimator-bias contributor of Section~\ref{subsec:decomp}. A third, $\|g_{\text{new}}\|/\|g_{\text{replay}}\|$, is the update-side magnitude asymmetry; its inverse $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ is the signal the adaptive curriculum of Section~\ref{subsec:curriculum} uses to set $\lambda(t)$. Logged names and exact definitions are in Table~\ref{tab:grad_metrics}.
 
-Each diagnostic step adds one forward and backward pass over every past-task training sample ($60{,}000$ for rot-MNIST $T_0$), which is affordable on the MLP testbed but would dominate runtime on larger backbones, so the toggle stays off for the curriculum and CIFAR blocks, whose claims rest on \texttt{gap\_depth} and ACC rather than per-step gradient geometry.
+Each diagnostic step adds one forward and backward pass over every past-task training sample ($60{,}000$ for rot-MNIST $T_0$), which is affordable on the MLP testbed but would dominate runtime on larger backbones, so the toggle stays off for the curriculum and CIFAR blocks, whose claims rest on \texttt{gap\_depth}, \texttt{gap\_area\_end} and ACC rather than per-step gradient geometry.
 
 \paragraph{Statistical comparison.}
 
@@ -125,10 +125,6 @@ Across conditions we compare metrics with the paired Wilcoxon signed-rank test o
 
 \subsection{Experiments}
 \label{subsec:overview}
-
-Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\ref{sec:theory} and answers one research question (Table~\ref{tab:overview}). All conditions use five seeds and the training protocol of Section~\ref{subsec:testbed} unless noted otherwise.
-
-\paragraph{Momentum.} Every rot-MNIST condition, the whole decomposition G-series and the whole curriculum C-series, is run twice, once at momentum $0.0$ (plain SGD) and once at momentum $0.9$; the momentum-on runs carry an $M$ subscript (e.g.\ $\text{G1}_M$) and are reported beside their $\mu{=}0$ counterparts. The long-sequence and CIFAR-10 blocks ship a single momentum setting ($0.9$, the better-performing leg from rot-MNIST), since the two-task sweep already characterises the momentum trade-off at a transition.
 
 \begin{table*}[htbp]
     \centering
@@ -150,12 +146,16 @@ Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\r
     \label{tab:overview}
 \end{table*}
 
+Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\ref{sec:theory} and answers one research question (Table~\ref{tab:overview}). All conditions use five seeds and the training protocol of Section~\ref{subsec:testbed} unless noted otherwise.
+
+\paragraph{Momentum.} Every rot-MNIST condition, the whole decomposition G-series and the whole curriculum C-series, is run twice, once at momentum $0.0$ (plain SGD) and once at momentum $0.9$; the momentum-on runs carry an $M$ subscript (e.g.\ $\text{G1}_M$). The long-sequence and CIFAR-10 blocks ship a single momentum setting ($0.9$, the better-performing leg from rot-MNIST).
+
 \subsubsection{Three-Contributor Decomposition}
 \label{subsec:decomp}
 
-\paragraph{Aim.} Isolate the three contributors of Section~\ref{subsec:decomposition} --- magnitude asymmetry ($G_{\text{mag}}$), estimator variance ($G_{\text{est}}$), and the trajectory effect ($G_{\text{traj}}$) --- and quantify each one's share of the total gap. This is the diagnostic question of RQ1.
+\paragraph{Aim.} Isolate the three contributors of Section~\ref{subsec:decomposition}: magnitude asymmetry ($G_{\text{mag}}$), estimator variance ($G_{\text{est}}$), and the trajectory effect ($G_{\text{traj}}$). To then quantify each one's share of the total gap. This is the diagnostic question of RQ1.
 
-\paragraph{Design.} Two of the three contributors are predicted to be downstream symptoms of the discontinuity at the task boundary; the third, estimator variance, is a property of finite replay buffers and persists at any schedule. Removing each contributor by construction and observing the residual gap depth identifies which contributors drive the dip. The path G1 $\rightarrow$ G2 $\rightarrow$ G3 $\rightarrow$ G4 removes one source at a time (Table~\ref{tab:decomp}).
+\paragraph{Design.} Two of the three contributors are predicted to be downstream symptoms of the discontinuity at the task boundary; the third, estimator variance, is a property of finite replay buffers and persists at any schedule. Removing each contributor by construction and observing the residual gap identifies which contributors drive the dip. The path G1 $\rightarrow$ G2 $\rightarrow$ G3 $\rightarrow$ G4 removes one source at a time (Table~\ref{tab:decomp}).
 
 \begin{table*}[htbp]
     \centering
@@ -177,18 +177,18 @@ Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\r
 
 \paragraph{Gradient balancing.} The balanced conditions G3 and G4 compute the replay and new-task gradients in two separate backward passes, normalise each to unit norm, and combine them $50/50$, so the two terms enter the update with equal magnitude regardless of their raw sizes. This targets the first-step asymmetry of Section~\ref{subsec:decomposition}: at $\theta_0^*$ the replay gradient is near zero, so an unbalanced step is driven almost entirely by $g_{\text{new}}$, whereas after normalisation the replay direction carries equal weight from the first step. Balancing removes the magnitude asymmetry by construction, so $G_{\text{mag}}$ is exactly the gap-depth difference between an unbalanced step (G1) and a balanced one (G3).
 
-\paragraph{Full-data conditions.} The full-data conditions G2 and G4 hold the entire past-task training set in the buffer and, at every step, compute the replay gradient on every stored sample exactly once. The resulting replay gradient is the deterministic empirical past-task gradient at the current parameters --- no sampling, no bootstrap variance. Vanilla ER (G1) draws $256$ samples with replacement, so its replay gradient is a stochastic estimator of this same quantity. The estimator contributor $G_{\text{est}}$ is therefore exactly the gap-depth difference between an estimator-driven step and an exact-gradient step, and $G_{\text{traj}}$ in G4 is the residual once both the estimator and the magnitude asymmetry are removed.
+\paragraph{Full-data conditions.} The full-data conditions G2 and G4 hold the entire past-task training set in the buffer and, at every step, compute the replay gradient on every stored sample exactly once. The resulting replay gradient is the deterministic empirical past-task gradient at the current parameters: no sampling, no bootstrap variance. Vanilla ER (G1) draws $256$ samples with replacement, so its replay gradient is a stochastic estimator of this same quantity. The estimator contributor $G_{\text{est}}$ is therefore exactly the gap-depth difference between an estimator-driven step and an exact-gradient step, and $G_{\text{traj}}$ in G4 is the residual once both the estimator and the magnitude asymmetry are removed.
 
-\paragraph{Decomposition shares.} Differences in \texttt{gap\_depth} along the path identify each contributor. The magnitude share ($G_{\text{mag}}$) is the drop from G1 to G3, removed by balancing alone; the estimator share ($G_{\text{est}}$) is the further drop from G3 to G4, the additional reduction from full data on top of balancing; and the trajectory share ($G_{\text{traj}}$) is the residual gap at G4 once both are removed, the trajectory contribution of Section~\ref{sec:theory}. The G2 condition is a sanity check: $\texttt{gap\_depth}(\text{G1}) - \texttt{gap\_depth}(\text{G2})$ should recover $G_{\text{est}}$ along an orthogonal path through the design.
+\paragraph{Decomposition shares.} The two first-step contributors act through the instantaneous magnitude asymmetry of the boundary update, so they are read from \texttt{gap\_depth}. The magnitude share ($G_{\text{mag}}$) is the depth drop from G1 to G3, removed by balancing alone; the estimator share ($G_{\text{est}}$) is the further depth drop from G3 to G4, the additional reduction from full data on top of balancing. The trajectory contribution is different in kind: it is not an instantaneous spike but the slow drift back along the moving valley floor of Section~\ref{sec:theory}, a hanging bend rather than a notch. Once both other biases are removed at G4 its residual \emph{depth} is therefore expected to be small, while the trajectory term shows up instead in \texttt{gap\_area\_end} and the recovery time, which integrate the bend that depth misses. We accordingly read $G_{\text{mag}}$ and $G_{\text{est}}$ from depth differences but quantify the trajectory residual ($G_{\text{traj}}$) from the area and recovery at G4. The G2 condition is a sanity check on the estimator share: $\texttt{gap\_depth}(\text{G1}) - \texttt{gap\_depth}(\text{G2})$ should recover $G_{\text{est}}$ along an orthogonal path through the design.
 
 \paragraph{NCL reference.} NCL is included as a path-finding baseline (Section~\ref{subsec:pathfinding_vs_shaping}): it accepts the discontinuity but preconditions each SGD step by the past-task precision matrix.
 
-\paragraph{Prediction.} Gap depth reduces along the path G1 $\rightarrow$ G3 $\rightarrow$ G4. The trajectory residual at G4 is small but non-zero (the prediction of \citet{kao2021naturalcontinuallearningsuccess}, Section~\ref{subsec:stability_gap}), and is the contributor the $\lambda$-curriculum should additionally suppress.
+\paragraph{Prediction.} Gap depth reduces along the path G1 $\rightarrow$ G3 $\rightarrow$ G4 as the two first-step contributors are removed. What remains at G4 is the trajectory residual: small in depth but visible as a bend in \texttt{gap\_area\_end} (the prediction of \citet{kao2021naturalcontinuallearningsuccess}, Section~\ref{subsec:stability_gap}), and the contributor the $\lambda$-curriculum should additionally suppress.
 
 \subsubsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum Sweep}
 \label{subsec:curriculum}
 
-\paragraph{Aim.} Test the envelope-theorem prediction of Section~\ref{sec:theory} --- that a continuous $\lambda$-schedule eliminates the trajectory contribution to the gap, with a transient that shrinks as $O(1/N)$ (Equation~\eqref{eq:bound}) --- the $\lambda_{\min}$ trade-off, and the momentum cross-cut of RQ2d. Answers RQ2a--RQ2d.
+\paragraph{Aim.} Test the envelope-theorem prediction of Section~\ref{sec:theory}, that a continuous $\lambda$-schedule eliminates the trajectory contribution to the gap, with a transient that shrinks as $O(1/N)$ (Equation~\eqref{eq:bound}), the $\lambda_{\min}$ trade-off, and the momentum cross-cut of RQ2d. Answers RQ2a--RQ2d.
 
 \paragraph{Design.} All seven curriculum conditions (labelled C1--C7) are applied on top of standard ER ($1$k reservoir, no balancing, no NCL) so the curriculum's effect is isolated (Table~\ref{tab:curriculum}). As stated in Section~\ref{subsec:overview}, each is run at both momentum $0.0$ and $0.9$.
 
@@ -213,22 +213,32 @@ Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\r
     \label{tab:curriculum}
 \end{table*}
 
-The adaptive schedule (C4) is self-paced. At $\theta_0^*$ the replay gradient is near zero by stationarity, so the ratio $r := \|g_{\text{replay}}\| / \|g_{\text{new}}\|$ is near zero and $\lambda$ starts near $0$. As the iterate leaves $\theta_0^*$, $\|g_{\text{replay}}\|$ grows while $\|g_{\text{new}}\|$ shrinks as the model fits $T_1$, so $r$ climbs and $\lambda \to 1$ with no explicit ramp length; the schedule ignores $N$ entirely. The floor $\lambda_{\min}$ (C5--C7) matters mainly for this adaptive variant: it stops the schedule from sitting at $\lambda \approx 0$ in the first steps, when the EMA estimate of $r$ is still close to zero.
+The adaptive schedule (C4) is self-paced: it sets $\lambda$ to a clipped exponential moving average (EMA) of the gradient-norm ratio $r := \|g_{\text{replay}}\| / \|g_{\text{new}}\|$ (Table~\ref{tab:curriculum}). At $\theta_0^*$ the replay gradient is near zero by stationarity, so $r$ is near zero and $\lambda$ starts near $0$. As the iterate leaves $\theta_0^*$, $\|g_{\text{replay}}\|$ grows while $\|g_{\text{new}}\|$ shrinks as the model fits $T_1$, so $r$ climbs and $\lambda \to 1$ with no explicit ramp length; the schedule ignores $N$ entirely. The floor $\lambda_{\min}$ (C5--C7) matters only for this adaptive variant: it stops the schedule from sitting at $\lambda \approx 0$ in the first steps, when the EMA estimate of $r$ is still close to zero.
 
-\paragraph{Prediction.} \texttt{gap\_depth} should fall monotonically as $N$ grows from $50$ to $200$ (the $O(1/N)$ bound of Equation~\eqref{eq:bound}), while ACC stays close to vanilla ER, because the curriculum preserves SGD's natural step-size adaptation rather than rescaling the step the way gradient balancing does (RQ2a). The adaptive schedule should reach a comparable depth reduction without fixing $N$ (RQ2b). A small floor $\lambda_{\min} \in [0.05, 0.15]$ should restore early $T_1$ velocity --- the adaptive schedule otherwise sits near $\lambda \approx 0$ in the first steps and barely trains the new task --- giving faster early learning and higher final accuracy, at the cost of only a slight increase in gap depth (well short of vanilla-ER levels), for a better (depth, ACC) Pareto position than $\lambda_{\min} = 0$ (RQ2c).
+\paragraph{Prediction.} We hypothesize three main outcomes based on our research questions. First, as $N$ increases from 50 to 200, \texttt{gap\_depth} should decrease monotonically, consistent with the $O(1/N)$ bound in Equation~\eqref{eq:bound}. Simultaneously, overall accuracy (ACC) should remain comparable to vanilla Experience Replay (ER). This is because our curriculum preserves the natural step-size adaptation of SGD, rather than artificially rescaling the steps as gradient balancing does (RQ2a). Second, implementing an adaptive schedule should achieve a comparable reduction in gap depth without requiring a fixed value for $N$ (RQ2b). Finally, introducing a small minimum floor, $\lambda_{\min} \in [0.05, 0.10, 0.20]$, should restore early learning velocity on task $T_1$. While this causes a slight increase in gap depth, it yields faster early learning and higher final accuracy, ultimately achieving a better Pareto balance between depth and accuracy than setting $\lambda_{\min} = 0$ (RQ2c).
 
 The contrast between balanced ER (G3) and linear $N{=}200$ (C3) isolates the difference between acting on the magnitude symptom alone and acting on the schedule discontinuity: both should suppress depth, but only the curriculum should preserve ACC.
 
 \paragraph{Momentum (RQ2d).}
 \label{subsec:momentum}
-Because every condition above (and the decomposition G-series) is run at both momentum $0.0$ and $0.9$, the same sweep tests the two momentum predictions of RQ2d. On top of the curriculum, momentum should reduce the seed-to-seed standard deviation in \texttt{gap\_depth} and the per-step oscillation amplitude on the $T_0$ accuracy curve, without changing the depth mean by much --- the residual it cleans up is the stochastic oscillation around the optimum path. Without the curriculum, momentum should \emph{not} reduce \texttt{gap\_depth}: depth for vanilla ER (G1) at momentum $0.9$ should match depth at momentum $0.0$, because the one-sided first step at the boundary is deterministic and its direction is unchanged. The contrast $\text{C3}$ vs.\ $\text{C3}_M$ measures the residual momentum removes; the contrast $\text{G1}$ vs.\ $\text{G1}_M$ tests the falsification, and a null there is the falsifiable prediction.
+Because every condition described above (including the G-series decomposition) is run at both $0.0$ and $0.9$ momentum, this parameter sweep simultaneously tests the two momentum predictions of RQ2d. Momentum acts as a trajectory mechanism. It cannot redirect the deterministic, one-sided first step at a task boundary, but it does dampen the stochastic oscillation as the model tracks the moving optimal path afterward. Consequently, its clearest signature appears in the trajectory metrics, specifically \texttt{gap\_area\_end} and the per-step oscillation amplitude on the $T_0$ curve, rather than in the initial performance spike.
+
+Its effect on \texttt{gap\_depth} depends entirely on what causes the performance drop. Without the curriculum (G1), the depth is determined strictly by the deterministic first-step spike. Therefore, momentum should leave \texttt{gap\_depth} unchanged. The depth for vanilla Experience Replay (ER) at $0.9$ momentum should exactly match the depth at $0.0$ momentum, even though momentum still shrinks the subsequent recovery bend measured by \texttt{gap\_area\_end}.
+
+In contrast, when the curriculum is applied (the C-series), the first step is held near zero, and the deepest drop occurs later on the trajectory bend itself. Dampening this bend should logically reduce both \texttt{gap\_area\_end} and \texttt{gap\_depth}, while also tightening the variance across different random seeds.
+
+Ultimately, the comparison between $\text{G1}$ and $\text{G1}_M$ tests this falsification by predicting a null effect on depth. Meanwhile, the contrast between $\text{C3}$ and $\text{C3}_M$, along with the adaptive $\text{C4}$ condition, measures the exact trajectory residual that momentum successfully removes.
 
 \subsubsection{Long-Sequence rot-MNIST}
 \label{subsec:longseq}
 
 \paragraph{Aim.} The two-task design isolates a single transition, which keeps the decomposition clean but leaves two questions open: whether the curriculum still suppresses the gap across several consecutive boundaries, and whether NCL recovers the advantage that \citet{kao2021naturalcontinuallearningsuccess} report at the higher task counts where path-finding methods are strongest.
 
-\paragraph{Design.} A five-task rot-MNIST sequence with rotations $[-90, -60, -30, 0, 30]^\circ$, giving four consecutive transitions over a uniform $30^\circ$ step. The backbone, online regime, and dense per-step evaluation are those of the two-task block (Section~\ref{subsec:testbed}). Momentum is fixed at $0.9$: the C-series and the G1/G1$_M$ contrast already characterise the momentum trade at a single transition, so running both legs here would add little. Four conditions (Table~\ref{tab:longseq}) --- vanilla ER, tuned NCL, and the adaptive curriculum at $\lambda_{\min} \in \{0, 0.10\}$ --- each at five seeds. Gap-depth and accuracy are averaged over the four transitions.
+\paragraph{Design.} We use a five-task rot-MNIST sequence with rotations of $[-90, -60, -30, 0, 30]^\circ$. This creates four consecutive transitions, each with a uniform $30^\circ$ step. The network backbone, online learning regime, and dense per-step evaluation remain identical to the two-task block described in Section~\ref{subsec:testbed}.
+
+Momentum is fixed at $0.9$ for this phase. We do not test multiple momentum values here because the earlier C-series and the G1 versus G1$_M$ contrast already characterize the momentum trade-off during a single transition, making further comparison redundant.
+
+As outlined in Table~\ref{tab:longseq}, we evaluate four experimental conditions: vanilla ER, tuned NCL, and the adaptive curriculum at two different floor values ($\lambda_{\min} \in \{0, 0.10\}$). Each condition is run across five random seeds. Finally, the gap depth and accuracy metrics are calculated by averaging the results across all four task transitions.
 
 \begin{table}[H]
     \centering
@@ -252,11 +262,11 @@ Because every condition above (and the decomposition G-series) is run at both mo
 \subsubsection{Generalisation: CIFAR-10}
 \label{subsec:cifar}
 
-\paragraph{Aim.} Confirm the direction of the rot-MNIST findings under a stronger task shift and a deeper, harder-to-analyse architecture --- the regime in which the assumptions behind the envelope-theorem bound weaken (Section~\ref{sec:theory}). The headline dataset is the two-task Gaussian-noise domain shift of Section~\ref{subsec:testbed}.
+\paragraph{Aim.} This experiment tests the generalization of our rot-MNIST findings by applying them to a stronger task shift and a deeper, non-linear architecture. Specifically, we investigate whether our theoretical predictions hold in a regime where the assumptions underlying the envelope-theorem bound begin to weaken (Section~\ref{sec:theory}). We use the two-task Gaussian-noise domain shift described in Section~\ref{subsec:testbed} as the primary evaluation dataset.
 
-\paragraph{Training protocol.} The CIFAR-adapted ResNet-18 of Table~\ref{tab:resnet}, ten epochs per task --- at this depth ResNet-18 needs more than one pass to converge before the transition --- batch size $256$, SGD with learning rate $0.1$, and a replay buffer of $5{,}000$ samples. Momentum is fixed at $0.9$ (the better-performing leg from rot-MNIST); the two-leg momentum sweep of Section~\ref{subsec:overview} is not repeated here. Evaluation follows the scheme of Section~\ref{subsubsec:eval_protocol}: per-step for the first $50$ steps after the transition, every $10$ steps otherwise.
+\paragraph{Training protocol.} We use the CIFAR-adapted ResNet-18 detailed in Table~\ref{tab:resnet}. Because this deeper architecture requires more than a single pass to converge before a task transition, we train for ten epochs per task. The setup uses a batch size of $256$, an SGD learning rate of $0.1$, and a replay buffer of $5{,}000$ samples. To focus entirely on generalization, we fix momentum at $0.9$, which was the better-performing configuration from the rot-MNIST experiments, rather than repeating the full parameter sweep from Section~\ref{subsec:overview}. We follow the evaluation scheme outlined in Section~\ref{subsubsec:eval_protocol}, recording metrics at every step for the first $50$ steps after the transition, and every $10$ steps thereafter.
 
-\paragraph{Headline conditions.} The headline block is six conditions: three methods --- vanilla ER, NCL, and the adaptive curriculum at $\lambda_{\min}=0.20$ --- each run under both BatchNorm and GroupNorm (Table~\ref{tab:cifar}). A linear curriculum is not run on CIFAR; $\lambda_{\min}=0.20$ is the single carried-over curriculum setting, the adaptive variant that gave the best final accuracy in the rot-MNIST $\lambda_{\min}$ sweep. NCL hyperparameters are pinned to the values that won the rot-MNIST tuning sweep (Appendix~\ref{app:implementation}). The two normalisations are crossed in deliberately: they govern the post-switch recovery dynamics. BatchNorm running statistics are disrupted by the input shift and re-adapt over the first steps of the new task, whereas GroupNorm carries no cross-batch statistics, so the pair separates the normalisation-driven part of the dip from the optimisation-driven part the curriculum targets.
+\paragraph{Headline conditions.} To test how robustly our method generalizes, we evaluate six distinct conditions. As shown in Table~\ref{tab:cifar}, we compare three methods: vanilla Experience Replay (ER), NCL, and our adaptive curriculum set to $\lambda_{\min}=0.20$. We omit the linear curriculum for CIFAR and instead carry over only this specific adaptive variant, as it yielded the best final accuracy in the prior rot-MNIST sweep. Similarly, we pin the NCL hyperparameters to the optimal values found in the earlier tuning phase (Appendix~\ref{app:implementation}). Furthermore, we cross each of these three methods with both BatchNorm and GroupNorm. This normalization crossover is deliberate because it directly impacts post-switch recovery dynamics. The input shift disrupts the running statistics of BatchNorm, requiring it to re-adapt during the initial steps of the new task. GroupNorm, conversely, relies on no cross-batch statistics. Comparing the two allows us to isolate the performance drop caused purely by optimization dynamics, which our curriculum actively targets, from the drop caused by disrupted normalization statistics.
 
 \begin{table}[H]
     \centering
@@ -295,4 +305,4 @@ Because every condition above (and the decomposition G-series) is run at both mo
     \label{tab:cifar_gen}
 \end{table}
 
-\paragraph{Prediction.} Qualitative carry-over of the rot-MNIST result: the adaptive curriculum should reduce gap depth relative to vanilla ER and at least match NCL on depth while preserving ACC, under both normalisations, and should keep beating its vanilla control on the novel corruptions of the generalisation block. The quantitative $O(1/N)$ scaling of the bound is not expected to hold tightly at this depth; deviations are reported and discussed alongside the results.
+\paragraph{Prediction.} Qualitative carry-over of the rot-MNIST result: the adaptive curriculum should reduce both \texttt{gap\_depth} and \texttt{gap\_area\_end} relative to vanilla ER, and at least match NCL on both while preserving ACC, under both normalisations. On this deeper backbone the gap stays open for many steps after the boundary, so the trajectory cost shows up in \texttt{gap\_area\_end} as much as in the depth; the curriculum, by removing the discontinuity, should close that open gap rather than merely blunt its spike. The curriculum should also keep beating its vanilla control on the novel corruptions of the generalisation block. The quantitative $O(1/N)$ scaling of the bound is not expected to hold tightly at this depth; deviations are reported and discussed alongside the results.
