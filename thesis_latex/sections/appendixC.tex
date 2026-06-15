@@ -206,3 +206,82 @@ indicated normalisation, over three seeds.
         four task boundaries.}
     \label{tab:app_longseq}
 \end{table}
+
+\subsection{Supplementary Figures}
+\label{app:supp_figures}
+
+This subsection collects per-step curves referenced from the main text: the
+full five-task rot-MNIST sequence (Section~\ref{subsec:res_longseq}) and the
+three-task group-norm generalisation outlier (Section~\ref{subsec:res_cifar}).
+
+\begin{figure*}[htbp]
+    \centering
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/L/longseq_t0.png}\\
+        {\scriptsize (a) $T_0$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/L/longseq_t1.png}\\
+        {\scriptsize (b) $T_1$}
+    \end{minipage}
+
+    \vspace{4pt}
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/L/longseq_t2.png}\\
+        {\scriptsize (c) $T_2$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/L/longseq_t3.png}\\
+        {\scriptsize (d) $T_3$}
+    \end{minipage}
+
+    \vspace{4pt}
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/L/longseq_t4.png}\\
+        {\scriptsize (e) $T_4$}
+    \end{minipage}
+    \caption{Per-step test accuracy of each task across the full five-task rot-MNIST
+        sequence (rotations $[0,30,60,90,120]^\circ$, four transitions, momentum
+        $0.9$), mean over five seeds with $\pm$std bands. Panels (a)--(e) are tasks
+        $T_0$--$T_4$; conditions are vanilla ER (L1, brown), NCL (L2, green), and the
+        adaptive curriculum at $\lambda_{\min}=0$ (L3, cyan) and $\lambda_{\min}=0.10$
+        (L4, pink). For the earlier tasks (a--d) each later boundary produces a small
+        transient and a step down in the plateau: vanilla ER steps down furthest and
+        holds the lowest plateau (cumulative forgetting, the per-boundary bends being
+        small), the adaptive curricula hold higher, and NCL stays flattest but lowest.
+        The final task (e, $T_4$) sees no later boundary and so shows current-task
+        plasticity rather than a gap: vanilla fits it best and NCL underfits it badly,
+        while the curriculum tracks vanilla. This is where NCL's flat retention is
+        paid for in accuracy.}
+    \label{fig:longseq}
+\end{figure*}
+
+\begin{figure*}[htbp]
+    \centering
+    \begin{minipage}[t]{0.32\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/T/failure_t0.png}\\
+        {\scriptsize (a) $T_0$ (none)}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.32\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/T/failure_t1.png}\\
+        {\scriptsize (b) $T_1$ (Gaussian)}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.32\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/T/failure_t2.png}\\
+        {\scriptsize (c) $T_2$ (shot)}
+    \end{minipage}
+    \caption{Per-step test accuracy of each task across the three-task CIFAR-10
+        generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot,
+        ResNet-18, ship config, three seeds with $\pm$std bands), comparing the
+        group-norm run (orange) against its batch-norm counterpart (teal). Panels
+        (a)--(c) are tasks $T_0$--$T_2$; the two boundaries fall at $\sim$2k and
+        $\sim$4k steps. The first boundary (none $\rightarrow$ Gaussian) barely
+        perturbs past-task accuracy in either norm. The second boundary (Gaussian
+        $\rightarrow$ shot, two near-identical corruptions) drives a deep transient in
+        $T_0$ (a) and $T_1$ (b) under group norm only, while the batch-norm run holds
+        flat through both switches; the incoming task $T_2$ (c) is still learned
+        normally under both norms. The dip is thus localised entirely to the second
+        transition and to group norm, the reliability boundary discussed in
+        Section~\ref{subsec:res_cifar}.}
+    \label{fig:failure_curves}
+\end{figure*}

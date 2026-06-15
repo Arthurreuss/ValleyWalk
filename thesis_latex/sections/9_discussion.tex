@@ -1,189 +1,52 @@
 \section{Discussion}
 \label{sec:discussion}
 
-The results let us return to the claim the thesis set out to defend: that in its
-dominant components the stability gap is a symptom of the task-boundary
-discontinuity, and that removing the discontinuity is a better intervention than
-navigating it. The decomposition supports the first half of the claim, the
-curriculum-and-momentum results the second. What the numbers also force is a
-sharper reading of what ``the gap'' is --- not one quantity but two, a depth and
-a hanging tail, that the theory predicts should respond to different parts of the
-fix and that come apart most clearly on the deeper backbone.
+The results let us return to the claim the thesis set out to defend: that in its dominant components the stability gap is a symptom of the task-boundary discontinuity, and that removing the discontinuity is a better intervention than navigating it. The decomposition supports the first half of the claim, the curriculum-and-momentum results the second. What the numbers also force is a sharper reading of what ``the gap'' is: not one quantity but two, a depth and a hanging tail, which respond to different parts of the fix. The decomposition shows the two are separable, with the depth removable while the tail remains, and on the deeper backbone, where recovery is slow, the tail is the part that dominates the cost.
 
 \subsection{The boundary is the cause, and it has two faces}
 \label{subsec:disc_cause}
 
-The decomposition (RQ1) places roughly two-thirds of the rot-MNIST gap in the
-first-step magnitude asymmetry and a further fifth in estimator and trajectory
-terms, with the trajectory residual surviving exact gradients and unit-norm
-balancing. This is the pattern the discontinuity account predicts: the part of
-the gap that vanishes when the new-task gradient is introduced gradually
-($G_{\text{mag}}$, $G_{\text{traj}}$) is the part tied to the boundary, and the
-part that does not ($G_{\text{est}}$) is the buffer's, independent of the
-schedule. That the trajectory residual is small on the MLP is not evidence
-against it; it is what Equation~\eqref{eq:bound} expects on a network that
-reconverges in a few steps, where the $O(1/N)$ tail has little time to
-accumulate.
+The decomposition (RQ1) places roughly two-thirds of the rot-MNIST gap's depth in the first-step magnitude asymmetry ($71\%$), a fifth in the estimator term ($19\%$), and a tenth in the trajectory residual ($10\%$), the last surviving exact gradients and unit-norm balancing. This is the pattern the discontinuity account predicts: the part of the gap that vanishes when the new-task gradient is introduced gradually ($G_{\text{mag}}$, $G_{\text{traj}}$) is the part tied to the boundary, and the part that does not ($G_{\text{est}}$) is the buffer's, independent of the schedule. That the trajectory residual is small on the MLP is not evidence against it; it is what Equation~\eqref{eq:bound} expects on a network that reconverges in a few steps, where the $O(1/N)$ tail has little time to accumulate.
 
-The residual matters because it is the half of the gap that the depth headline
-hides. Depth measures the instantaneous notch the one-sided first step cuts;
-\texttt{gap\_area\_end} measures the bend that follows, the cost the transient carries
-before the curve reconverges. The G4 condition isolates this directly: with the
-magnitude spike removed its depth is only $1.9$ pp, yet a visible bend remains
---- the trajectory residual showing up as a hanging curve rather than a spike,
-exactly the shape the theory attaches to the $1/N$ term. On rot-MNIST this bend
-is cheap. On the CIFAR ResNet, which reconverges over hundreds of steps rather
-than a few, the same transient stays open long after the initial notch, so most
-of the accuracy the gap costs comes from the prolonged recovery rather than the
-depth of the dip --- and that recovery cost is where the curriculum's margin over
-the baselines is largest.
-The depth-versus-area distinction is therefore not bookkeeping: it is the axis
-along which the method's value scales with how slowly a network recovers, and a
-depth-only reading would have understated the result on exactly the architectures
-where it counts.
+This decomposition puts numbers on a split the stability-gap literature has so far drawn qualitatively. \citet{delange2023continualevaluationlifelonglearning} attribute the gap to a gradient imbalance at the boundary, where the new-task gradient dominates and the early steps trade stability for plasticity; that imbalance is our $G_{\text{mag}}$, and we find it carries the largest share of the depth ($71\%$). \citet{hess2024complementaryperspectivescontinuallearning} and \citet{kao2021naturalcontinuallearningsuccess} show the gap survives the exact joint loss, locating a second contributor in the geometry of the descent path itself; that is our $G_{\text{traj}}$, which we confirm persists under exact gradients (G4) and isolate as the component the curriculum is built to remove. To these two we add a third the prior accounts leave folded in, the finite-buffer estimator variance $G_{\text{est}}$, which is a property of the replay sample rather than the boundary and so responds to neither the discontinuity nor the curriculum.
 
-The same distinction guards against a false negative in the other direction. NCL
-reaches a low depth on rot-MNIST but its curve steps to a lower plateau and stays
-there, which a gap metric referenced to the pre-task accuracy would score as
-severe instability. Referenced instead to the level each task recovers to, that
-shortfall is correctly read as permanent forgetting --- the same loss ACC and
-FORG already report --- and not as a transient the curriculum could close. The
-gap and forgetting are different failures, and keeping them apart is what lets
-the decomposition attribute the gap to the boundary rather than to capacity loss.
+The residual matters because it is the half of the gap that the depth headline hides. Depth measures the instantaneous notch the one-sided first step cuts; \texttt{gap\_area\_end} measures the bend that follows, the cost the transient carries before the curve reconverges. The G4 condition isolates this directly: with the magnitude spike removed its depth is only $1.9$ pp, yet a visible bend remains, the trajectory residual showing up as a hanging curve rather than a spike, exactly the shape the theory attaches to the $1/N$ term. On rot-MNIST this bend is cheap. On the CIFAR ResNet, which reconverges over hundreds of steps rather than a few, the same transient stays open long after the initial notch, so most of the accuracy the gap costs comes from the prolonged recovery rather than the depth of the dip, and that recovery cost is where the curriculum's margin over the baselines is largest. The depth-versus-area distinction is therefore not bookkeeping: it is the axis along which the method's value scales with how slowly a network recovers, and a depth-only reading would have understated the result on exactly the architectures where it counts.
+
+The same distinction guards against a false negative in the other direction. NCL reaches a low depth on rot-MNIST but its curve steps to a lower plateau and stays there, which a gap metric referenced to the pre-task accuracy would score as severe instability. Referenced instead to the level each task recovers to, that shortfall is correctly read as permanent forgetting (the same loss ACC and FORG already report) and not as a transient the curriculum could close. The gap and forgetting are different failures, and keeping them apart is what lets the decomposition attribute the gap to the boundary rather than to capacity loss.
 
 \subsection{Why shaping beats path-finding}
 \label{subsec:disc_shaping}
 
-The cleanest separation in the study is the contrast between NCL and the
-curriculum on the deeper backbone. The two interventions target the same
-discontinuity from opposite sides: NCL accepts the jump and preconditions each
-update with past-task curvature (path-finding); the curriculum removes the jump
-and leaves the geometry of each step to SGD (landscape-shaping). On rot-MNIST
-both lower depth, so the two are hard to tell apart. On CIFAR they diverge
-sharply --- NCL's preconditioner makes the gap \emph{larger} than vanilla ER
-under batch norm, the opposite of its rot-MNIST behaviour, while the curriculum's
-benefit holds across both normalisations and both backbones.
+The cleanest separation in the study is the contrast between NCL and the curriculum on the deeper backbone. The two interventions target the same discontinuity from opposite sides: NCL accepts the jump and preconditions each update with past-task curvature (path-finding); the curriculum removes the jump and leaves the geometry of each step to SGD (landscape-shaping). On rot-MNIST both lower depth, so the two are hard to tell apart. On CIFAR they diverge sharply: NCL's preconditioner makes the gap \emph{larger} than vanilla ER under batch norm, the opposite of its rot-MNIST behaviour, while the curriculum's benefit holds across both normalisations, both backbones, and the novel two-task corruption shifts it was not tuned on.
 
-This is the failure mode the motivation anticipated for path-finding
-(Section~\ref{subsec:pathfinding_vs_shaping}). A preconditioner rescales the
-gradient, and on a deeper network the curvature estimate it depends on is harder
-to get right and its rescaling interferes with the step-size adaptation SGD
-relies on; when the estimate is off, steering across the discontinuity can steer
-badly. The curriculum changes only a scalar loss weight and leaves the step size
-untouched, so it has nothing analogous to mis-estimate. The result is the
-practical case for the thesis's methodological stance: an intervention that
-removes the problematic structure degrades more gracefully with depth than one
-that builds machinery to cope with it. We do not claim path-finding fails in
-general --- NCL reaches the lowest depth of any method on the long rot-MNIST
-sequence, consistent with \citet{kao2021naturalcontinuallearningsuccess} --- only
-that it pays an accuracy cost the curriculum does not and that its advantage did
-not survive the move to a deeper backbone.
+This is the failure mode the motivation anticipated for path-finding (Section~\ref{subsec:pathfinding_vs_shaping}). A preconditioner rescales the gradient, and on a deeper network the curvature estimate it depends on is harder to get right and its rescaling interferes with the step-size adaptation SGD relies on; when the estimate is off, steering across the discontinuity can steer badly. The curriculum changes only a scalar loss weight and leaves the step size untouched, so it has nothing analogous to mis-estimate. The result is the practical case for the thesis's methodological stance: an intervention that removes the problematic structure degrades more gracefully with depth than one that builds machinery to cope with it. We do not claim path-finding fails in general (NCL reaches the lowest depth of any method on the long rot-MNIST sequence, consistent with \citet{kao2021naturalcontinuallearningsuccess}), only that it pays an accuracy cost the curriculum does not and that its advantage did not survive the move to a deeper backbone.
 
 \subsection{Two mechanisms, two parts of the fix}
 \label{subsec:disc_momentum}
 
-The momentum cross (RQ2d) is the most direct test of the theory's mechanism, and
-it confirms a falsifiable null: momentum alone, without the curriculum, leaves
-the gap essentially intact, with seeds disagreeing on even the sign of the small
-change. This is expected, because the first step at the boundary is
-deterministic --- the new-task gradient against a near-zero replay gradient ---
-and averaging cannot soften a step that has no stochastic component to average.
-Momentum becomes decisive only once the curriculum has made the optimum path
-continuous, at which point the residual gap is the stochastic oscillation around
-that path and momentum averages it away, collapsing both the depth and its
-seed-to-seed variance.
+The momentum cross (RQ2d) is the most direct test of the theory's mechanism, and it confirms a falsifiable null: momentum alone, without the curriculum, leaves the gap largely intact, with seeds disagreeing on even the sign of the small change. This is expected, because the first step at the boundary is deterministic (the new-task gradient against a near-zero replay gradient), and averaging cannot soften a step that has no stochastic component to average. Momentum becomes decisive only once the curriculum has made the optimum path continuous, at which point the residual gap is the stochastic oscillation around that path and momentum averages it away, collapsing both the depth and its seed-to-seed variance.
 
-Read against Equation~\eqref{eq:bound}, the curriculum and momentum address
-different terms. The curriculum lengthens the ramp, which shrinks the
-deterministic curvature spike ($1/N^2$, the depth) and the trajectory lag ($1/N$,
-the area) but cannot remove the per-step jitter the continuous-limit argument
-abstracts away. Momentum removes that jitter but does nothing to the
-deterministic step. Neither alone closes the gap to a few points at matched
-accuracy; together they do. The $\lambda_{\min}$ floor then trades a small slice
-of depth back for early plasticity, and only becomes a clean Pareto knob once
-momentum has suppressed the deterministic step the floor cannot touch --- which
-is why it barely registered at momentum $0$ and tuned a real trade-off at
-momentum $0.9$. The three refinements are not interchangeable knobs; each acts on
-a part of the gap the others leave alone, in the order the theory predicts.
+Read against Equation~\eqref{eq:bound}, the curriculum and momentum address different terms. The curriculum lengthens the ramp, which shrinks the deterministic curvature spike ($1/N^2$, the depth) and the trajectory lag ($1/N$, the area) but cannot remove the per-step jitter the continuous-limit argument abstracts away. Momentum removes that jitter but does nothing to the deterministic step. Neither alone closes the gap to a few points at matched accuracy; together they do. The $\lambda_{\min}$ floor then trades a small slice of depth back for early plasticity, and only becomes a clean Pareto knob once momentum has suppressed the deterministic step the floor cannot touch, which is why it barely registered at momentum $0$ and tuned a real trade-off at momentum $0.9$. The three refinements are not interchangeable knobs; each acts on a part of the gap the others leave alone, in the order the theory predicts.
 
 \subsection{Relation to blurry task boundaries}
 \label{subsec:disc_blurry}
 
-The curriculum and the blurry-boundary stream of Section~\ref{subsec:blurry}
-descend the same moving mixture of old- and new-task gradients, but they differ
-in what they hold fixed, and that difference is what makes the curriculum the
-cleaner test of the mechanism. A blurry stream changes the data distribution and
-the loss composition together: as $T_1$ samples enter the batch the gradient
-reweights, but the set of examples the model trains on also changes, so a
-reduction in forgetting cannot be attributed to the gradual reweighting alone. A
-blurry stream also carries no lasting retention pressure --- once the transition
-completes and the batch is entirely $T_1$, the old-task data leaves the stream
-and nothing anchors the model to the old optimum, so forgetting can resume. The
-$\lambda$-curriculum leaves data sampling and buffer contents untouched, varies
-only the weight on the current-task loss, and retains an explicit replay term
-after the new task has fully ramped in. It therefore isolates the reweighting as
-the one variable responsible for any change in the gap and sustains the retention
-signal a blurry stream loses. Our result supports the blurry-boundary finding
-that softer transitions forget less \citep{koh2022onlinecontinuallearningclass},
-while separating the causal variables that line of work leaves entangled.
+The curriculum and the blurry-boundary stream of Section~\ref{subsec:blurry} descend the same moving mixture of old- and new-task gradients, but they differ in what they hold fixed, and that difference is what makes the curriculum the cleaner test of the mechanism. A blurry stream changes the data distribution and the loss composition together: as $T_1$ samples enter the batch the gradient reweights, but the set of examples the model trains on also changes, so a reduction in forgetting cannot be attributed to the gradual reweighting alone. A blurry stream also carries no lasting retention pressure: once the transition completes and the batch is entirely $T_1$, the old-task data leaves the stream and nothing anchors the model to the old optimum, so forgetting can resume. The $\lambda$-curriculum leaves data sampling and buffer contents untouched, varies only the weight on the current-task loss, and retains an explicit replay term after the new task has fully ramped in. It therefore isolates the reweighting as the one variable responsible for any change in the gap and sustains the retention signal a blurry stream loses. Our result supports the blurry-boundary finding that softer transitions forget less \citep{koh2022onlinecontinuallearningclass}, while separating the causal variables that line of work leaves entangled.
 
-The result also rests on the low-loss corridor that mode connectivity establishes
-(Section~\ref{subsec:lmc}). The curriculum can only keep the
-optimiser on a continuous path from $\theta_A^*$ to $\theta_{\text{joint}}^*$ if
-such a path exists; \citet{mirzadeh2020linearmodeconnectivitymultitask} show that
-in stable training regimes the sequential and joint solutions lie in the same
-linearly connected basin. The curriculum's job is to hold the iterate on that
-corridor rather than let it bow away, and the trajectory residual it leaves is
-the small lag with which a finite-rate ramp tracks the corridor's moving floor.
+The result also rests on the low-loss corridor that mode connectivity establishes (Section~\ref{subsec:lmc}). The curriculum can only keep the optimiser on a continuous path from $\theta_A^*$ to $\theta_{\text{joint}}^*$ if such a path exists; \citet{mirzadeh2020linearmodeconnectivitymultitask} show that in stable training regimes the sequential and joint solutions lie in the same linearly connected basin. The curriculum's job is to hold the iterate on that corridor rather than let it bow away, and the trajectory residual it leaves is the small lag with which a finite-rate ramp tracks the corridor's moving floor.
 
 \subsection{Limitations}
 \label{subsec:disc_limits}
 
-Three limits bound these claims. The first is statistical: five seeds put a floor
-of $p = 0.0625$ on the two-sided Wilcoxon test, so we lean on effect sizes and
-seed-paired direction rather than a $0.05$ threshold the design cannot reach. The
-effects we rest on --- the order-of-magnitude depth reductions on CIFAR, the
-variance collapse under momentum --- are large relative to the seed spread, but
-the smaller ones, including the $\lambda_{\min}$ trade-offs, are read as
-directional consistency, not significance.
+Three limits bound these claims. The first is statistical: five seeds put a floor of $p = 0.0625$ on the two-sided Wilcoxon test, so we lean on effect sizes and seed-paired direction rather than a $0.05$ threshold the design cannot reach. The effects we rest on (the order-of-magnitude depth reductions on CIFAR, the variance collapse under momentum) are large relative to the seed spread, but the smaller ones, including the $\lambda_{\min}$ trade-offs, are read as directional consistency, not significance.
 
-The second is the accuracy drift of the linear curriculum at momentum $0$, where
-lengthening the ramp lowers depth but costs several points of final accuracy. The
-prediction that the curriculum matches vanilla accuracy holds in the
-momentum-on regime that the method ships in, but not at momentum $0$, where a
-slow ramp holds the new task back long enough to leave a mark on final accuracy.
-The method's accuracy-neutrality is therefore a property of the full
-curriculum-plus-momentum configuration, not of the ramp alone.
+The second is the accuracy drift of the linear curriculum at momentum $0$, where lengthening the ramp lowers depth but costs several points of final accuracy. The prediction that the curriculum matches vanilla accuracy holds in the momentum-on regime that the method ships in, but not at momentum $0$, where a slow ramp holds the new task back long enough to leave a mark on final accuracy. The method's accuracy-neutrality is therefore a property of the full curriculum-plus-momentum configuration, not of the ramp alone.
 
-The third is the three-task group-norm sequence, where the adaptive schedule
-underperformed its vanilla control with high seed variance, an anomaly absent
-from the batch-norm variant of the same sequence. We read this as the adaptive
-gradient-ratio signal interacting poorly with several closely spaced group-norm
-transitions rather than a single isolated one, and flag it as a boundary of the
-method's reliability. More broadly, the headline analysis is built on a
-single-transition, two-task design chosen to isolate one boundary cleanly; the
-long-sequence checks suggest the property carries, but a systematic study across
-many boundaries, longer task sequences, and class-incremental rather than
-domain-incremental shifts is left open.
+The third is the three-task group-norm sequence, where the adaptive schedule underperformed its vanilla control with high seed variance, an anomaly absent from the batch-norm variant of the same sequence. We read this as the adaptive gradient-ratio signal interacting poorly with several closely spaced group-norm transitions rather than a single isolated one, and flag it as a boundary of the method's reliability. More broadly, the headline analysis is built on a single-transition, two-task design chosen to isolate one boundary cleanly; the long-sequence checks suggest the property carries, but a systematic study across many boundaries, longer task sequences, and class-incremental rather than domain-incremental shifts is left open.
 
 \subsection{Implications and outlook}
 \label{subsec:disc_outlook}
 
-The practical reading is narrow but concrete. For continual-learning systems that
-are queried during training rather than only at task boundaries, the cost of the
-gap is the accuracy lost while the transient is open, and that cost grows with
-how slowly the network reconverges. The curriculum addresses exactly this cost,
-at almost no final-accuracy penalty and at negligible overhead --- a single
-changing scalar, no stored curvature, no gradient projection --- which makes it
-cheap to add on top of an existing replay pipeline.
+The practical reading is narrow but concrete. For continual-learning systems that are queried during training rather than only at task boundaries, the cost of the gap is the accuracy lost while the transient is open, and that cost grows with how slowly the network reconverges. The curriculum addresses exactly this cost, at almost no final-accuracy penalty and at negligible overhead (a single changing scalar, no stored curvature, no gradient projection), which makes it cheap to add on top of an existing replay pipeline.
 
-Two directions follow from the limitations. The first is the multi-transition
-regime where the adaptive schedule showed strain: an adaptive signal robust to
-closely spaced boundaries, perhaps one that conditions on a boundary detector
-rather than on the raw gradient ratio, would extend the method past its current
-reliable range. The second is the scope of the bound itself, which is stated for
-the trajectory contributor and weakens once the new task's curvature overpowers
-the old (Section~\ref{subsec:partA_summary}); characterising where that crossover
-sits, and whether the magnitude tempering the curriculum also provides admits a
-guarantee of its own, would narrow the distance between what the theory proves
-about the trajectory term and what the experiments show the full method does.
+Two directions follow from the limitations. The first is the multi-transition regime where the adaptive schedule showed strain: an adaptive signal robust to closely spaced boundaries, perhaps one that conditions on a boundary detector rather than on the raw gradient ratio, would extend the method past its current reliable range. The second is the scope of the bound itself, which is stated for the trajectory contributor and weakens once the new task's curvature overpowers the old (Section~\ref{subsec:partA_summary}); characterising where that crossover sits, and whether the magnitude tempering that the curriculum also provides admits a guarantee of its own, would narrow the distance between what the theory proves about the trajectory term and what the experiments show the full method does.
