@@ -62,26 +62,26 @@ diagnostic but do not clip the step.
 \paragraph{Tuned hyperparameters.} The values used in every NCL condition are
 those that won the rot-MNIST tuning sweep below (Table~\ref{tab:ncl_hparams}). The
 paper-literal prior $\alpha = 1.0$ over-regularises on rot-MNIST and the damping
-$\varepsilon$ is a numerical safeguard only --- the identity prior, not the
-damping, is what bounds $\Lambda^{-1}$.
+$\varepsilon$ is a numerical safeguard only: the identity prior, not the
+damping, is what bounds $\Lambda^{-1}$. These values were tuned on the two-task rot-MNIST/MLP setting and reused unchanged on the CIFAR-10 ResNet-18, as we did not run a separate NCL sweep on the deeper backbone. NCL's CIFAR results should therefore be read as those of a method tuned on the smaller benchmark rather than re-optimised for CIFAR, a caveat we revisit in Section~\ref{subsec:disc_limits}.
 
 \begin{table}[H]
     \centering
     \small
     \begin{tabular}{@{}l l l@{}}
         \hline
-        Hyperparameter             & Symbol               & Value      \\
+        Hyperparameter            & Symbol                           & Value             \\
         \hline
-        Prior precision            & $\alpha$ (\texttt{prior\_init}) & $0.1$      \\
-        Damping                    & $\varepsilon$ (\texttt{damping})  & $1\mathrm{e}{-3}$ \\
-        Fisher samples (K-FAC)     & \texttt{fisher\_samples}          & $1{,}000$  \\
-        Trust radius (diagnostic)  & $r$ (\texttt{trust\_radius})      & $1.0$      \\
-        Learning rate              & $\eta$                            & $0.1$      \\
-        Momentum                   & ---                               & $0.9$      \\
+        Prior precision           & $\alpha$ (\texttt{prior\_init})  & $0.1$             \\
+        Damping                   & $\varepsilon$ (\texttt{damping}) & $1\mathrm{e}{-3}$ \\
+        Fisher samples (K-FAC)    & \texttt{fisher\_samples}         & $1{,}000$         \\
+        Trust radius (diagnostic) & $r$ (\texttt{trust\_radius})     & $1.0$             \\
+        Learning rate             & $\eta$                           & $0.1$             \\
+        Momentum                  & $\mu$                            & $0.9$             \\
         \hline
     \end{tabular}
     \caption{NCL hyperparameters fixed for all conditions, from the rot-MNIST
-    tuning sweep of Table~\ref{tab:ncl_sweep}.}
+        tuning sweep of Table~\ref{tab:ncl_sweep}.}
     \label{tab:ncl_hparams}
 \end{table}
 
@@ -89,7 +89,7 @@ damping, is what bounds $\Lambda^{-1}$.
 rot-MNIST/MLP setting (Table~\ref{tab:ncl_sweep}), holding damping at
 $1\mathrm{e}{-3}$ and \texttt{fisher\_samples} at $1{,}000$. Smaller $\alpha$
 improves over the paper-literal $\alpha = 1.0$, but the gain saturates: $\alpha =
-0.1$ gives the best stability--accuracy trade-off, while $\alpha \leq 0.03$ becomes
+    0.1$ gives the best stability--accuracy trade-off, while $\alpha \leq 0.03$ becomes
 unstable at $\eta = 0.1$ (the natural gradient amplifies the raw gradient by up to
 $1/\alpha$ in any direction), and halving the learning rate does not recover it.
 
@@ -98,16 +98,16 @@ $1/\alpha$ in any direction), and halving the learning rate does not recover it.
     \small
     \begin{tabular}{@{}l l l l@{}}
         \hline
-        Config             & $\alpha$ & $\eta$ & Momentum \\
+        Config                       & $\alpha$ & $\eta$ & Momentum \\
         \hline
-        \textbf{alpha\_0.1} (chosen) & $0.1$   & $0.1$  & $0.9$ \\
-        alpha\_0.03        & $0.03$  & $0.1$  & $0.9$ \\
-        alpha\_0.01        & $0.01$  & $0.1$  & $0.9$ \\
-        alpha\_0.003       & $0.003$ & $0.1$  & $0.9$ \\
-        alpha\_0.03\_lowlr & $0.03$  & $0.05$ & $0.9$ \\
+        \textbf{alpha\_0.1} (chosen) & $0.1$    & $0.1$  & $0.9$    \\
+        alpha\_0.03                  & $0.03$   & $0.1$  & $0.9$    \\
+        alpha\_0.01                  & $0.01$   & $0.1$  & $0.9$    \\
+        alpha\_0.003                 & $0.003$  & $0.1$  & $0.9$    \\
+        alpha\_0.03\_lowlr           & $0.03$   & $0.05$ & $0.9$    \\
         \hline
     \end{tabular}
     \caption{NCL prior-precision tuning sweep on two-task rot-MNIST. Damping
-    ($1\mathrm{e}{-3}$) and \texttt{fisher\_samples} ($1{,}000$) held fixed.}
+        ($1\mathrm{e}{-3}$) and \texttt{fisher\_samples} ($1{,}000$) held fixed.}
     \label{tab:ncl_sweep}
 \end{table}
