@@ -9,223 +9,121 @@
             \texttt{\detokenize{#1}}}}%
 }
 
-This section reports the outcome of the experimental blocks of
-Section~\ref{sec:methods}, in the order of the research questions of
-Section~\ref{sec:proposed_approach}: the three-contributor decomposition
-(Section~\ref{subsec:res_decomp}, RQ1), the $\lambda$-curriculum sweep on
-rot-MNIST (Section~\ref{subsec:res_curriculum}, RQ2a, RQ2b, RQ2c), the momentum
-cross (Section~\ref{subsec:res_momentum}, RQ2d), the CIFAR-10 generalisation
-block (Section~\ref{subsec:res_cifar}, RQ3), and the long-sequence rot-MNIST check
-(Section~\ref{subsec:res_longseq}).
+This section reports the outcome of the experimental blocks of Section~\ref{sec:methods}, in the order of the research questions of Section~\ref{sec:proposed_approach}: the three-contributor decomposition (Section~\ref{subsec:res_decomp}, RQ1), the $\lambda$-curriculum sweep on rot-MNIST (Section~\ref{subsec:res_curriculum}, RQ2a, RQ2b, RQ2c), the momentum cross (Section~\ref{subsec:res_momentum}, RQ2d), the CIFAR-10 generalisation block (Section~\ref{subsec:res_cifar}, RQ3), and the long-sequence rot-MNIST check (Section~\ref{subsec:res_longseq}).
 
-\paragraph{How to read the numbers.} The headline metric is \texttt{gap\_depth},
-the worst single-step drop in past-task accuracy at the transition
-(Section~\ref{subsubsec:gap_metrics}), in percentage points (pp): a depth of
-$19.5$ means the worst evaluation point sat $19.5$ points below the pre-task
-baseline. Depth captures only how far the dip falls. It says nothing about how
-much accuracy the gap costs before the curve reconverges --- which
-\texttt{gap\_area\_end} measures: the dip integrated against the level each task
-recovers to, so a permanent drop to a lower plateau does not count
-(Section~\ref{subsubsec:gap_metrics}), with \texttt{recovery\_steps} timing the
-return to within $90\%$ of the pre-task baseline. Depth and area are largely
-independent: a deep dip that snaps back in a few steps has a large depth but a
-small area, while a transient that stays open costs a large area at any depth.
-The transient also has a \emph{shape} that no scalar captures --- a sharp
-magnitude-driven notch or a gradual trajectory-driven bend --- so we read the
-accuracy curves alongside the numbers; permanent retention loss, in turn, shows up
-in ACC/FORG rather than in either depth or area. We quote area and recovery
-alongside depth where they change the reading. The tables here report depth and ACC, with area where it carries the
-argument; the full metric set is in Appendix~\ref{app:full_results}, and the
-continual-learning metrics of Table~\ref{tab:cl_metrics} are reported as
-fractions. Every entry is the mean over five seeds (three for the CIFAR
-generalisation block) with the seed standard deviation. With five paired seeds
-the smallest two-sided Wilcoxon $p$-value attainable is $0.0625$, reached when
-all five seed-paired deltas share a sign; we therefore read ``$p = 0.0625$'' as
-``all five seeds agree in direction'' and lean on effect sizes and seed-paired
-consistency rather than a $0.05$ threshold the design cannot reach. The full
-metric tables for every condition are in Appendix~\ref{app:full_results}.
+\paragraph{How to read the numbers.}
+The primary metric is \texttt{gap\_depth}, which measures the worst drop in past-task accuracy during a transition (Section~\ref{subsubsec:gap_metrics}) in percentage points (pp). For instance, a depth of $19.5$ indicates the lowest evaluation point falls $19.5$ points below the pre-task baseline. While depth captures the lowest point, it ignores the cumulative accuracy lost before the curve recovers. We evaluate this using \texttt{gap\_area\_end}, which integrates the transient dip relative to the final recovered plateau, meaning permanent accuracy drops do not artificially inflate the area (Section~\ref{subsubsec:gap_metrics}). Alongside this, \texttt{recovery\_steps} measures the time required to return to within $90\%$ of the pre-task baseline.
+
+Depth and area are largely independent. A sharp drop that recovers immediately has a large depth but small area, whereas a shallow transient that remains open accumulates a large area. Because transients also have distinct shapes (such as sharp magnitude-driven notches or gradual trajectory-driven bends) that scalars cannot fully capture, we analyze the accuracy curves alongside the numerical results. Permanent retention loss, meanwhile, is captured by standard ACC and FORG rather than the gap metrics.
+
+The main text tables report depth and ACC, including area and recovery metrics only when they carry the core argument. The continual-learning metrics in Table~\ref{tab:cl_metrics} are presented as fractions. All metrics are reported as mean $\pm$ standard deviation across five seeds (three for the CIFAR generalisation block). The complete metric set for every condition is tabulated in Appendix~\ref{app:full_results}. Given five paired seeds, the smallest possible two-sided Wilcoxon $p$-value is $0.0625$, which occurs when all five paired differences share the same sign. We therefore interpret $p = 0.0625$ as complete directional agreement across seeds, relying on effect sizes and seed-paired consistency rather than an unreachable $0.05$ significance threshold.
 
 \subsection{Three-Contributor Decomposition (RQ1)}
 \label{subsec:res_decomp}
 
-Table~\ref{tab:res_decomp} reports gap depth, area, and final accuracy along the
-removal path G1 $\rightarrow$ G3 $\rightarrow$ G4 of
-Section~\ref{subsec:decomp}, with the full-data control G2 and the NCL
-path-finding reference. Reading the depth column against the differencing rules
-of Section~\ref{subsec:decomp} isolates the two first-step shares, $G_{\text{mag}}$
-and $G_{\text{est}}$; the trajectory residual is read separately from the area
-column, where it survives as a bend once both first-step biases are gone.
-
-\begin{table}[H]
-    \centering
-    \small
-    \begin{tabular}{lccc}
-        \hline
-        Condition                 & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC               \\
-        \hline
-        G1 --- Vanilla ER         & $19.5 \pm 4.1$           & $6.3$              & $0.873 \pm 0.005$ \\
-        G2 --- Full-data ER       & $18.3 \pm 2.5$           & $8.1$              & $0.890 \pm 0.009$ \\
-        G3 --- Balanced ER        & $5.7 \pm 1.9$            & $1.4$              & $0.849 \pm 0.005$ \\
-        G4 --- Full-data balanced & $1.9 \pm 1.3$            & $3.2$              & $0.869 \pm 0.002$ \\
-        NCL (reference)           & $7.2 \pm 1.0$            & $0.3$              & $0.770 \pm 0.012$ \\
-        \hline
-    \end{tabular}
-    \caption{Decomposition conditions on rot-MNIST (momentum $0.0$).
-        NCL has the lowest bend ($0.3$) despite its low
-        depth and worst accuracy --- its gap is permanent forgetting, not a
-        transient; the deep vanilla spike ($19.5$ pp) leaves only a modest bend
-        ($6.3$) because rot-MNIST reconverges within a few steps.}
-    \label{tab:res_decomp}
-\end{table}
-
-The differencing of Section~\ref{subsec:decomp} yields
-\begin{align*}
-    G_{\text{mag}}  & = 19.5 - 5.7 = 13.8 \text{ pp} \quad (71\%), \\
-    G_{\text{est}}  & = 5.7 - 1.9 = 3.8 \text{ pp} \quad (19\%),   \\
-    G_{\text{traj}} & = 1.9 \text{ pp} \quad (10\%).
-\end{align*}
-These percentages partition the \emph{depth}. The magnitude asymmetry dominates
-it: removing it by unit-norm balancing (G3) erases roughly two-thirds of the
-gap's depth on its own. The estimator and trajectory shares of the depth are each
-small --- but depth is the wrong axis for the trajectory term, which leaves most
-of its mark in the area rather than the spike (below). The orthogonal sanity check is only
-partially consistent --- the unbalanced full-data step removes
-$\texttt{gap\_depth}(\text{G1}) - \texttt{gap\_depth}(\text{G2}) = 1.2$ pp,
-against the $3.8$ pp removed by full data on top of balancing. Both estimates
-place the estimator contribution in the low single-digit-pp range; the
-difference indicates that estimator noise and magnitude asymmetry are not
-perfectly separable, which is expected since a noisy replay gradient also
-inflates the first-step magnitude. The trajectory residual leaves only $1.9$ pp
-of \emph{depth} at G4, but that number understates it: a hanging bend is not a
-spike, so its proper measure is the area, where G4 keeps a clear bend
-(\texttt{gap\_area\_end} $= 3.2$, above balanced G3's $1.4$) even with its notch
-gone --- read directly off the curves in the bend analysis below
-(Figure~\ref{fig:decomp_curves}). Small in depth but plain in area, this residual
-matches the prediction of
-Section~\ref{subsec:stability_gap} and Equation~\eqref{eq:bound}, and is exactly the
-share the $\lambda$-curriculum is built to suppress.
-
-The accuracy column already shows the cost structure that motivates the
-curriculum. Balancing (G3) reduces depth but pays $2.4$ pp of final accuracy
-relative to vanilla ER; NCL reaches a comparable depth ($7.2$ pp) but sacrifices
-$10$ pp of accuracy. A method that removes the trajectory residual without an
-accuracy cost is what Sections~\ref{subsec:res_curriculum}
-and~\ref{subsec:res_momentum} test.
-
-\paragraph{The bend, separated from forgetting.} Depth measures the sharp notch
-at the boundary; \texttt{gap\_area\_end} measures the gradual \emph{bend} that follows
---- the dip below the level each task recovers to
-(Section~\ref{subsubsec:gap_metrics}), so a permanent drop to a lower plateau does
-not count. Figure~\ref{fig:decomp_curves} shows the bend directly. A gradual
-dip-and-recover is visible in every condition except NCL: cleanest in the
-full-data runs (G2, G4), whose exact replay gradients give a smooth curve without
-buffer jitter, still present under vanilla ER on top of its sharp notch, and
-reduced to a faint sag after balancing (G3). G4 is the diagnostic case --- with
-the magnitude spike removed its depth is only $1.9$ pp, yet a bend remains (area
-$3.2$): the trajectory residual showing up as a hanging curve rather than a spike,
-exactly as Section~\ref{subsec:stability_gap} predicts. The areas rank the bends
-as the eye does --- G2 $>$ G1 $>$ G4 $>$ G3 ($8.1, 6.3, 3.2, 1.4$). NCL is the
-lone exception, and the reason we reference the recovered level rather than the
-pre-task accuracy: a pre-referenced shortfall would call NCL the worst condition,
-since it sits roughly $10$ pp below its starting accuracy for the rest of the
-task, but that shortfall is permanent forgetting --- the same $10$ pp it pays in
-final accuracy, which ACC and FORG already carry. It steps to a lower plateau and
-stays, with no reconvergence to integrate, so its bend is the smallest in the
-block ($0.3$). These bends are small in absolute terms because rot-MNIST
-reconverges within a few steps; the deeper CIFAR backbone is where the transient
-stays open long enough to dominate the gap (Section~\ref{subsec:res_cifar}).
-
 \begin{figure*}[htbp]
     \centering
-    \includegraphics[width=0.7\linewidth]{img/results/decomp_curves_m00.png}
-    \caption{Per-step past-task ($T_0$) test accuracy across the $T_0
-            \rightarrow T_1$ transition, one curve per decomposition condition (G1
-        vanilla, G2 full-data, G3 balanced, G4 full-data balanced, NCL), momentum
-        $0.0$, mean over five seeds with $\pm$std bands. The sharp boundary notch
-        shrinks along G1 $\rightarrow$ G3 $\rightarrow$ G4, but a gradual
-        dip-and-recover \emph{bend} remains in every condition except NCL --- clearest
-        in the full-data curves (G2, G4) and faint after balancing. NCL (brown)
-        instead settles at a visibly lower plateau and stays: permanent forgetting
-        that a pre-referenced area would mistake for instability, while its transient
-        bend is negligible.}
+    \includegraphics[width=1\linewidth]{img/results/G conditions.png}
+    \caption{Per-step past-task ($T_0$) test accuracy across the $T_0 \rightarrow T_1$ transition for each decomposition condition (G1: vanilla ER, G2: full-data ER, G3: balanced ER, G4: full-data balanced, and NCL) with $0.0$ momentum. Solid lines represent the mean over five seeds, with shaded bands indicating standard deviation. The sharp boundary drop diminishes along the sequence G1 $\rightarrow$ G3 $\rightarrow$ G4, yet a gradual dip-and-recover \emph{bend} persists in every condition except NCL. This bend is most distinct in the full-data curves (G2, G4) and becomes less pronounced after balancing. In contrast, NCL (brown) permanently settles at a visibly lower plateau.}
     \label{fig:decomp_curves}
 \end{figure*}
 
-\subsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum on rot-MNIST (RQ2a, RQ2b, RQ2c)}
-\label{subsec:res_curriculum}
-
-Table~\ref{tab:res_curriculum} reports the full curriculum sweep at both
-momentum settings, against the vanilla-ER baseline (G1). We describe the
-momentum-off leg first, then the momentum-on leg, which is the headline regime.
+Table~\ref{tab:res_decomp} reports gap depth, area, and final accuracy along the removal path G1 $\rightarrow$ G3 $\rightarrow$ G4 defined in Section~\ref{subsec:decomp}, alongside the full-data control G2 and the NCL path-finding reference. The path starts from vanilla ER (G1). Unit-norm balancing then removes the magnitude asymmetry (G3). Additionally, swapping the buffer for the exact past-task gradient removes the estimator noise (G4), leaving only the trajectory residual. Applying the differencing rules from Section~\ref{subsec:decomp} to the depth column isolates the two first-step components, $G_{\text{mag}}$ and $G_{\text{est}}$. The trajectory residual is read separately from the area column, where it survives as a curve once both first-step biases are eliminated.
 
 \begin{table*}[htbp]
     \centering
     \small
-    \begin{tabular}{l cc cc}
+    \begin{tabular}{lccc}
         \hline
-                                            & \multicolumn{2}{c}{Momentum $0.0$} & \multicolumn{2}{c}{Momentum $0.9$}                                                \\
-        Condition                           & \texttt{gap\_depth} (pp)           & ACC                                & \texttt{gap\_depth} (pp) & ACC               \\
+        Condition              & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC               \\
         \hline
-        Vanilla ER (baseline)               & $19.5 \pm 4.1$                     & $0.873 \pm 0.005$                  & $15.9 \pm 2.6$           & $0.928 \pm 0.003$ \\
-        Linear $N{=}50$                     & $17.5 \pm 1.7$                     & $0.851 \pm 0.023$                  & $6.4 \pm 0.5$            & $0.932 \pm 0.003$ \\
-        Linear $N{=}100$                    & $16.2 \pm 4.3$                     & $0.844 \pm 0.025$                  & $6.4 \pm 0.6$            & $0.932 \pm 0.003$ \\
-        Linear $N{=}200$                    & $14.3 \pm 4.6$                     & $0.828 \pm 0.025$                  & $6.2 \pm 0.6$            & $0.925 \pm 0.007$ \\
-        Adaptive                            & $12.8 \pm 2.9$                     & $0.833 \pm 0.025$                  & $2.5 \pm 0.5$            & $0.917 \pm 0.001$ \\
-        Adaptive $+\,\lambda_{\min}{=}0.05$ & $13.2 \pm 3.2$                     & $0.835 \pm 0.025$                  & $2.6 \pm 0.5$            & $0.922 \pm 0.001$ \\
-        Adaptive $+\,\lambda_{\min}{=}0.10$ & $13.9 \pm 3.3$                     & $0.836 \pm 0.026$                  & $3.0 \pm 0.4$            & $0.927 \pm 0.002$ \\
-        Adaptive $+\,\lambda_{\min}{=}0.20$ & $13.9 \pm 3.4$                     & $0.837 \pm 0.031$                  & $3.7 \pm 0.4$            & $0.931 \pm 0.002$ \\
+        G1: Vanilla ER         & $19.5 \pm 4.1$           & $6.3 \pm 0.5$           & $0.873 \pm 0.005$ \\
+        G2: Full-data ER       & $18.3 \pm 2.5$           & $8.1 \pm 0.7$           & $0.890 \pm 0.009$ \\
+        G3: Balanced ER        & $5.7 \pm 1.9$            & $1.4 \pm 0.4$           & $0.849 \pm 0.005$ \\
+        G4: Full-data balanced & $1.9 \pm 1.3$            & $3.2 \pm 0.5$           & $0.869 \pm 0.002$ \\
+        NCL (reference)        & $7.2 \pm 1.0$            & $0.3 \pm 0.1$           & $0.770 \pm 0.012$ \\
         \hline
     \end{tabular}
+    \caption{Decomposition conditions on rot-MNIST (momentum $0.0$). NCL has the lowest bend ($0.3$) despite its low depth and worst accuracy, as its gap constitutes permanent forgetting rather than a transient drop. The deep vanilla spike ($19.5$ pp) leaves only a modest bend ($6.3$) because rot-MNIST reconverges within a few steps.}
+    \label{tab:res_decomp}
+\end{table*}
+
+The differencing operations isolate the three components of the depth metric by comparing specific conditions:
+\begin{itemize}
+    \item \textbf{Magnitude asymmetry ($G_{\text{mag}}$):} The difference between vanilla ER (G1) and balanced ER (G3). Removing the norm imbalance accounts for $19.5 - 5.7 = 13.8$ pp, or $71\%$ of the total gap depth.
+    \item \textbf{Estimator noise ($G_{\text{est}}$):} The difference between balanced ER (G3) and full-data balanced ER (G4). Replacing the noisy buffer gradient with the exact dataset gradient removes an additional $5.7 - 1.9 = 3.8$ pp, representing $19\%$ of the depth.
+    \item \textbf{Trajectory residual ($G_{\text{traj}}$):} The remaining depth at G4 once both other biases are eliminated. This accounts for the final $1.9$ pp, or $10\%$ of the depth.
+\end{itemize}
+
+The magnitude asymmetry clearly dominates. Removing it via unit-norm balancing (G3) independently erases roughly two-thirds of the gap's depth. The estimator and trajectory contributions to depth are comparatively small. However, depth is the wrong metric for the trajectory term, which primarily affects the area rather than the initial spike.
+
+The orthogonal sanity check is only partially consistent. The unbalanced full-data step removes $\texttt{gap\_depth}(\text{G1}) - \texttt{gap\_depth}(\text{G2}) = 1.2$ pp, compared to the $3.8$ pp removed by the full-data condition applied after balancing. Both calculations place the estimator contribution in the low single digits. This discrepancy indicates that estimator noise and magnitude asymmetry are not perfectly separable, which is expected since a noisy replay gradient also inflates the first-step magnitude. The trajectory residual leaves only $1.9$ pp of \emph{depth} at G4, but this metric understates its impact. A prolonged curve is not a spike, so its true extent is captured by the area. At G4, a distinct curve remains (\texttt{gap\_area\_end} $= 3.2$) even with the initial notch removed. This can be observed directly in the curve analysis below (Figure~\ref{fig:decomp_curves}). Small in depth but prominent in area, this residual matches the prediction of Equation~\eqref{eq:bound} (Section~\ref{subsec:stability_gap}) and represents the precise component the $\lambda$-curriculum is designed to suppress.
+
+The accuracy column highlights the cost structure motivating the curriculum. Balancing (G3) reduces depth but trades $2.4$ pp of final accuracy relative to vanilla ER. NCL reaches a comparable depth ($7.2$ pp) but sacrifices $10$ pp of accuracy. Sections~\ref{subsec:res_curriculum} and~\ref{subsec:res_momentum} test a method designed to remove the trajectory residual without incurring this accuracy penalty.
+
+\paragraph{The bend, separated from forgetting.} Depth measures the sharp notch at the task boundary, whereas \texttt{gap\_area\_end} measures the gradual \emph{bend} that follows. Area integrates the dip relative to the recovered plateau (Section~\ref{subsubsec:gap_metrics}), meaning a permanent performance drop does not artificially inflate the metric. Figure~\ref{fig:decomp_curves} visualizes this bend directly. A gradual dip and recovery is evident in every condition except NCL. The curves are cleanest in the full-data runs (G2, G4), where exact replay gradients eliminate buffer jitter. The bend is still present under vanilla ER alongside its sharp notch, and it reduces to a faint sag after balancing (G3). G4 serves as the diagnostic case: with the magnitude spike removed, its depth is only $1.9$ pp, yet a clear bend remains (area $3.2$). The trajectory residual manifests as a hanging curve rather than a spike, exactly as predicted in Section~\ref{subsec:stability_gap}. The area metrics rank these bends intuitively: G2 $>$ G1 $>$ G4 $>$ G3 ($8.1, 6.3, 3.2, 1.4$).
+
+NCL is the sole exception, demonstrating why area must reference the recovered plateau rather than the pre-task baseline. A baseline-referenced metric would penalize NCL heavily, as it remains roughly $10$ pp below its starting accuracy throughout the task. However, this shortfall represents permanent forgetting, which is already measured by ACC and FORG. Because NCL steps to a lower plateau and stays there without reconverging, its bend is the smallest in the group ($0.3$). These bends appear small in absolute terms because rot-MNIST reconverges rapidly; transients stay open much longer on the deeper CIFAR backbone, where they dominate the gap (Section~\ref{subsec:res_cifar}).
+
+\subsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum on rot-MNIST (RQ2a, RQ2b, RQ2c)}
+\label{subsec:res_curriculum}
+
+Table~\ref{tab:res_curriculum} reports the full curriculum sweep at both momentum settings, against the vanilla-ER baseline (G1). We describe the momentum-off leg first, then the momentum-on leg, which is the headline regime.
+
+\begin{table*}[htbp]
+    \centering
+    \small
+    \resizebox{\textwidth}{!}{%
+        \begin{tabular}{l ccc ccc}
+            \hline
+                                                & \multicolumn{3}{c}{Momentum $0.0$} & \multicolumn{3}{c}{Momentum $0.9$}                                                                                              \\
+            Condition                           & \texttt{gap\_depth} (pp)           & \texttt{gap\_area\_end}            & ACC               & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC               \\
+            \hline
+            Vanilla ER (baseline)               & $19.5 \pm 4.1$                     & $6.3 \pm 0.5$                      & $0.873 \pm 0.005$ & $15.9 \pm 2.6$           & $1.0 \pm 0.2$           & $0.928 \pm 0.003$ \\
+            Linear $N{=}50$                     & $17.5 \pm 1.7$                     & $4.9 \pm 0.5$                      & $0.851 \pm 0.023$ & $6.4 \pm 0.5$            & $0.2 \pm 0.1$           & $0.932 \pm 0.003$ \\
+            Linear $N{=}100$                    & $16.2 \pm 4.3$                     & $3.6 \pm 0.3$                      & $0.844 \pm 0.025$ & $6.4 \pm 0.6$            & $0.2 \pm 0.1$           & $0.932 \pm 0.003$ \\
+            Linear $N{=}200$                    & $14.3 \pm 4.6$                     & $1.8 \pm 0.6$                      & $0.828 \pm 0.025$ & $6.2 \pm 0.6$            & $0.1 \pm 0.0$           & $0.925 \pm 0.007$ \\
+            Adaptive                            & $12.8 \pm 2.9$                     & $2.2 \pm 0.5$                      & $0.833 \pm 0.025$ & $2.5 \pm 0.5$            & $0.3 \pm 0.1$           & $0.917 \pm 0.001$ \\
+            Adaptive $+\,\lambda_{\min}{=}0.05$ & $13.2 \pm 3.2$                     & $2.2 \pm 0.5$                      & $0.835 \pm 0.025$ & $2.6 \pm 0.5$            & $0.1 \pm 0.0$           & $0.922 \pm 0.001$ \\
+            Adaptive $+\,\lambda_{\min}{=}0.10$ & $13.9 \pm 3.3$                     & $2.4 \pm 0.5$                      & $0.836 \pm 0.026$ & $3.0 \pm 0.4$            & $0.0 \pm 0.0$           & $0.927 \pm 0.002$ \\
+            Adaptive $+\,\lambda_{\min}{=}0.20$ & $13.9 \pm 3.4$                     & $2.7 \pm 0.6$                      & $0.837 \pm 0.031$ & $3.7 \pm 0.4$            & $0.0 \pm 0.0$           & $0.931 \pm 0.002$ \\
+            \hline
+        \end{tabular}%
+    }
     \caption{$\lambda$-curriculum sweep on rot-MNIST against the vanilla-ER
-        baseline, at momentum $0.0$ and $0.9$. Depth in percentage points, ACC as a
+        baseline, at momentum $0.0$ and $0.9$. Depth in percentage points,
+        \texttt{gap\_area\_end} in accuracy $\cdot$ steps, ACC as a
         fraction; mean $\pm$ std over five seeds.}
     \label{tab:res_curriculum}
 \end{table*}
 
-\paragraph{Linear curriculum (RQ2a).} At momentum $0.0$, gap depth falls
-monotonically as the ramp lengthens --- $19.5 \rightarrow 17.5 \rightarrow 16.2
-    \rightarrow 14.3$ pp from vanilla through $N = 200$ --- consistent with the
-$O(1/N)$ bound of Equation~\eqref{eq:bound}. The reduction is modest in absolute
-terms over this range of $N$, and it comes with a small accuracy drift: ACC
-falls from $0.873$ (vanilla) to $0.828$ at $N = 200$, a $4.4$ pp cost with all
-five seeds agreeing in direction ($p = 0.0625$). So at momentum $0.0$ the
-prediction that the linear curriculum matches vanilla accuracy is only partly
-borne out --- the curriculum trades a little accuracy for depth in this regime. The same
-lengthening that lowers depth also stretches the tail: \texttt{recovery\_steps}
-grows from $36$ steps at $N=50$ to $133$ at $N=200$
-(Appendix~\ref{app:full_results}), because a slower ramp holds $T_0$ accuracy
-back longer even as it shrinks the spike. The transient bend still falls
-($4.9 \rightarrow 1.8$ from $N=50$ to $N=200$), since the dip is shallower, but
-Figure~\ref{fig:linear_curves} shows the longest ramp's curve hanging visibly
-longer and noisier near baseline --- the depth gain partly trades against a
-slower reconvergence.
+\paragraph{Linear curriculum (RQ2a).}
+At momentum $0.0$, gap depth falls monotonically as the ramp lengthens ($19.5 \rightarrow 17.5 \rightarrow 16.2 \rightarrow 14.3$ pp from vanilla through $N = 200$), which is consistent with the $O(1/N)$ bound of Equation~\eqref{eq:bound}. The reduction is modest in absolute terms over this range of $N$ and introduces a small accuracy drift. Specifically, ACC falls from $0.873$ (vanilla) to $0.828$ at $N = 200$, representing a $4.4$ pp cost with complete directional agreement across all five seeds ($p = 0.0625$). Therefore, at momentum $0.0$, the prediction that the linear curriculum matches vanilla accuracy is only partially supported; the curriculum trades marginal accuracy for reduced depth in this regime. The same lengthening that lowers depth also stretches the recovery tail. The \texttt{recovery\_steps} metric grows from $36$ steps at $N=50$ to $133$ at $N=200$ (Appendix~\ref{app:full_results}), because a slower ramp delays the restoration of $T_0$ accuracy even as it shrinks the initial drop. The transient bend still decreases (from $4.9$ at $N=50$ to $1.8$ at $N=200$) because the dip is shallower. However, Figure~\ref{fig:linear_curves} shows the longest ramp's curve lingering longer and exhibiting more noise near the baseline, indicating that the improvement in depth comes at the cost of a slower reconvergence.
 
-\paragraph{Adaptive curriculum (RQ2b).} At momentum $0.0$ the adaptive schedule
-reaches $12.8$ pp, below the best linear curriculum ($14.3$ pp at $N = 200$) and
-without an explicit ramp length $N$. The self-paced schedule therefore removes
-the knob $N$ while at least matching the best hand-tuned linear ramp, confirming
-RQ2b. Its accuracy ($0.833$) carries the same small drift as the linear runs at
-this momentum setting.
+\paragraph{Adaptive curriculum (RQ2b).}
+At momentum $0.0$, the adaptive schedule reaches a depth of $12.8$ pp. This outperforms the best linear curriculum ($14.3$ pp at $N = 200$) without requiring an explicit ramp length $N$. The self-paced schedule therefore eliminates the hyperparameter $N$ while exceeding the performance of the best hand-tuned linear ramp, confirming RQ2b. Its accuracy ($0.833$) exhibits the same minor drift observed in the linear runs at this momentum setting.
 
-\paragraph{The $\lambda_{\min}$ floor (RQ2c).} At momentum $0.0$, raising
-$\lambda_{\min}$ from $0$ to $0.20$ moves the adaptive curriculum in the
-predicted Pareto direction but only weakly: final accuracy edges up
-($0.833 \rightarrow 0.837$) and short-horizon plasticity recovers marginally
-($\mathrm{WP}_{100}: 0.703 \rightarrow 0.710$; Appendix~\ref{app:full_results}),
-at the cost of a slight depth increase ($12.8 \rightarrow 13.9$ pp). The effect
-is small here because the momentum-off gap is dominated by the deterministic
-one-sided boundary step, which a floor on $\lambda$ cannot touch. The floor
-becomes decisive only once momentum suppresses that step; that regime is the
-subject of Section~\ref{subsec:res_momentum} (RQ2d).
+\paragraph{The $\lambda_{\min}$ floor (RQ2c).}
+At momentum $0.0$, raising $\lambda_{\min}$ from $0$ to $0.20$ shifts the adaptive curriculum in the predicted Pareto direction, though the effect is weak. Final accuracy increases slightly ($0.833 \rightarrow 0.837$) and short-horizon plasticity recovers marginally ($\mathrm{WP}_{100}: 0.703 \rightarrow 0.710$; Appendix~\ref{app:full_results}), at the cost of a minor depth increase ($12.8 \rightarrow 13.9$ pp). This effect is limited because the momentum-off gap is dominated by the deterministic one-sided boundary step, which a floor on $\lambda$ does not influence. The floor becomes decisive only when momentum suppresses that initial step; this regime is examined in Section~\ref{subsec:res_momentum} (RQ2d).
 
 \begin{figure*}[htbp]
     \centering
-    \includegraphics[width=0.7\linewidth]{img/results/linear_curves_m00.png}
-    \caption{Per-step $T_0$ accuracy across the transition for the linear
-        curriculum at $N \in \{50, 100, 200\}$, momentum $0.0$, mean over five seeds
-        with $\pm$std bands. The longest ramp ($N=200$, dark) reaches the shallowest
-        dip but its curve hangs below baseline the longest before reconverging,
-        matching the depth/recovery trade in the text.}
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/C/linear_curves_m00_zoom.png}\\
+        {\scriptsize (a) Linear $N \in \{50, 100, 200\}$}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.49\linewidth}\centering
+        \includegraphics[width=\linewidth]{img/results/C/adaptive_curves_m00_zoom.png}\\
+        {\scriptsize (b) Adaptive $\lambda_{\min} \in \{0, 0.05, 0.10, 0.20\}$}
+    \end{minipage}
+    \caption{Per-step $T_0$ accuracy across the transition at momentum $0.0$, mean
+        over five seeds with $\pm$std bands, zoomed to the transition window.
+        \textbf{(a)} Linear curriculum: the longest ramp ($N=200$, dark) reaches the
+        shallowest dip but its curve hangs below baseline the longest before
+        reconverging, matching the depth/recovery trade in the text. \textbf{(b)} The
+        adaptive curriculum reaches a comparable or shallower dip with no explicit ramp
+        length $N$; the $\lambda_{\min}$ floor trades a slightly deeper dip for faster
+        reconvergence.}
     \label{fig:linear_curves}
 \end{figure*}
 
@@ -243,53 +141,16 @@ subject of Section~\ref{subsec:res_momentum} (RQ2d).
 \subsection{Momentum Cross (RQ2d)}
 \label{subsec:res_momentum}
 
-Two predictions sit behind RQ2d: momentum on top of the curriculum should
-suppress the residual stochastic oscillation, and momentum alone, without the
-curriculum, should not reduce gap depth. Both hold.
+Two predictions underpin RQ2d: momentum combined with the curriculum should suppress residual stochastic oscillations, while momentum alone should not reduce gap depth. Both predictions hold.
 
-\paragraph{Momentum alone does not close the gap.} For vanilla ER, momentum
-moves depth from $19.5$ to $15.9$ pp, a change in which the five seeds do not
-agree in direction ($p = 0.44$) and which is small next to the seed spread. The
-deterministic one-sided first step at the boundary is unchanged by momentum, so
-momentum alone leaves the \emph{depth} essentially intact --- the falsifiable null
-prediction of Section~\ref{subsec:momentum} is confirmed. Consistent with
-momentum being a trajectory mechanism, it does smooth the post-spike path even
-here --- \texttt{gap\_area\_end} falls from $6.3$ to $1.0$ (all five seeds
-agreeing) --- but it cannot touch the spike that sets the depth, which is the
-dominant cost on the deep CIFAR gaps. Damping the bend is no substitute for
-removing the discontinuity.
+\paragraph{Momentum alone does not close the gap.}
+For vanilla ER, momentum shifts depth from $19.5$ to $15.9$ pp. This change is small relative to the seed variance and lacks directional consistency across seeds ($p = 0.44$). Because the deterministic one-sided first step at the boundary remains unchanged by momentum, the depth stays essentially intact, confirming the null prediction in Section~\ref{subsec:momentum}. Momentum does smooth the post-spike path, as evidenced by \texttt{gap\_area\_end} falling from $6.3$ to $1.0$ with consistent seed agreement. However, it cannot influence the initial spike that determines depth, which remains the dominant cost for deep CIFAR gaps. Damping the bend is no substitute for removing the discontinuity.
 
-\paragraph{Momentum on top of the curriculum closes it.} Applied to the
-curriculum, momentum has a large effect. The adaptive schedule drops from $12.8$
-to $2.5$ pp and the linear $N = 200$ schedule from $14.3$ to $6.2$ pp, both with
-all five seeds agreeing ($p = 0.0625$). The bend collapses with it:
-\texttt{gap\_area\_end} falls from $2.2$ to $0.3$ for the adaptive schedule and
-from $1.8$ to $0.1$ for linear $N = 200$, and the seed-to-seed standard deviation
-of the depth drops from $2.9$ to $0.5$ pp (adaptive) and $4.6$ to $0.6$ pp (linear
-$N = 200$). Here, unlike vanilla ER, momentum reaches the depth as well as the
-area: with the discontinuity already removed, the deepest point lies on the
-trajectory bend itself, so damping the bend lowers both. This is the signature
-predicted in Section~\ref{subsec:momentum} --- once the curriculum has made the
-optimum path continuous, the residual gap is stochastic oscillation around that
-path, and momentum averages it away (Figure~\ref{fig:momentum_cross}). The combination of a
-continuous schedule and momentum,
-not either alone, is what drives the gap down to a few percentage points while
-recovering vanilla-ER accuracy.
+\paragraph{Momentum combined with the curriculum closes the gap.}
+Momentum has a significant effect when applied alongside the curriculum. The adaptive schedule depth drops from $12.8$ to $2.5$ pp, and the linear $N = 200$ schedule drops from $14.3$ to $6.2$ pp, with complete directional agreement across all five seeds ($p = 0.0625$). The bend collapses concurrently: \texttt{gap\_area\_end} falls from $2.2$ to $0.3$ for the adaptive schedule and from $1.8$ to $0.1$ for the linear $N = 200$ schedule. Furthermore, the seed-to-seed standard deviation of the depth drops from $2.9$ to $0.5$ pp (adaptive) and $4.6$ to $0.6$ pp (linear $N = 200$). Unlike in vanilla ER, momentum here affects both depth and area. Once the curriculum renders the optimal path continuous, the deepest point lies on the trajectory bend itself; therefore, damping the bend lowers both metrics. This confirms the prediction in Section~\ref{subsec:momentum}: after the curriculum establishes a continuous path, the residual gap consists of stochastic oscillations around that path, which momentum averages away (Figure~\ref{fig:momentum_cross}). The combination of a continuous schedule and momentum is required to reduce the gap to a few percentage points while maintaining vanilla-ER accuracy.
 
-\paragraph{The $\lambda_{\min}$ floor tunes the residual trade.} With momentum
-on, the floor that barely registered at momentum $0.0$ becomes a clean Pareto
-knob. Its mechanism is visible on the plasticity side
-(Figure~\ref{fig:lambdamin_plasticity}): a higher floor lets the new task train
-from the first post-switch step, so $T_1$ accuracy climbs faster the larger
-$\lambda_{\min}$ is. Raising $\lambda_{\min}$ from $0$ to
-$0.20$ lifts gap depth slightly ($2.5 \rightarrow 3.7$ pp) while restoring final
-accuracy ($0.917 \rightarrow 0.931$) and short-horizon plasticity
-($\mathrm{WP}_{100}: 0.798 \rightarrow 0.812$; Appendix~\ref{app:full_results}).
-At $\lambda_{\min} = 0.20$ the curriculum matches vanilla-ER accuracy
-($0.931$ vs $0.928$) and the best linear curricula ($0.932$) while holding depth
-to $3.7$ pp --- roughly half the linear curricula's $6.4$ pp and far below
-vanilla's $15.9$ pp. This is the setting carried forward to CIFAR
-(Section~\ref{subsec:res_cifar}).
+\paragraph{The $\lambda_{\min}$ floor tunes the residual trade.}
+With momentum enabled, the floor that was negligible at momentum $0.0$ becomes a precise Pareto adjustment knob. The mechanism is evident in the plasticity results (Figure~\ref{fig:lambdamin_plasticity}): a higher floor allows the new task to train effectively from the first step post-switch, causing $T_1$ accuracy to climb more rapidly as $\lambda_{\min}$ increases. Raising $\lambda_{\min}$ from $0$ to $0.20$ increases gap depth slightly ($2.5 \rightarrow 3.7$ pp) while restoring final accuracy ($0.917 \rightarrow 0.931$) and horizon plasticity ($\mathrm{WP}_{100}: 0.798 \rightarrow 0.812$; Appendix~\ref{app:full_results}). At $\lambda_{\min} = 0.20$, the curriculum achieves accuracy comparable to vanilla ER ($0.931$ vs $0.928$) and the best linear curricula ($0.932$), while holding depth to $3.7$ pp, roughly half of the $6.4$ pp depth seen in linear curricula and far below the $15.9$ pp observed in vanilla ER. The few points of depth that remain are not a shortfall of the schedule but the required price of plasticity. At this floor the past task no longer dips and recovers but settles at a marginally lower plateau (its \texttt{gap\_area\_end} is $\approx 0$), so \texttt{gap\_depth} here no longer measures a transient but the small permanent accommodation the model makes to learn the new task, effectively a forgetting--plasticity cost rather than a stability gap. This configuration is used for the CIFAR experiments in Section~\ref{subsec:res_cifar}.
 
 \begin{figure*}[htbp]
     \centering
@@ -327,12 +188,7 @@ vanilla's $15.9$ pp. This is the setting carried forward to CIFAR
 \subsection{Generalisation: CIFAR-10 (RQ3)}
 \label{subsec:res_cifar}
 
-The CIFAR-10 block tests whether the rot-MNIST finding carries to a deeper
-backbone (ResNet-18), a stronger task shift (clean $\rightarrow$ corruption),
-and the two normalisation choices that govern the post-switch recovery
-(batch norm, group norm). Table~\ref{tab:res_cifar} reports the six headline
-conditions; the shipped curriculum is the adaptive schedule with
-$\lambda_{\min} = 0.20$.
+The CIFAR-10 block tests whether the rot-MNIST finding carries to a deeper backbone (ResNet-18), a stronger task shift (clean $\rightarrow$ corruption), and the two normalisation choices that govern the post-switch recovery (batch norm, group norm). Table~\ref{tab:res_cifar} reports the six headline conditions; the shipped curriculum is the adaptive schedule with $\lambda_{\min} = 0.20$.
 
 \begin{table*}[htbp]
     \centering
@@ -342,14 +198,14 @@ $\lambda_{\min} = 0.20$.
         Norm & Method                                  & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC               & min-ACC           \\
         \hline
         \multirow{3}{*}{BatchNorm}
-             & D1 --- Vanilla ER                       & $11.8 \pm 2.5$           & $17.5$             & $0.723 \pm 0.008$ & $0.644 \pm 0.023$ \\
-             & D2 --- NCL                              & $25.8 \pm 5.2$           & $55.1$             & $0.710 \pm 0.005$ & $0.504 \pm 0.045$ \\
-             & D3 --- Adaptive $\lambda_{\min}{=}0.20$ & $\mathbf{4.8 \pm 0.7}$   & $\mathbf{3.6}$     & $0.722 \pm 0.011$ & $0.713 \pm 0.017$ \\
+             & D1 --- Vanilla ER                       & $11.8 \pm 2.5$           & $17.5 \pm 4.6$          & $0.723 \pm 0.008$ & $0.644 \pm 0.023$ \\
+             & D2 --- NCL                              & $25.8 \pm 5.2$           & $55.1 \pm 11.2$         & $0.710 \pm 0.005$ & $0.504 \pm 0.045$ \\
+             & D3 --- Adaptive $\lambda_{\min}{=}0.20$ & $\mathbf{4.8 \pm 0.7}$   & $\mathbf{3.6 \pm 2.2}$  & $0.722 \pm 0.011$ & $0.713 \pm 0.017$ \\
         \hline
         \multirow{3}{*}{GroupNorm}
-             & D4 --- Vanilla ER                       & $41.2 \pm 13.5$          & $34.9$             & $0.730 \pm 0.011$ & $0.309 \pm 0.111$ \\
-             & D5 --- NCL                              & $29.7 \pm 10.0$          & $52.6$             & $0.711 \pm 0.017$ & $0.423 \pm 0.083$ \\
-             & D6 --- Adaptive $\lambda_{\min}{=}0.20$ & $\mathbf{5.2 \pm 2.1}$   & $\mathbf{1.7}$     & $0.731 \pm 0.020$ & $0.670 \pm 0.055$ \\
+             & D4 --- Vanilla ER                       & $41.2 \pm 13.5$          & $34.9 \pm 23.7$         & $0.730 \pm 0.011$ & $0.309 \pm 0.111$ \\
+             & D5 --- NCL                              & $29.7 \pm 10.0$          & $52.6 \pm 13.3$         & $0.711 \pm 0.017$ & $0.423 \pm 0.083$ \\
+             & D6 --- Adaptive $\lambda_{\min}{=}0.20$ & $\mathbf{5.2 \pm 2.1}$   & $\mathbf{1.7 \pm 0.9}$  & $0.731 \pm 0.020$ & $0.670 \pm 0.055$ \\
         \hline
     \end{tabular}
     \caption{CIFAR-10 headline block (ResNet-18, momentum $0.9$, buffer $5{,}000$,
@@ -360,45 +216,11 @@ $\lambda_{\min} = 0.20$.
     \label{tab:res_cifar}
 \end{table*}
 
-The rot-MNIST result carries over and strengthens. Under batch norm the adaptive
-curriculum cuts depth from $11.8$ pp (vanilla) to $4.8$ pp; under group norm,
-where vanilla ER suffers a catastrophic $41.2$ pp drop, it cuts depth to $5.2$
-pp. In both cases final accuracy is unchanged ($\le 1$ pp difference from
-vanilla) while worst-case retention improves sharply --- min-ACC rises from
-$0.309$ to $0.670$ under group norm.
+The rot-MNIST result carries over and strengthens. Under batch norm the adaptive curriculum cuts depth from $11.8$ pp (vanilla) to $4.8$ pp; under group norm, where vanilla ER suffers a catastrophic $41.2$ pp drop, it cuts depth to $5.2$ pp. In both cases final accuracy is unchanged ($\le 1$ pp difference from vanilla) while worst-case retention improves sharply, min-ACC rises from $0.309$ to $0.670$ under group norm.
 
-Here the transient is not a gentle bend but a deep stability gap that stays open
-(Figure~\ref{fig:cifar_curves}): under group norm vanilla ER crashes $T_0$
-accuracy from $\sim 0.73$ almost to chance and then takes several hundred steps to
-recover. Because the ResNet reconverges far more slowly than the MLP, that gap
-costs much more accuracy over time --- its area is large because it stays open, not
-because the shape is exotic. (Area is depth $\times$ duration in steps, and the
-CIFAR window is several times longer than rot-MNIST's, so we compare areas only
-within this block.) Vanilla ER has both the deepest spike and the largest area
-under group norm ($41.2$ pp, $34.9$), with batch norm milder on both ($11.8$ pp,
-$17.5$); NCL is worse still ($55.1$ and $52.6$, the largest in the block),
-mirroring its depth regression. The adaptive curriculum closes the gap an order of
-magnitude faster, dropping the area to $3.6$ (batch norm) and $1.7$ (group norm):
-the past task barely leaves its plateau through the switch. The NCL contrast is the cleanest separation in the study
-between acting in schedule space (the curriculum) and acting in parameter space
-(NCL): on this deeper backbone NCL's path-finding preconditioner makes the gap
-\emph{larger} than vanilla ER ($25.8$ pp depth under batch norm, the opposite of
-its rot-MNIST behaviour), while the curriculum's benefit is robust to depth and
-normalisation.
+Here the transient is not a gentle bend but a deep stability gap that stays open (Figure~\ref{fig:cifar_curves}): under group norm vanilla ER crashes $T_0$ accuracy from $\sim 0.73$ almost to chance and then takes several hundred steps to recover. Because the ResNet reconverges far more slowly than the MLP, that gap costs much more accuracy over time --- its area is large because it stays open, not because the shape is exotic. (Area is depth $\times$ duration in steps, and the CIFAR window is several times longer than rot-MNIST's, so we compare areas only within this block.) Vanilla ER has both the deepest spike and the largest area under group norm ($41.2$ pp, $34.9$), with batch norm milder on both ($11.8$ pp, $17.5$); NCL is worse still ($55.1$ and $52.6$, the largest in the block), mirroring its depth regression. The adaptive curriculum closes the gap an order of magnitude faster, dropping the area to $3.6$ (batch norm) and $1.7$ (group norm): the past task barely leaves its plateau through the switch. The NCL contrast is the cleanest separation in the study between acting in schedule space (the curriculum) and acting in parameter space (NCL): on this deeper backbone NCL's path-finding preconditioner makes the gap \emph{larger} than vanilla ER ($25.8$ pp depth under batch norm, the opposite of its rot-MNIST behaviour), while the curriculum's benefit is robust to depth and normalisation.
 
-\paragraph{Generalisation across corruptions and sequence length.} The
-generalisation block (three seeds, group-norm ship config) pairs the curriculum
-against a vanilla-ER control on shifts the method was not tuned on
-(Table~\ref{tab:res_cifar_gen}). On the two-task novel corruptions the curriculum
-generalises cleanly: depth falls from $46.3$ to $7.3$ pp on shot noise and from
-$8.4$ to $3.9$ pp on contrast. The three-task sequence is the exception --- there
-the curriculum underperforms its vanilla control ($32.8$ vs $4.4$ pp, with a
-large seed variance of $\pm 14.5$ pp), an anomaly that does not appear in the
-batch-norm variant of the same sequence (Appendix~\ref{app:full_results}). We
-read this as the adaptive schedule interacting poorly with several closely spaced
-group-norm transitions rather than a single one, and flag it as a boundary of the
-method's reliability rather than evidence against the two-task result; final
-accuracy stays comparable to vanilla throughout.
+\paragraph{Generalisation across corruptions and sequence length.} The generalisation block (three seeds, group-norm ship config) pairs the curriculum against a vanilla-ER control on shifts the method was not tuned on (Table~\ref{tab:res_cifar_gen}). On the two-task novel corruptions the curriculum generalises cleanly: depth falls from $46.3$ to $7.3$ pp on shot noise and from $8.4$ to $3.9$ pp on contrast. The three-task sequence is the exception --- there the curriculum underperforms its vanilla control ($32.8$ vs $4.4$ pp, with a large seed variance of $\pm 14.5$ pp), an anomaly that does not appear in the batch-norm variant of the same sequence (Appendix~\ref{app:full_results}). The dip is localised entirely to the second transition: the per-step curves hold past-task accuracy to within ${\sim}8$ pp at the none $\rightarrow$ Gaussian boundary but fall $16$--$42$ pp at the Gaussian $\rightarrow$ shot boundary, where the vanilla control stays within $5$ pp. That is the one transition between two near-identical corruptions, so the model already partly solves the incoming task and $\|g_{\text{new}}\|$ is small. The most likely explanation is that the adaptive signal $r = \|g_{\text{replay}}\|/\|g_{\text{new}}\|$ then loses conditioning --- both norms are small, rather than the small-replay/large-new regime the schedule was designed for --- so $\lambda$ tracks it erratically, consistent with the $\pm 14.5$ pp seed spread. We flag the case as a reliability boundary of the adaptive ratio under near-identical consecutive corruptions, not as evidence against the two-task result. Final accuracy stays comparable to vanilla throughout, and the failure is seed-unstable rather than systematic.
 
 \begin{table}[H]
     \centering
@@ -412,10 +234,7 @@ accuracy stays comparable to vanilla throughout.
         3-task g.n.+shot  & $32.8 \pm 14.5$        & $\mathbf{4.4 \pm 0.4}$ \\
         \hline
     \end{tabular}
-    \caption{CIFAR-10 generalisation block, gap depth (pp), group-norm ship
-        config versus vanilla-ER control (three seeds). The curriculum wins on both
-        two-task novel corruptions; the three-task group-norm sequence is an outlier
-        (see text).}
+    \caption{CIFAR-10 generalisation block, gap depth (pp), group-norm ship config versus vanilla-ER control (three seeds). The curriculum wins on both two-task novel corruptions; the three-task group-norm sequence is an outlier.}
     \label{tab:res_cifar_gen}
 \end{table}
 
@@ -446,10 +265,7 @@ accuracy stays comparable to vanilla throughout.
 \subsection{Long-Sequence rot-MNIST}
 \label{subsec:res_longseq}
 
-The two-task design isolates a single transition. To check that the curriculum
-holds across several boundaries, we ran a five-task rot-MNIST sequence
-(rotations $[0, 30, 60, 90, 120]^\circ$, four transitions) at momentum $0.9$
-(Table~\ref{tab:res_longseq}).
+The two-task design isolates a single transition. To check that the curriculum holds across several boundaries, we ran a five-task rot-MNIST sequence (rotations $[0, 30, 60, 90, 120]^\circ$, four transitions) at momentum $0.9$ (Table~\ref{tab:res_longseq}).
 
 \begin{table}[H]
     \centering
@@ -473,22 +289,7 @@ holds across several boundaries, we ran a five-task rot-MNIST sequence
     \label{tab:res_longseq}
 \end{table}
 
-The adaptive curriculum carries past a single transition: it roughly halves the
-vanilla-ER gap ($8.9 \rightarrow 4.4$ pp) across four boundaries while slightly
-\emph{improving} final accuracy ($0.889 \rightarrow 0.896$). NCL reaches the
-lowest depth of the four ($2.5$ pp) --- consistent with
-\citet{kao2021naturalcontinuallearningsuccess} reporting its advantage at higher
-task counts --- but at a large accuracy cost ($0.815$, $8$ pp below the
-curriculum). The $\lambda_{\min}$ floor makes little difference to depth here.
-As on the two-task MLP, the per-boundary bends are small for every condition
-(\texttt{gap\_area\_end} $\le 1.5$; Appendix~\ref{app:full_results}) --- rot-MNIST
-reconverges quickly after each switch --- so what accumulates across the sequence
-is permanent forgetting, not a hanging transient. Figure~\ref{fig:longseq} shows
-this directly: vanilla ER (brown) steps down at each of the four boundaries and
-holds the lowest plateau, while the adaptive curricula keep a higher plateau
-throughout; NCL stays flattest but lowest, the accuracy cost again. The
-curriculum thus keeps the property that matters across multiple transitions: a
-low gap at no accuracy cost.
+The adaptive curriculum remains effective beyond a single transition. It roughly halves the vanilla-ER gap ($8.9 \rightarrow 4.4$ pp) across four boundaries while slightly \emph{improving} final accuracy ($0.889 \rightarrow 0.896$). NCL achieves the lowest depth among the four conditions ($2.5$ pp), which aligns with the advantage at higher task counts reported by \citet{kao2021naturalcontinuallearningsuccess}. However, this reduction comes at a substantial accuracy cost, yielding $0.815$ (an $8$ pp deficit relative to the curriculum). The $\lambda_{\min}$ floor has minimal impact on depth in this setting. As observed with the two-task MLP, the per-boundary bends are small for all conditions (\texttt{gap\_area\_end} $\le 1.5$; Appendix~\ref{app:full_results}). Because rot-MNIST reconverges quickly after each switch, the performance drop that accumulates across the sequence constitutes permanent forgetting rather than a lingering transient. Figure~\ref{fig:longseq} illustrates this directly: vanilla ER drops at each of the four boundaries and settles at the lowest plateau, whereas the adaptive curricula maintain a higher plateau throughout. NCL remains the flattest but sits at the lowest overall level, again reflecting its fundamental accuracy tradeoff. Consequently, the curriculum preserves the critical property required across multiple transitions, maintaining a minimal gap without sacrificing accuracy.
 
 \begin{figure*}[htbp]
     \centering
@@ -506,27 +307,6 @@ low gap at no accuracy cost.
 \subsection{Summary of Findings}
 \label{subsec:res_summary}
 
-Across blocks, four results stand out. (i) On rot-MNIST the stability gap is
-dominated by the first-step magnitude asymmetry ($71\%$), with a small trajectory
-residual ($10\%$) that survives exact gradients and balancing --- the residual
-the curriculum targets. (ii) The adaptive $\lambda$-curriculum with momentum
-reduces gap depth from $15.9$ to $3.7$ pp at matched accuracy, where momentum
-alone does nothing and the curriculum alone leaves a stochastic residual: the
-two are complementary, as predicted. (iii) The result carries to a ResNet-18 on
-CIFAR-10 under both normalisations and to novel two-task corruptions, where the
-curriculum beats both vanilla ER and NCL on depth and worst-case retention at
-matched accuracy. (iv) The known boundaries are an accuracy drift for the linear
-curriculum at momentum $0.0$, and a high-variance failure of the adaptive
-schedule on a three-task group-norm sequence. Underlying all four is a
-distinction the depth headline can hide: how deep the gap goes and how much
-accuracy it costs before recovering are separate axes. The decomposition shows
-the second one directly --- once the magnitude spike is removed, the trajectory
-residual remains as a gradual \emph{bend} (G4, depth $1.9$ pp but a visible area),
-the hanging curve the theory predicts. On the shallow MLP that transient closes in
-a few steps and costs little; on the deeper CIFAR ResNet it stays open for
-hundreds of steps and dominates the gap, and the curriculum's largest wins are
-there. Throughout, the area is referenced against the recovered level so that
-permanent forgetting --- NCL's apparent instability --- is not mistaken for a
-transient. The discussion
-interprets these against the theory of Sections~\ref{sec:motivation}
-and~\ref{sec:theory}.
+Four primary findings emerge across the experimental blocks. (i) On rot-MNIST, the stability gap is dominated by the first-step magnitude asymmetry ($71\%$), with a small trajectory residual ($10\%$) that survives exact gradients and balancing. This residual is precisely what the curriculum targets. (ii) The adaptive $\lambda$-curriculum combined with momentum reduces gap depth from $15.9$ to $3.7$ pp at matched accuracy. Momentum alone yields no improvement, and the curriculum alone leaves a stochastic residual, demonstrating that the two mechanisms are complementary, as predicted. (iii) These results extend to a ResNet-18 on CIFAR-10 under both normalisations and to novel two-task corruptions, where the curriculum outperforms both vanilla ER and NCL in depth and worst-case retention at matched accuracy. (iv) The recognized limitations include an accuracy drift for the linear curriculum at momentum $0.0$ and a high-variance failure of the adaptive schedule on a three-task group-norm sequence.
+
+Underlying these findings is a distinction that the depth metric alone can obscure: the maximum drop of the gap and the cumulative accuracy lost before recovery represent separate dimensions. The decomposition illustrates this second dimension directly. Once the magnitude spike is removed, the trajectory residual remains as a gradual \emph{bend} (G4, exhibiting a depth of $1.9$ pp but a clearly visible area), matching the prolonged curve predicted by the theory. On the shallow MLP, this transient resolves within a few steps and incurs minimal cost. Conversely, on the deeper CIFAR ResNet, the transient remains open for hundreds of steps, which is where the curriculum demonstrates its most significant advantages. Throughout the evaluation, the area is measured relative to the recovered plateau to ensure that permanent forgetting, such as the persistent drop observed in NCL, is not mistaken for a transient instability. The discussion interprets these results within the theoretical framework developed in Sections~\ref{sec:motivation} and~\ref{sec:theory}.

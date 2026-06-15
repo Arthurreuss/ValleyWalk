@@ -195,21 +195,21 @@ Each block tests one or more predictions of Sections~\ref{sec:motivation} and~\r
 \begin{table*}[htbp]
     \centering
     \small
-    \begin{tabular}{@{}p{0.9cm} p{2.6cm} p{6.0cm} p{2.6cm} p{1.0cm}@{}}
+    \begin{tabular}{@{}p{0.9cm} p{3.0cm} p{4.8cm} p{3.0cm} p{1.4cm}@{}}
         \hline
-        Label & Condition                           & $\lambda(t)$ schedule                                                                                                         & Hyperparameter                           & Tests     \\
+        Label & Condition                           & $\lambda(t)$ schedule                                                                  & Hyperparameter                           & Tests     \\
         \hline
-        ---   & Vanilla ER (baseline)               & $\lambda \equiv 1$ from step $1$ (discontinuous)                                                                              & ---                                      & reference \\
-        C1    & Linear $N{=}50$                     & $\mathrm{clip}(t/50,\, 0,\, 1)$                                                                                               & $N = 50$                                 & RQ2a      \\
-        C2    & Linear $N{=}100$                    & $\mathrm{clip}(t/100,\, 0,\, 1)$                                                                                              & $N = 100$                                & RQ2a      \\
-        C3    & Linear $N{=}200$                    & $\mathrm{clip}(t/200,\, 0,\, 1)$                                                                                              & $N = 200$                                & RQ2a      \\
-        C4    & Adaptive                            & $\mathrm{clip}\!\left(\mathrm{EMA}_\alpha(\|g_{\text{replay}}\|/\|g_{\text{new}}\|),\, 0,\, 1\right)$                         & $\alpha = 0.05$                          & RQ2b      \\
-        C5    & Adaptive $+\,\lambda_{\min}{=}0.05$ & $\max\!\left(\lambda_{\min},\, \mathrm{clip}(\mathrm{EMA}_\alpha(\|g_{\text{replay}}\|/\|g_{\text{new}}\|),\, 0,\, 1)\right)$ & $\alpha = 0.05$, $\lambda_{\min}{=}0.05$ & RQ2c      \\
-        C6    & Adaptive $+\,\lambda_{\min}{=}0.10$ & as C5                                                                                                                         & $\lambda_{\min}{=}0.10$                  & RQ2c      \\
-        C7    & Adaptive $+\,\lambda_{\min}{=}0.20$ & as C5                                                                                                                         & $\lambda_{\min}{=}0.20$                  & RQ2c      \\
+        ---   & Vanilla ER (baseline)               & $\lambda \equiv 1$ from step $1$ (discontinuous)                                       & ---                                      & reference \\
+        C1    & Linear $N{=}50$                     & $\mathrm{clip}(t/50,\, 0,\, 1)$                                                        & $N = 50$                                 & RQ2a      \\
+        C2    & Linear $N{=}100$                    & $\mathrm{clip}(t/100,\, 0,\, 1)$                                                       & $N = 100$                                & RQ2a      \\
+        C3    & Linear $N{=}200$                    & $\mathrm{clip}(t/200,\, 0,\, 1)$                                                       & $N = 200$                                & RQ2a      \\
+        C4    & Adaptive                            & $\mathrm{clip}\!\left(\mathrm{EMA}_\alpha(r),\, 0,\, 1\right)$                         & $\alpha = 0.05$                          & RQ2b      \\
+        C5    & Adaptive $+\,\lambda_{\min}{=}0.05$ & $\max\!\left(\lambda_{\min},\, \mathrm{clip}(\mathrm{EMA}_\alpha(r),\, 0,\, 1)\right)$ & $\alpha = 0.05$, $\lambda_{\min}{=}0.05$ & RQ2c      \\
+        C6    & Adaptive $+\,\lambda_{\min}{=}0.10$ & as C5                                                                                  & $\lambda_{\min}{=}0.10$                  & RQ2c      \\
+        C7    & Adaptive $+\,\lambda_{\min}{=}0.20$ & as C5                                                                                  & $\lambda_{\min}{=}0.20$                  & RQ2c      \\
         \hline
     \end{tabular}
-    \caption{$\lambda$-curriculum conditions (C-series), all applied on top of standard ER. $\mathrm{EMA}_\alpha$ is an exponential moving average with smoothing $\alpha$. Each condition is run at momentum $0.0$ and $0.9$.}
+    \caption{$\lambda$-curriculum conditions (C-series), all applied on top of standard ER. $\mathrm{EMA}_\alpha$ is an exponential moving average with smoothing $\alpha$, and $r := \|g_{\text{replay}}\| / \|g_{\text{new}}\|$ is the gradient-norm ratio. Each condition is run at momentum $0.0$ and $0.9$.}
     \label{tab:curriculum}
 \end{table*}
 
@@ -266,8 +266,6 @@ As outlined in Table~\ref{tab:longseq}, we evaluate four experimental conditions
 
 \paragraph{Training protocol.} We use the CIFAR-adapted ResNet-18 detailed in Table~\ref{tab:resnet}. Because this deeper architecture requires more than a single pass to converge before a task transition, we train for ten epochs per task. The setup uses a batch size of $256$, an SGD learning rate of $0.1$, and a replay buffer of $5{,}000$ samples. To focus entirely on generalization, we fix momentum at $0.9$, which was the better-performing configuration from the rot-MNIST experiments, rather than repeating the full parameter sweep from Section~\ref{subsec:overview}. We follow the evaluation scheme outlined in Section~\ref{subsubsec:eval_protocol}, recording metrics at every step for the first $50$ steps after the transition, and every $10$ steps thereafter.
 
-\paragraph{Headline conditions.} To test how robustly our method generalizes, we evaluate six distinct conditions. As shown in Table~\ref{tab:cifar}, we compare three methods: vanilla Experience Replay (ER), NCL, and our adaptive curriculum set to $\lambda_{\min}=0.20$. We omit the linear curriculum for CIFAR and instead carry over only this specific adaptive variant, as it yielded the best final accuracy in the prior rot-MNIST sweep. Similarly, we pin the NCL hyperparameters to the optimal values found in the earlier tuning phase (Appendix~\ref{app:implementation}). Furthermore, we cross each of these three methods with both BatchNorm and GroupNorm. This normalization crossover is deliberate because it directly impacts post-switch recovery dynamics. The input shift disrupts the running statistics of BatchNorm, requiring it to re-adapt during the initial steps of the new task. GroupNorm, conversely, relies on no cross-batch statistics. Comparing the two allows us to isolate the performance drop caused purely by optimization dynamics, which our curriculum actively targets, from the drop caused by disrupted normalization statistics.
-
 \begin{table}[H]
     \centering
     \small
@@ -286,6 +284,8 @@ As outlined in Table~\ref{tab:longseq}, we evaluate four experimental conditions
     \caption{CIFAR-10 headline conditions: three methods crossed with two normalisations, buffer $5{,}000$, momentum $0.9$, five seeds. The shipped curriculum is the adaptive schedule at $\lambda_{\min}=0.20$.}
     \label{tab:cifar}
 \end{table}
+
+\paragraph{Headline conditions.} To test how robustly our method generalizes, we evaluate six distinct conditions. As shown in Table~\ref{tab:cifar}, we compare three methods: vanilla Experience Replay (ER), NCL, and our adaptive curriculum set to $\lambda_{\min}=0.20$. We omit the linear curriculum for CIFAR and instead carry over only this specific adaptive variant, as it yielded the best final accuracy in the prior rot-MNIST sweep. Similarly, we pin the NCL hyperparameters to the optimal values found in the earlier tuning phase (Appendix~\ref{app:implementation}). Furthermore, we cross each of these three methods with both BatchNorm and GroupNorm. This normalization crossover is deliberate because it directly impacts post-switch recovery dynamics. The input shift disrupts the running statistics of BatchNorm, requiring it to re-adapt during the initial steps of the new task. GroupNorm, conversely, relies on no cross-batch statistics. Comparing the two allows us to isolate the performance drop caused purely by optimization dynamics, which our curriculum actively targets, from the drop caused by disrupted normalization statistics.
 
 \paragraph{Generalisation block.} A second CIFAR block tests whether the headline finding depends on the particular corruption or on having only a single transition. It pairs the shipped curriculum (adaptive $\lambda_{\min}=0.20$, buffer $5{,}000$) against a vanilla-ER control on three further settings: a two-task shot-noise shift, a two-task contrast shift, and a three-task sequence $[\text{none}, \text{Gaussian noise}, \text{shot noise}]$ (Table~\ref{tab:cifar_gen}). Each shift is run at both normalisations over three seeds. The paired vanilla control on every shift keeps the comparison interpretable: the question is whether the curriculum still beats vanilla on data it was not tuned on.
 
