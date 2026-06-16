@@ -10,7 +10,7 @@ The decomposition of Section~\ref{subsec:decomposition} and the bound of Section
     \item[RQ2a (linear ramp).] Does the linear curriculum reduce gap depth monotonically as the ramp length $N$ grows?
     \item[RQ2b (adaptive schedule).] Does an adaptive schedule achieve the same reduction while removing the explicit ramp-length knob $N$?
     \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early-task learning speed without re-introducing the stability gap?
-    \item[RQ2d (momentum).] Does momentum damp the depth fluctuation that remains after the curriculum is applied, yet do nothing when used on its own, since the very first step after a task boundary is deterministic and carries no momentum from the new task?
+    \item[RQ2d (momentum).] Does momentum damp the depth fluctuation that remains after the curriculum is applied, yet do nothing on its own? The first step after a task boundary is deterministic and carries no momentum from the new task.
 \end{description}
 
 \paragraph{RQ3 --- Generalisation.} Do these findings carry over to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption)?

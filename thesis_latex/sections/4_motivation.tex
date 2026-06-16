@@ -6,7 +6,7 @@ This thesis defends one claim: in its dominant components, the stability gap is 
 \subsection{Decomposing the Stability Gap}
 \label{subsec:decomposition}
 
-We unify the causes scattered across the literature: gradient imbalance, the finite-buffer estimator, and the trajectory effect (Sections~\ref{subsec:experience_replay} and~\ref{subsec:stability_gap}). Combining them into a single decomposition of three forces. We isolate and measure each empirically in Section~\ref{sec:methods}.
+We unify the causes scattered across the literature --- gradient imbalance, the finite-buffer estimator, and the trajectory effect (Sections~\ref{subsec:experience_replay} and~\ref{subsec:stability_gap}) --- into a single decomposition of three forces, and isolate and measure each empirically in Section~\ref{sec:methods}.
 
 
 \paragraph{Magnitude asymmetry ($G_{\text{mag}}$).}
@@ -17,7 +17,7 @@ Consider the first step of vanilla Experience Replay (ER) at the start of a new 
 
 \paragraph{Trajectory effect ($G_{\text{traj}}$).} Even in an idealized scenario where magnitude asymmetry is corrected and buffer noise is eliminated, a geometric penalty remains: an instantaneous switch in objectives forces the iterate off the optimal path of the joint loss (Section~\ref{subsec:stability_gap}). Along this new trajectory, the replay loss is strictly higher than it would be at the joint-loss optimum $\theta_{\text{joint}}^*$.
 
-Crucially, these three components dominate at different timescales: $G_{\text{mag}}$ drives the massive disruption at step one, $G_{\text{traj}}$ dictates the curve over the first equilibration window, and $G_{\text{est}}$ provides constant noise across all steps.
+These three components dominate at different timescales: $G_{\text{mag}}$ drives the massive disruption at step one, $G_{\text{traj}}$ dictates the curve over the first equilibration window, and $G_{\text{est}}$ provides constant noise across all steps.
 
 \subsection{Path-Finding versus Landscape-Shaping}
 \label{subsec:pathfinding_vs_shaping}

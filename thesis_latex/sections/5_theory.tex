@@ -59,18 +59,18 @@ Imagine an "optimum path" ($\Theta^*(\lambda)$) that perfectly tracks the exact 
     \label{fig:lambda_evolution}
 \end{figure}
 
-If the model were capable of perfectly walking this ideal path, the replay loss would never experience a sudden spike. As proven in the Appendix~\ref{app:detailed_proof} using the envelope theorem, the rate of change of the replay loss along this path is mathematically guaranteed to be non-negative:
+If the model were capable of perfectly walking this ideal path, the replay loss would never experience a sudden spike. As shown in Appendix~\ref{app:detailed_proof} using the envelope theorem, the rate of change of the replay loss along this path is non-negative under a local positive-definiteness condition (made precise below):
 \begin{equation}
     \frac{d}{d\lambda}\, L_{\text{replay}}(\Theta^*(\lambda)) \geq 0 \qquad \text{for all } \lambda \in [0,1].
 \end{equation}
-Because the replay loss can only strictly rise (or stay flat) as it accommodates the new task, it can never decrease. Therefore, it is physically impossible for the loss to spike up and come back down. It simply rises monotonically until it reaches its permanent, unavoidable baseline at the joint optimum ($\theta_{\text{joint}}^*$).
+The replay loss can therefore only rise or stay flat as it accommodates the new task: it cannot spike up and fall back, but instead increases monotonically to its permanent baseline at the joint optimum ($\theta_{\text{joint}}^*$).
 
-This guarantee rests on a local condition: the tracked path must stay a family of \emph{local} minima, with the combined Hessian positive-definite along the branch the iterate follows. That holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's, the point at which positive-definiteness, and with it the non-negativity guarantee, is no longer assured (Appendix~\ref{app:detailed_proof}).
+This guarantee rests on a local condition: the tracked path must stay a family of \emph{local} minima, with the combined Hessian positive-definite along the branch the iterate follows. That holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's; beyond that point positive-definiteness, and with it the non-negativity guarantee, is no longer assured (Appendix~\ref{app:detailed_proof}). On a non-convex backbone such as the CIFAR ResNet this condition can fail, so the bound is best read as a local result that motivates the curriculum rather than a guarantee that covers the deeper-network experiments directly.
 
 \subsection{Part B: A slow ramp keeps the model on the path}
 \label{subsec:partB_summary}
 
-Part A describes a mathematically perfect path, but real SGD iterates ($\theta(t)$) are clumsy and take discrete steps. However, by analyzing the gradient flow, we can prove that the actual model trajectory acts as though it is tethered to the perfect path.
+Part A describes a mathematically perfect path, but real SGD iterates ($\theta(t)$) are clumsy and take discrete steps. However, by analyzing the gradient flow, we can show that the actual model trajectory behaves as though it is tethered to the perfect path.
 
 The distance the model lags behind the perfect path is directly proportional to how fast the valley floor is moving. If the transition is stretched over a sufficiently long ramp (large $N$), the maximum distance the model wanders off the ideal path is tightly bounded:
 \begin{equation}
@@ -89,5 +89,5 @@ The first term is the genuine plasticity--stability trade-off: the permanent cap
 
 Conversely, an instantaneous task switch (small $N$) produces a large gap driven by two $O(1)$ boundary contributors (Section~\ref{subsec:decomposition}). First, the magnitude asymmetry ($G_{\text{mag}}$) causes a sharp initial spike: the new task's gradient dominates the first step, immediately throwing the iterate out of the replay basin. Second, the trajectory effect ($G_{\text{traj}}$) causes a sustained loss: the descent path bows outward (Figure~\ref{fig:loss_landscape_visualization}), forcing the iterate to cross through high-loss regions before reaching the joint minimum.
 
-Stretching the transition over $N$ steps elegantly resolves both issues. By introducing the new task at a weight of $\lambda \approx 1/N$, the initial gradient shock ($G_{\text{mag}}$) is dampened, shrinking quadratically as $O(1/N^2)$. Simultaneously, the descent trajectory straightens toward the optimal path $\Theta^*(\lambda)$, reducing $G_{\text{traj}}$ linearly as $O(1/N)$. Because the trajectory deviation closes more slowly, it dictates the overall $O(1/N)$ bound in~\eqref{eq:bound}. Ultimately, a sufficiently slow continuous curriculum drives both spatial overshoots to zero, leaving only the estimator variance $G_{\text{est}}$ inherent to the finite buffer. This preserves the model's step-size adaptation and resolves the gap without complex path-finding interventions (Appendix~\ref{app:detailed_proof}).
+Stretching the transition over $N$ steps resolves both issues. Introducing the new task at a weight of $\lambda \approx 1/N$ dampens the initial gradient shock ($G_{\text{mag}}$), since its first-step contribution is scaled down with the ramp length. The descent trajectory straightens toward the optimal path $\Theta^*(\lambda)$, reducing $G_{\text{traj}}$ as $O(1/N)$ (Appendix~\ref{app:detailed_proof}). The trajectory deviation is the slower of the two to close, so it sets the overall $O(1/N)$ bound in~\eqref{eq:bound}. A sufficiently slow continuous curriculum therefore drives both spatial overshoots toward zero, leaving only the estimator variance $G_{\text{est}}$ inherent to the finite buffer. This preserves the model's step-size adaptation and resolves the gap without complex path-finding interventions (Appendix~\ref{app:detailed_proof}).
 

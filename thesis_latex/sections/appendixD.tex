@@ -1,5 +1,5 @@
 \onecolumn
-\section{Detailed Step-by-Step Proof of the Trajectory Bound}
+\section{Detailed Step-by-Step Derivation of the Trajectory Bound}
 \label{app:detailed_proof}
 
 \subsection*{The Mathematical Setup \& Definitions}
@@ -133,7 +133,7 @@ Substitute this expanded gradient back into our differential equation:
 \begin{equation*}
     \frac{d\delta}{dt} \approx -H_\lambda \cdot \delta - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
 \end{equation*}
-At a steady-state tracking lag, the error stops growing ($\frac{d\delta}{dt} \approx 0$):
+Assuming the lag reaches a steady state, the error stops growing ($\frac{d\delta}{dt} \approx 0$). This is a first-order, gradient-flow approximation: it linearises the gradient around $\Theta^*$ and treats the dynamics as continuous, so it captures the scaling of the lag with $N$ rather than an exact discrete-time bound.
 \begin{align*}
     0                      & \approx -H_\lambda \cdot \delta - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \\
     H_\lambda \cdot \delta & \approx -\frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}                          \\
@@ -151,7 +151,7 @@ To find the maximum Replay loss the model will actually experience, we Taylor ex
     L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot (\theta - \Theta^*) \\
     L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot \delta
 \end{align*}
-From Part A, $L_{\text{replay}}(\Theta^*)$ cannot exceed the final joint optimum loss $L_{\text{replay}}(\theta_{\text{joint}}^*)$. From Part B, the lag $\delta$ is $O(1/N)$. Substituting these limits yields the final mathematical guarantee:
+From Part A, $L_{\text{replay}}(\Theta^*)$ cannot exceed the final joint optimum loss $L_{\text{replay}}(\theta_{\text{joint}}^*)$. From Part B, the lag $\delta$ is $O(1/N)$. Substituting these limits yields the final bound:
 \begin{equation}
     \max_t L_{\text{replay}}(\theta(t)) \le L_{\text{replay}}(\theta_{\text{joint}}^*) + O\left(\frac{1}{N}\right)
 \end{equation}
