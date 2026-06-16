@@ -1,7 +1,7 @@
 \section{Research Questions}
 \label{sec:proposed_approach}
 
-The decomposition of Section~\ref{subsec:decomposition} and the bound of Section~\ref{sec:theory} make a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We first evaluate these predictions on the rotated MNIST toy dataset with a small multilayer perceptron, before investigating whether the findings hold when scaling to a deeper backbone and a more demanding generalization setting. For this, we employ Domain CIFAR-10, which represents a substantially harder task that better approximates the complexities of real-world applications. The experiments are organised around three primary questions, the second of which carries four sub-questions probing the individual ingredients of the curriculum.
+The decomposition of Section~\ref{subsec:decomposition} and the bound of Section~\ref{sec:theory} make a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We first evaluate these predictions on the rotated MNIST toy dataset with a small multilayer perceptron, then test whether they hold on a deeper backbone and a more demanding setting: Domain CIFAR-10, with a deeper architecture and a stronger task shift. The experiments are organised around three primary questions, the second of which carries four sub-questions probing the individual ingredients of the curriculum.
 
 \paragraph{RQ1 --- The cause.} Does the stability gap decompose into the magnitude, estimator, and trajectory contributions of Section~\ref{subsec:decomposition}, and is the discontinuity their dominant source?
 

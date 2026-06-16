@@ -201,7 +201,7 @@ indicated normalisation, over three seeds.
             \hline
         \end{tabular}%
     }
-    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
+    \caption{Five-task rot-MNIST (rotations $[-90,-60,-30,0,30]^\circ$, four
         transitions, momentum $0.9$, five seeds). Depth and area are means over the
         four task boundaries.}
     \label{tab:app_longseq}
@@ -241,7 +241,7 @@ three-task group-norm generalisation outlier (Section~\ref{subsec:res_cifar}).
         {\scriptsize (e) $T_4$}
     \end{minipage}
     \caption{Per-step test accuracy of each task across the full five-task rot-MNIST
-        sequence (rotations $[0,30,60,90,120]^\circ$, four transitions, momentum
+        sequence (rotations $[-90,-60,-30,0,30]^\circ$, four transitions, momentum
         $0.9$), mean over five seeds with $\pm$std bands. Panels (a)--(e) are tasks
         $T_0$--$T_4$; conditions are vanilla ER (L1, brown), NCL (L2, green), and the
         adaptive curriculum at $\lambda_{\min}=0$ (L3, cyan) and $\lambda_{\min}=0.10$

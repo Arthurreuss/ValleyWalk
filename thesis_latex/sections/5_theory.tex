@@ -1,9 +1,9 @@
 \section{\texorpdfstring{The Envelope-Theorem Bound: Why a Linear $\lambda$-Ramp Works}{The Envelope-Theorem Bound: Why a Linear lambda-Ramp Works}}
 \label{sec:theory}
 
-When a model switches instantly from an old task to a new one ($\lambda$ jumps from $0$ to $1$), the sudden change causes the stability gap.
+When a model switches instantly from an old task to a new one ($\lambda$ jumps from $0$ to $1$), the sudden change drives the boundary-tied components of the stability gap: the magnitude asymmetry and the trajectory effect.
 
-This section outlines why replacing that sudden jump with a slow, continuous transition (a linear ramp over $N$ steps) mathematically eliminates this spike. The full, step-by-step mathematical derivation of this proof is provided in Appendix~\ref{app:detailed_proof}.
+Replacing that sudden jump with a slow, continuous transition (a linear ramp over $N$ steps) removes the trajectory component and tempers the magnitude one, leaving a residual bounded by $O(1/N)$ in the ramp length. The full step-by-step derivation is given in Appendix~\ref{app:detailed_proof}.
 
 The core argument is built on two pillars:
 
@@ -89,5 +89,5 @@ The first term is the genuine plasticity--stability trade-off: the permanent cap
 
 Conversely, an instantaneous task switch (small $N$) produces a large gap driven by two $O(1)$ boundary contributors (Section~\ref{subsec:decomposition}). First, the magnitude asymmetry ($G_{\text{mag}}$) causes a sharp initial spike: the new task's gradient dominates the first step, immediately throwing the iterate out of the replay basin. Second, the trajectory effect ($G_{\text{traj}}$) causes a sustained loss: the descent path bows outward (Figure~\ref{fig:loss_landscape_visualization}), forcing the iterate to cross through high-loss regions before reaching the joint minimum.
 
-Stretching the transition over $N$ steps resolves both issues. Introducing the new task at a weight of $\lambda \approx 1/N$ dampens the initial gradient shock ($G_{\text{mag}}$), since its first-step contribution is scaled down with the ramp length. The descent trajectory straightens toward the optimal path $\Theta^*(\lambda)$, reducing $G_{\text{traj}}$ as $O(1/N)$ (Appendix~\ref{app:detailed_proof}). The trajectory deviation is the slower of the two to close, so it sets the overall $O(1/N)$ bound in~\eqref{eq:bound}. A sufficiently slow continuous curriculum therefore drives both spatial overshoots toward zero, leaving only the estimator variance $G_{\text{est}}$ inherent to the finite buffer. This preserves the model's step-size adaptation and resolves the gap without complex path-finding interventions (Appendix~\ref{app:detailed_proof}).
+Stretching the transition over $N$ steps resolves both issues. Introducing the new task at a weight of $\lambda \approx 1/N$ dampens the initial gradient shock ($G_{\text{mag}}$), since its first-step contribution is scaled down with the ramp length. The descent trajectory straightens toward the optimal path $\Theta^*(\lambda)$, reducing $G_{\text{traj}}$ as $O(1/N)$ (Appendix~\ref{app:detailed_proof}). The trajectory deviation is the slower of the two to close, so it sets the overall $O(1/N)$ bound in~\eqref{eq:bound}. In the large-$N$ limit a sufficiently slow continuous curriculum drives both boundary-tied overshoots toward zero, leaving only the estimator variance $G_{\text{est}}$ inherent to the finite buffer. This preserves the model's step-size adaptation and resolves the gap without complex path-finding interventions (Appendix~\ref{app:detailed_proof}).
 
