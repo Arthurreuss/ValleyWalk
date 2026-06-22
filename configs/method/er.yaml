@@ -29,11 +29,10 @@ grad_balance:
   task_weighted: false               # true: w_replay = t/(t+1), w_new = 1/(t+1)
                                     # false: 50/50
 
-# λ-curriculum (homotopy on new-task loss weight) — see CACL config for details.
+# λ-curriculum (homotopy on new-task loss weight).
 # Effective loss minimised this step:  L_λ = L_replay + λ · L_current.
-# Mirrors the same block in configs/method/cacl.yaml so curriculum can be
-# applied to vanilla ER as a control: does the curriculum alone flatten
-# the bend, or is curvature awareness also required?
+# Applied to vanilla ER as a control: does the curriculum alone flatten the
+# bend, or is curvature awareness also required?
 #
 # Schedules:
 #   linear   — λ = progress                         (smooth ramp)

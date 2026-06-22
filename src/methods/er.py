@@ -118,8 +118,8 @@ class ER(BaseMethod):
         )
 
         # ── λ-curriculum (homotopy on new-task loss weight) ───────────────
-        # Mirrors CACL's lambda_curriculum block.  When disabled (default)
-        # every formula below reduces to the original ER step exactly.
+        # When disabled (default) every formula below reduces to the original
+        # ER step exactly.
         lc = cfg.method.get("lambda_curriculum", None)
         if lc is None:
             self._lc_enabled: bool = False

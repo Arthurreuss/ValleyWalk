@@ -1,0 +1,27 @@
+name: precond_er
+
+# Preconditioned ER — natural-gradient experience replay (baseline).
+# Descends the joint ER loss  L = L_current + L_replay  along the damped
+# natural gradient  δ·(F + δI)⁻¹ ∇L,  solved with Conjugate Gradient over
+# Fisher-vector products (no matrix is ever formed).  Rescales the gradient by
+# inverse curvature: small steps in high-curvature directions, large in flat.
+
+# null = match the current-task batch size (default ER behaviour).  Set to a
+# large int to approximate the full past-task gradient before preconditioning.
+replay_batch_size: null
+
+fisher:
+  # "joint"  — Fisher of the concatenated current+replay batch (curvature the
+  #            step actually moves through).
+  # "replay" — Fisher of the replay batch only (past-task curvature alone).
+  target: joint
+  # δ — damping.  The one behavioural knob: gain along an eigendirection is
+  # δ/(λ+δ), so λ ≫ δ is shrunk toward zero and λ ≪ δ is left ~unchanged.
+  # The outer δ· normalisation keeps flat directions at unit gain, so large δ
+  # → plain ER (gradient descent), small δ → aggressive natural gradient.
+  damping: 1.0
+
+cg:
+  iters: 10          # max CG iterations (≈ Fisher-vector products) per step
+  tol: 1.0e-4        # relative residual tolerance; CG stops early once met
+  warm_start: true   # seed CG with the previous step's solution (fewer iters)

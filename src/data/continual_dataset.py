@@ -9,7 +9,7 @@ provides a unified interface for the training loop:
    which grows to hold samples from all completed tasks.
 
 Buffer population is the responsibility of each method's `end_task()` call in
-the training loop (ER, GEM, CACL all do this).  The dataset does NOT populate
+the training loop (ER, GEM, PrecondER all do this).  The dataset does NOT populate
 the buffer — doing so would double-fill it and inflate the reservoir sampler's
 `_n_seen` counter, biasing the buffer toward early-task data.
 

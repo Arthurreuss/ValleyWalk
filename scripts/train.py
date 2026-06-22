@@ -1,6 +1,6 @@
 """Main training entry point (Hydra app).
 
-Implements the full CACL training loop (T6.2).  The script is method-agnostic:
+The script is method-agnostic:
 it builds the model, dataset, and method from the resolved Hydra config, then
 drives the continual-learning loop:
 
@@ -26,7 +26,6 @@ import json
 import os
 import time
 import warnings
-from typing import Optional
 
 # torchvision's CIFAR loader triggers this with NumPy >= 2.4 because the
 # pickled dataset files contain dtype objects created with align=0 (an int).
@@ -47,13 +46,12 @@ from omegaconf import DictConfig
 from src.data.continual_dataset import ContinualDataset
 from src.eval.metrics import ContinualMetrics
 from src.eval.stability_gap import GradientTracker, StabilityGapTracker
-from src.methods.cacl import CACL
 from src.methods.er import ER
 from src.methods.gem import GEM
 from src.methods.ncl import NCL
+from src.methods.precond_er import PrecondER
 from src.models.mlp import MLP
 from src.models.resnet import ResNet18
-from src.utils.diagnostics import CACLDiagnosticsWriter
 from src.utils.seeding import set_global_seed
 from src.utils.tracking import (
     DualLogger,
@@ -178,7 +176,7 @@ def build_method(cfg, model, buffer):
     only methods (NCL).
 
     Supported method names: ``"er"``, ``"gem"``, ``"agem"``,
-    ``"ncl"``, ``"cacl"``.
+    ``"precond_er"``, ``"ncl"``.
 
     Args:
         cfg:    Full resolved Hydra config.
@@ -197,13 +195,14 @@ def build_method(cfg, model, buffer):
         return ER(model, cfg, buffer)
     if name in ("gem", "agem"):
         return GEM(model, cfg, buffer)
+    if name == "precond_er":
+        return PrecondER(model, cfg, buffer)
     if name == "ncl":
         # NCL is regularisation-only — no replay buffer.
         return NCL(model, cfg)
-    if name == "cacl":
-        return CACL(model, cfg, buffer)
     raise ValueError(
-        f"Unknown method '{name}'. " f"Supported: er, gem, agem, ncl, cacl"
+        f"Unknown method '{name}'. "
+        f"Supported: er, gem, agem, precond_er, ncl"
     )
 
 
@@ -239,15 +238,6 @@ def main(cfg: DictConfig) -> None:
     # ── Output directories ────────────────────────────────────────────────
     os.makedirs(cfg.checkpointing.dir, exist_ok=True)
     os.makedirs(cfg.outputs.dir, exist_ok=True)
-
-    # ── CACL diagnostics writer (run-level, cross-task CSVs) ─────────────
-    # Created only for CACL runs and only when save_diagnostics is enabled.
-    # The writer stays open across all tasks so the step counter is continuous.
-    diagnostics_writer: Optional[CACLDiagnosticsWriter] = (
-        CACLDiagnosticsWriter(method, cfg.outputs.dir, run, cfg.tracking.local)
-        if (isinstance(method, CACL) and cfg.outputs.save_diagnostics)
-        else None
-    )
 
     # ── Combined accuracy CSV (run-level, all tasks, all steps) ──────────
     # One file per run that records every task's accuracy at every eval step,
@@ -375,11 +365,6 @@ def main(cfg: DictConfig) -> None:
                         true_grad_mag_ratio,
                     )
 
-                # CACL run-level diagnostics (eigenvalue spectrum, trust radius,
-                # cone fallback) — written to continuous cross-task CSV files.
-                if diagnostics_writer is not None:
-                    diagnostics_writer.log_step(global_step, diagnostics)
-
                 # Periodic evaluation — always evaluate all tasks seen so far
                 # so that accuracy_curves.csv has a continuous view of every
                 # task across the full training run (including the stability gap
@@ -496,10 +481,6 @@ def main(cfg: DictConfig) -> None:
 
     # Close combined accuracy CSV
     _combined_acc_file.close()
-
-    # Close CACL diagnostics writer (flushes all 3 run-level CSV files)
-    if diagnostics_writer is not None:
-        diagnostics_writer.close()
 
     # Save accuracy matrix as .npy
     R = metrics.get_accuracy_matrix()

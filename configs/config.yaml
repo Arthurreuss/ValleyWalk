@@ -14,7 +14,7 @@ training:
   epochs_per_task: 1                 # online: 1 epoch per task
   batch_size: 256
   optimizer: sgd                     # base optimizer (only for methods that use it)
-  lr: 0.1                            # base learning rate (overridden by trust region for CACL)
+  lr: 0.1                            # base learning rate
   momentum: 0.0                      # SGD momentum (0.0 = plain SGD)
   weight_decay: 0.0
 

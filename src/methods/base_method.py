@@ -1,6 +1,6 @@
 """Abstract base class for all continual-learning methods.
 
-Every method (ER, GEM, NCL, CACL) subclasses ``BaseMethod`` and implements
+Every method (ER, GEM, NCL, PrecondER) subclasses ``BaseMethod`` and implements
 the three abstract hooks.  The training loop in ``scripts/train.py`` only
 calls this interface, so it is fully method-agnostic.
 
@@ -8,7 +8,7 @@ Interface contract:
     observe(x, y, task_id) → dict
         Perform one gradient step on the current mini-batch.
         Must return at least {"loss": float}.  Methods may include
-        method-specific keys (e.g. "rho", "eta" for CACL).
+        method-specific keys (e.g. "loss" only for ER).
 
     end_task(task_id, train_loader)
         Called once at the end of each task.  Use for post-task bookkeeping:
@@ -22,7 +22,7 @@ Interface contract:
     get_step_diagnostics() → dict
         Return the diagnostic scalars logged after the *last* observe() call.
         Defaults to an empty dict; override in methods that produce diagnostics
-        (e.g. CACL returns cone_fallback, trust_radius, …).
+        (e.g. PrecondER returns cg_iters, cg_residual, …).
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ class BaseMethod(ABC):
         Called exactly once after all mini-batches in a task have been
         processed.  Typical uses:
 
-        * Populate / update the replay memory buffer (ER, GEM, CACL).
+        * Populate / update the replay memory buffer (ER, GEM, PrecondER).
         * Compute and cache Fisher matrices or reference gradients (NCL, GEM).
         * Reset per-task counters.
 
@@ -144,7 +144,7 @@ class BaseMethod(ABC):
 
         The training loop calls this after every ``observe()`` and forwards
         the result to the dual-write logger.  The base implementation returns
-        an empty dict — methods with rich diagnostics (e.g. CACL) should
+        an empty dict — methods with rich diagnostics (e.g. PrecondER) should
         override this and return the relevant scalars.
 
         Returns
