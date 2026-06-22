@@ -3,15 +3,13 @@
 .DS_Store
 /.claude
 /.pytest_cache
-uv.lock
 
 # Generated run artefacts
 outputs/
 checkpoints/
 /data/
 archive/
-thesis_latex/
-thesis_draft/
+
 thesis_latex/indent.log
 thesis_latex/main.bbl
 thesis_latex/main.aux

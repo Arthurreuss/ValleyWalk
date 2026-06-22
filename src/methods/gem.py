@@ -84,9 +84,14 @@ class GEM(BaseMethod):
                 f"got '{self._mode}'"
             )
 
+        # Momentum read from training config so the §4.6 momentum cross
+        # (training.momentum=0.9) applies to GEM/A-GEM too — accumulated on top
+        # of the projected gradient.  getattr keeps older/unit-test configs
+        # (no momentum field) working at the plain-SGD default.
         self.optimizer = torch.optim.SGD(
             model.parameters(),
             lr=float(cfg.training.lr),
+            momentum=float(getattr(cfg.training, "momentum", 0.0)),
             weight_decay=float(cfg.training.weight_decay),
         )
         self.loss_fn = nn.CrossEntropyLoss()

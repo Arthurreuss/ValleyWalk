@@ -26,6 +26,8 @@
 #   G3 — Balanced ER         (buffer 1 k, balanced mode)         − magnitude asymmetry
 #   G4 — Full-data balanced  (buffer 60 k, balanced mode)        − magnitude + estimator
 #   NCL — Standard NCL       (no replay buffer; precision prior) reference path-finding
+#   PER — Preconditioned ER  (buffer 1 k; Fisher natural grad)   preconditioner reference
+#   AGEM— Averaged GEM       (buffer 1 k; gradient projection)   projection reference
 #
 # Momentum cross (§4.6)
 # ---------------------
@@ -33,7 +35,7 @@
 # SGD baseline) and once at training.momentum=0.9 (the momentum-on condition).
 # Momentum-on names get a "_M" suffix in ablation_value.
 #
-# Total: 5 base × 2 momentum × 5 seeds = 50 runs.  rot-MNIST + MLP runs in
+# Total: 7 base × 2 momentum × 5 seeds = 70 runs.  rot-MNIST + MLP runs in
 # seconds; the full block finishes in <30 min at N_JOBS=5.
 #
 # Per-step instrumentation enabled for all G* conditions:
@@ -64,7 +66,7 @@ set -euo pipefail
 N_JOBS="${N_JOBS:-5}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
-ALL_CONDITIONS_DEFAULT="G1 G2 G3 G4 NCL"
+ALL_CONDITIONS_DEFAULT="G1 G2 G3 G4 NCL PER AGEM"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
 # MOMENTUM_SET: "off" → µ=0.0 only, "on" → µ=0.9 only, "both" → both legs.
@@ -239,6 +241,62 @@ spawn_ncl_block() {
     wait_block "${label} (µ=${mu})"
 }
 
+# Preconditioned-ER launcher.  Replay-based (1 k reservoir), but the g_true
+# buffer-fidelity diagnostics are implemented only by the ER method, so the
+# caller leaves that toggle off (it would be inert here).
+spawn_precond_block() {
+    local label="$1"; shift
+    local base_ablation="$1"; shift
+    local mom="$1"; shift
+    local suffix
+    suffix="$(mom_suffix "${mom}")"
+    local ablation_value="${base_ablation}${suffix}"
+    local mom_tag
+    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${mom_tag}"
+    for seed in "${SEED_ARRAY[@]}"; do
+        spawn_job \
+            method=precond_er \
+            "${DATASET_OVERRIDES[@]}" \
+            "${EVAL_OVERRIDES[@]}" \
+            "training.momentum=${mom}" \
+            "seed=${seed}" \
+            "+ablation_key=${ABLATION_KEY}" \
+            "+ablation_value=${ablation_value}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
+            "$@"
+    done
+    wait_block "${label} (µ=${mom})"
+}
+
+# A-GEM launcher.  Replay-based, but the projection (not an ER-style g_new +
+# g_replay combine) means the buffer-fidelity g_true diagnostics — which only
+# the ER method implements — do not apply; the toggle is left off, as for NCL.
+spawn_agem_block() {
+    local label="$1"; shift
+    local base_ablation="$1"; shift
+    local mom="$1"; shift
+    local suffix
+    suffix="$(mom_suffix "${mom}")"
+    local ablation_value="${base_ablation}${suffix}"
+    local mom_tag
+    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
+    local tags_csv="${ABLATION_KEY},${label},${mom_tag}"
+    for seed in "${SEED_ARRAY[@]}"; do
+        spawn_job \
+            method=agem \
+            "${DATASET_OVERRIDES[@]}" \
+            "${EVAL_OVERRIDES[@]}" \
+            "training.momentum=${mom}" \
+            "seed=${seed}" \
+            "+ablation_key=${ABLATION_KEY}" \
+            "+ablation_value=${ablation_value}" \
+            "tracking.wandb.tags=[${tags_csv}]" \
+            "$@"
+    done
+    wait_block "${label} (µ=${mom})"
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # G-series — Three-contributor decomposition (§4.4)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -299,6 +357,32 @@ for mu in $(momentum_values); do
         # the decomposition condition stays reproducible if the config drifts.
         # See thesis_draft/notes/ncl_implementation_findings.md.
         spawn_ncl_block NCL NCL_reference "${mu}" method.ncl.prior_init=0.1
+    fi
+
+    if should_run PER; then
+        echo "=== PER: preconditioned ER (1 k reservoir, Fisher natural gradient via CG) — preconditioner reference ==="
+        # Damped natural gradient δ·(F+δI)⁻¹g solved with CG over Fisher-vector
+        # products.  Basic settings pinned for reproducibility: δ=1.0 damping,
+        # 10 CG iters with warm-start, Fisher of the joint (current+replay)
+        # batch.  See configs/method/precond_er.yaml.  No grad_diagnostics: the
+        # g_true buffer-fidelity hooks are ER-only, so the toggle is inert here.
+        spawn_precond_block PER PER_reference "${mu}" \
+            method.fisher.target=joint \
+            method.fisher.damping=1.0 \
+            method.cg.iters=10 \
+            method.cg.warm_start=true
+    fi
+
+    if should_run AGEM; then
+        echo "=== AGEM: averaged GEM (1 k reservoir, single-constraint projection) — projection reference ==="
+        # Original A-GEM (Chaudhry et al. 2019): projects the current-task
+        # gradient so it does not increase average loss on a buffer mini-batch.
+        # reference_gradient=joint is the single-constraint A-GEM; margin=0.0 is
+        # the paper formulation (project only when g̃·g_ref < 0) — pinned here
+        # because configs/method/agem.yaml defaults to a non-standard margin=0.5.
+        spawn_agem_block AGEM AGEM_reference "${mu}" \
+            method.gem.reference_gradient=joint \
+            method.gem.margin=0.0
     fi
 done
 

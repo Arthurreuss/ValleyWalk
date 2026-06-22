@@ -246,6 +246,10 @@ class StabilityGapTracker:
             Non-negative float with units ``accuracy · steps``.  Returns 0.0
             if fewer than two records fall within the window.
         """
+        if reference not in ("pre", "end"):
+            raise ValueError(
+                f"reference must be 'pre' or 'end', got {reference!r}"
+            )
         records = (
             [r for r in self._records if r[0] < window_steps]
             if window_steps is not None
@@ -279,38 +283,6 @@ class StabilityGapTracker:
                 prev_step = step
                 prev_drop = drop
         return float(total)
-
-    def _end_baselines(
-        self, tail_frac: float = 0.1, tail_min: int = 5
-    ) -> Dict[int, float]:
-        """Per-task settled accuracy: the trailing-window mean of each task's curve.
-
-        For each previously seen task *j*, collects ``acc_j`` over all records
-        in order and returns the mean of the last
-        ``max(tail_min, ceil(tail_frac · n_j))`` values — an estimate of the
-        level the task recovers to by the end of the new task's training.
-
-        Returns:
-            ``{task_id: settled_accuracy}``.  A task with no records falls back
-            to its pre-task baseline.
-        """
-        import math
-
-        series: Dict[int, List[float]] = {j: [] for j in self._pre_task_acc}
-        for _step, accs in self._records:
-            for j, acc in accs.items():
-                if j in series:
-                    series[j].append(acc)
-
-        baselines: Dict[int, float] = {}
-        for j, vals in series.items():
-            if not vals:
-                baselines[j] = self._pre_task_acc[j]
-                continue
-            k = max(tail_min, math.ceil(tail_frac * len(vals)))
-            tail = vals[-k:]
-            baselines[j] = sum(tail) / len(tail)
-        return baselines
 
     def recovery_steps(self) -> Optional[int]:
         """First step at which all previously seen tasks recover to ≥ 90 % of their baseline,

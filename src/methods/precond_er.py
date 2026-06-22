@@ -108,9 +108,13 @@ class PrecondER(BaseMethod):
         if self._cg_iters < 1:
             raise ValueError(f"cg.iters must be >= 1, got {self._cg_iters}")
 
+        # Momentum read from training config so the §4.6 momentum cross
+        # (training.momentum=0.9) applies here too — momentum is accumulated on
+        # top of the damped natural-gradient direction, mirroring NCL.
         self.optimizer = torch.optim.SGD(
             model.parameters(),
             lr=float(cfg.training.lr),
+            momentum=float(getattr(cfg.training, "momentum", 0.0)),
             weight_decay=float(cfg.training.weight_decay),
         )
         self.loss_fn = nn.CrossEntropyLoss()
