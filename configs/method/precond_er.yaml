@@ -10,6 +10,13 @@ name: precond_er
 # large int to approximate the full past-task gradient before preconditioning.
 replay_batch_size: null
 
+# When true, the replay *loss gradient* is averaged over the entire buffer
+# (exact past-task gradient, zero sampling noise — mirrors ER's G2/G4).  The
+# Fisher metric is still estimated on a sampled subset of size replay_batch_size
+# (a full-buffer Fisher-vector product per CG iteration would be far too costly),
+# so this isolates the replay-gradient estimator variance while bounding cost.
+replay_full_buffer: false
+
 fisher:
   # "joint"  — Fisher of the concatenated current+replay batch (curvature the
   #            step actually moves through).
