@@ -26,7 +26,8 @@
 #   G3 — Balanced ER         (buffer 1 k, balanced mode)         − magnitude asymmetry
 #   G4 — Full-data balanced  (buffer 60 k, balanced mode)        − magnitude + estimator
 #   NCL — Standard NCL       (no replay buffer; precision prior) reference path-finding
-#   PER — Preconditioned ER  (buffer 1 k; Fisher natural grad)   preconditioner reference
+#   PER_JOINT  — Preconditioned ER (buffer 1 k; Fisher of joint loss)   preconditioner reference
+#   PER_REPLAY — Preconditioned ER (buffer 1 k; Fisher of replay loss)  preconditioner reference
 #   AGEM— Averaged GEM       (buffer 1 k; gradient projection)   projection reference
 #
 # Momentum cross (§4.6)
@@ -35,7 +36,7 @@
 # SGD baseline) and once at training.momentum=0.9 (the momentum-on condition).
 # Momentum-on names get a "_M" suffix in ablation_value.
 #
-# Total: 7 base × 2 momentum × 5 seeds = 70 runs.  rot-MNIST + MLP runs in
+# Total: 8 base × 2 momentum × 5 seeds = 80 runs.  rot-MNIST + MLP runs in
 # seconds; the full block finishes in <30 min at N_JOBS=5.
 #
 # Per-step instrumentation enabled for all G* conditions:
@@ -66,7 +67,7 @@ set -euo pipefail
 N_JOBS="${N_JOBS:-5}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
-ALL_CONDITIONS_DEFAULT="G1 G2 G3 G4 NCL PER AGEM"
+ALL_CONDITIONS_DEFAULT="G1 G2 G3 G4 NCL PER_JOINT PER_REPLAY AGEM"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
 # MOMENTUM_SET: "off" → µ=0.0 only, "on" → µ=0.9 only, "both" → both legs.
@@ -359,15 +360,26 @@ for mu in $(momentum_values); do
         spawn_ncl_block NCL NCL_reference "${mu}" method.ncl.prior_init=0.1
     fi
 
-    if should_run PER; then
-        echo "=== PER: preconditioned ER (1 k reservoir, Fisher natural gradient via CG) — preconditioner reference ==="
-        # Damped natural gradient δ·(F+δI)⁻¹g solved with CG over Fisher-vector
-        # products.  Basic settings pinned for reproducibility: δ=1.0 damping,
-        # 10 CG iters with warm-start, Fisher of the joint (current+replay)
-        # batch.  See configs/method/precond_er.yaml.  No grad_diagnostics: the
-        # g_true buffer-fidelity hooks are ER-only, so the toggle is inert here.
-        spawn_precond_block PER PER_reference "${mu}" \
+    # Preconditioned ER comes in two variants, named by the loss whose Fisher
+    # supplies the preconditioner.  Both descend the joint ER loss via the
+    # damped natural gradient δ·(F+δI)⁻¹g (CG over Fisher-vector products);
+    # they differ only in which loss F is the curvature of.  Shared settings
+    # pinned for reproducibility: δ=1.0 damping, 10 CG iters with warm-start.
+    # No grad_diagnostics: the g_true buffer-fidelity hooks are ER-only.
+
+    if should_run PER_JOINT; then
+        echo "=== PER_JOINT: preconditioned ER, Fisher of the JOINT (current+replay) batch ==="
+        spawn_precond_block PER_JOINT PER_joint "${mu}" \
             method.fisher.target=joint \
+            method.fisher.damping=1.0 \
+            method.cg.iters=10 \
+            method.cg.warm_start=true
+    fi
+
+    if should_run PER_REPLAY; then
+        echo "=== PER_REPLAY: preconditioned ER, Fisher of the REPLAY batch only (past-task curvature) ==="
+        spawn_precond_block PER_REPLAY PER_replay "${mu}" \
+            method.fisher.target=replay \
             method.fisher.damping=1.0 \
             method.cg.iters=10 \
             method.cg.warm_start=true
