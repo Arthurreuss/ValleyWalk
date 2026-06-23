@@ -90,6 +90,13 @@ class PrecondER(BaseMethod):
         rbs = getattr(mcfg, "replay_batch_size", None)
         self._replay_batch_size = int(rbs) if rbs is not None else None
 
+        # When true, the replay *loss gradient* is computed over the entire
+        # buffer (exact past-task gradient, zero sampling noise — mirrors ER's
+        # G2/G4).  The Fisher metric is still estimated on a sampled subset so
+        # the CG solve stays affordable: the preconditioner's sampling variance
+        # is not the estimator noise this flag targets.
+        self._replay_full_buffer = bool(getattr(mcfg, "replay_full_buffer", False))
+
         # ── Fisher / damping ──────────────────────────────────────────────
         self._fisher_target: str = str(mcfg.fisher.target)          # "joint"|"replay"
         self._damping: float = float(mcfg.fisher.damping)           # δ
@@ -207,9 +214,14 @@ class PrecondER(BaseMethod):
         self, x_batch: torch.Tensor, y_batch: torch.Tensor
     ) -> Dict[str, float]:
         """Natural-gradient step on the joint ER loss (task > 0)."""
-        # ── Replay batch ──────────────────────────────────────────────────
-        replay_bs = self._replay_batch_size or x_batch.size(0)
-        x_replay, y_replay, _ = self.buffer.sample(replay_bs)
+        # ── Replay batch for the gradient ─────────────────────────────────
+        # replay_full_buffer: average the replay loss over every stored sample
+        # (exact past-task gradient, zero sampling noise — mirrors ER G2/G4).
+        if self._replay_full_buffer:
+            x_replay, y_replay, _ = self.buffer.sample_all()
+        else:
+            replay_bs = self._replay_batch_size or x_batch.size(0)
+            x_replay, y_replay, _ = self.buffer.sample(replay_bs)
         x_replay = x_replay.to(self._device)
         y_replay = y_replay.to(self._device)
 
@@ -225,11 +237,23 @@ class PrecondER(BaseMethod):
         # ── Damped natural gradient via CG: solve (F + δI) x = g ───────────
         # Fisher target: "replay" uses past-task curvature only; "joint" uses
         # the curvature of the concatenated batch the step moves through.
-        if self._fisher_target == "replay":
-            fx, fy = x_replay, y_replay
+        # With a full-buffer replay gradient the Fisher is still estimated on a
+        # sampled subset: the metric does not need the exact buffer, and a
+        # full-buffer Fisher-vector product per CG iteration would be far too
+        # expensive.  This keeps the gradient noise-free while bounding cost.
+        if self._replay_full_buffer:
+            fisher_bs = self._replay_batch_size or x_batch.size(0)
+            xr_f, yr_f, _ = self.buffer.sample(fisher_bs)
+            xr_f = xr_f.to(self._device)
+            yr_f = yr_f.to(self._device)
         else:
-            fx = torch.cat([x_batch, x_replay], dim=0)
-            fy = torch.cat([y_batch, y_replay], dim=0)
+            xr_f, yr_f = x_replay, y_replay
+
+        if self._fisher_target == "replay":
+            fx, fy = xr_f, yr_f
+        else:
+            fx = torch.cat([x_batch, xr_f], dim=0)
+            fy = torch.cat([y_batch, yr_f], dim=0)
         fisher_vp = make_fisher_vp(self.model, fx, fy, self._params)
 
         x0 = self._prev_x if self._cg_warm_start else None

@@ -385,6 +385,26 @@ for mu in $(momentum_values); do
             method.cg.warm_start=true
     fi
 
+    # PER_JOINT_FULLBUF — variance-vs-trajectory probe (opt-in; not in default set).
+    # PER_JOINT with the replay *gradient* computed over the full 60 k buffer
+    # (G_est→0 at source); the Fisher metric stays on a sampled subset (see
+    # precond_er.py — a full-buffer Fisher-vector product per CG iter is too
+    # costly). Run at µ=0 to ask whether PER's large µ=0 tail (area_end ≈2.4) is
+    # estimator variance — in which case it collapses like the curriculum's C8
+    # (2.71→0.05) — or the deterministic G_traj bow, which persists because PER
+    # never removes the discontinuity. Predict: persists (→ proves the §4.2
+    # path-finding vs landscape-shaping dichotomy). Run: CONDITIONS="PER_JOINT_FULLBUF".
+    if should_run PER_JOINT_FULLBUF; then
+        echo "=== PER_JOINT_FULLBUF: PER (joint Fisher) + full-buffer replay gradient — variance/trajectory probe ==="
+        spawn_precond_block PER_JOINT_FULLBUF PER_joint_fullbuf "${mu}" \
+            method.fisher.target=joint \
+            method.fisher.damping=1.0 \
+            method.cg.iters=10 \
+            method.cg.warm_start=true \
+            method.replay_full_buffer=true \
+            memory.total_budget=60000
+    fi
+
     if should_run AGEM; then
         echo "=== AGEM: averaged GEM (1 k reservoir, single-constraint projection) — projection reference ==="
         # Original A-GEM (Chaudhry et al. 2019): projects the current-task
