@@ -319,7 +319,8 @@ run_adaptive() {
         method.lambda_curriculum.enabled=true \
         method.lambda_curriculum.schedule=adaptive \
         "method.lambda_curriculum.ema_alpha=${EMA_ALPHA}" \
-        "method.lambda_curriculum.lambda_min=${lambda_min}"
+        "method.lambda_curriculum.lambda_min=${lambda_min}" \
+        "$@"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -341,6 +342,20 @@ if has_block rot_mnist; then
         if should_run C5; then run_adaptive C5 "${LAMBDA_MIN_C5}" "C5_adaptive_lmin0.05" "${mom}"; fi
         if should_run C6; then run_adaptive C6 "${LAMBDA_MIN_C6}" "C6_adaptive_lmin0.10" "${mom}"; fi
         if should_run C7; then run_adaptive C7 "${LAMBDA_MIN_C7}" "C7_adaptive_lmin0.20" "${mom}"; fi
+
+        # C8 — variance-vs-acceleration probe (opt-in; not in the default set).
+        # C7 curriculum (λ_min=0.20) with the *estimator* contributor removed at
+        # source: full 60 k buffer + exact replay gradient (no per-step sampling
+        # noise), mirroring G2/G4's replay setup. Standard mode (the curriculum
+        # already tempers magnitude; balancing would confound). Run at µ=0 to ask
+        # whether the tail momentum closes (C7 2.71 → C7_M 0.035) is killed by
+        # variance reduction alone (→ tail collapses, momentum interchangeable) or
+        # needs momentum's acceleration (→ tail stays ~2). Run: CONDITIONS="C8".
+        if should_run C8; then
+            run_adaptive C8 "${LAMBDA_MIN_C7}" "C8_adaptive_lmin0.20_fullbuf" "${mom}" \
+                method.replay_full_buffer=true \
+                memory.total_budget=60000
+        fi
     done
 fi
 
