@@ -33,6 +33,8 @@ parse_manifest = _mod.parse_manifest
 build_summary_df = _mod.build_summary_df
 write_latex_table = _mod.write_latex_table
 check_completeness = _mod.check_completeness
+compute_area_end_from_curve = _mod.compute_area_end_from_curve
+backfill_area_end = _mod.backfill_area_end
 MASTER_COLUMNS = _mod.MASTER_COLUMNS
 METRIC_COLUMNS = _mod.METRIC_COLUMNS
 
@@ -179,6 +181,88 @@ class TestParseManifest:
         row = parse_manifest(p)
         assert row["dataset"] is None
         assert row["ACC"] is None
+
+
+# ---------------------------------------------------------------------------
+# Tests: compute_area_end_from_curve / backfill_area_end
+# ---------------------------------------------------------------------------
+
+
+def _write_curve(path: Path, header: list[str], rows: list[list]) -> None:
+    """Write an accuracy_curves.csv-style file ('' for absent cells)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [",".join(header)]
+    lines += [",".join("" if c is None else str(c) for c in r) for r in rows]
+    path.write_text("\n".join(lines) + "\n")
+
+
+class TestComputeAreaEndFromCurve:
+    def test_matches_tracker_reference_end(self, tmp_path):
+        """Recompute must equal StabilityGapTracker.gap_area(reference='end')."""
+        from src.eval.stability_gap import StabilityGapTracker
+
+        # task_0 trains alone, then task_1 starts: task_0 dips and recovers.
+        # Pre-switch baseline = last task_0 acc before task_1 appears (0.90).
+        header = ["step", "task_0_acc", "task_1_acc"]
+        pre_rows = [[0, 0.50, None], [10, 0.80, None], [20, 0.90, None]]
+        task1_series = [
+            (30, 0.90),
+            (40, 0.60),
+            (50, 0.55),
+            (60, 0.70),
+            (70, 0.85),
+            (80, 0.88),
+            (90, 0.88),
+        ]
+        rows = pre_rows + [[s, a, 0.30] for s, a in task1_series]
+        curve = tmp_path / "results" / "accuracy_curves.csv"
+        _write_curve(curve, header, rows)
+
+        tracker = StabilityGapTracker.__new__(StabilityGapTracker)
+        tracker._pre_task_acc = {0: 0.90}
+        tracker._records = [(s, {0: a}) for s, a in task1_series]
+        expected = tracker.gap_area(reference="end")
+
+        got = compute_area_end_from_curve(curve)
+        assert got == pytest.approx(expected)
+        assert got > 0.0
+
+    def test_missing_file_returns_none(self, tmp_path):
+        assert compute_area_end_from_curve(tmp_path / "nope.csv") is None
+
+    def test_single_task_returns_none(self, tmp_path):
+        curve = tmp_path / "accuracy_curves.csv"
+        _write_curve(curve, ["step", "task_0_acc"], [[0, 0.5], [10, 0.8]])
+        assert compute_area_end_from_curve(curve) is None
+
+    def test_nonmonotonic_steps_returns_none(self, tmp_path):
+        """Corrupted (interleaved) CSV -> None, never a bogus number."""
+        header = ["step", "task_0_acc", "task_1_acc"]
+        rows = [[0, 0.9, None], [10, 0.9, 0.3], [44441, 0.4, 0.4], [50, 0.8, 0.5]]
+        curve = tmp_path / "accuracy_curves.csv"
+        _write_curve(curve, header, rows)
+        assert compute_area_end_from_curve(curve) is None
+
+    def test_backfill_fills_only_missing(self, tmp_path):
+        header = ["step", "task_0_acc", "task_1_acc"]
+        rows = [[0, 0.9, None]] + [
+            [s, a, 0.3]
+            for s, a in [(10, 0.9), (20, 0.5), (30, 0.7), (40, 0.85), (50, 0.88)]
+        ]
+        # Row 0 already has a value -> must be preserved untouched.
+        d0, d1 = tmp_path / "r0", tmp_path / "r1"
+        _write_curve(d0 / "results" / "accuracy_curves.csv", header, rows)
+        _write_curve(d1 / "results" / "accuracy_curves.csv", header, rows)
+        df = pd.DataFrame(
+            [
+                {"stab_gap_area_end": 99.0, "run_dir": str(d0)},
+                {"stab_gap_area_end": None, "run_dir": str(d1)},
+            ]
+        )
+        n = backfill_area_end(df)
+        assert n == 1
+        assert df.loc[0, "stab_gap_area_end"] == 99.0  # preserved
+        assert df.loc[1, "stab_gap_area_end"] > 0.0  # filled
 
 
 # ---------------------------------------------------------------------------

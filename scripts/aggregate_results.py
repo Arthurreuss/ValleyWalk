@@ -38,6 +38,7 @@ Produces
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
 import sys
@@ -186,6 +187,121 @@ def parse_manifest(manifest_path: Path) -> Dict[str, Any]:
         "status": m.get("status", "unknown"),
         "run_dir": str(manifest_path.parent),
     }
+
+
+def compute_area_end_from_curve(curve_path: Path) -> Optional[float]:
+    """Recompute ``stability_gap_area_end`` from a run's ``accuracy_curves.csv``.
+
+    Older runs predate the ``stability_gap_area_end`` metric and so leave it
+    absent from their manifest.  The value reported at training time is
+    ``StabilityGapTracker.gap_area(reference="end")`` for the *final* task
+    transition (``scripts/train.py`` re-instantiates the tracker per task and
+    reports the last one).  Because ``gap_area`` depends only on step
+    *differences*, it can be reproduced from the logged accuracy curve:
+
+      * the per-task pre-switch baseline ``b_j`` is the last recorded accuracy
+        of task ``j`` before the final task begins — the same model state the
+        live tracker evaluates at construction;
+      * the per-step drop ``max(0, min(b_j, end_mean_j) - acc)`` is integrated
+        over ``step`` by the trapezoidal rule and summed across prior tasks,
+        where ``end_mean_j`` is the trailing-window mean (window
+        ``max(5, ceil(0.1 n))``) — matching :meth:`StabilityGapTracker.gap_area`
+        with ``reference="end"``.
+
+    Returns ``None`` (leaving the value absent rather than filled with a bogus
+    number) when the curve is missing, has only a single task (no previous-task
+    gap), lacks a pre-switch baseline, or has non-monotonic steps — the latter
+    a tell-tale of a corrupted/interleaved CSV.
+    """
+    if not curve_path.is_file():
+        return None
+    try:
+        with open(curve_path, newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+    except OSError:
+        return None
+    if not rows:
+        return None
+
+    task_ids = sorted(
+        int(c.split("_")[1])
+        for c in rows[0]
+        if c.startswith("task_") and c.endswith("_acc")
+    )
+    if not task_ids or task_ids[-1] == 0:
+        return None  # single task -> no previous-task stability gap
+    last = task_ids[-1]
+    last_col = f"task_{last}_acc"
+
+    # The final task starts at the first row where its accuracy is populated;
+    # the row before that holds the pre-switch baseline.
+    start = next(
+        (i for i, r in enumerate(rows) if r.get(last_col) not in (None, "")),
+        None,
+    )
+    if not start:  # None, or 0 (no preceding row to read a baseline from)
+        return None
+
+    try:
+        steps = [int(r["step"]) for r in rows[start:]]
+    except (KeyError, ValueError):
+        return None
+    if any(b < a for a, b in zip(steps, steps[1:])):
+        return None  # corrupted CSV (interleaved writes)
+
+    base_row = rows[start - 1]
+    pre: Dict[int, float] = {}
+    for j in range(last):
+        v = base_row.get(f"task_{j}_acc")
+        if v not in (None, ""):
+            pre[j] = float(v)
+
+    total = 0.0
+    for j, b_pre in pre.items():
+        series = [
+            (int(r["step"]), float(r[f"task_{j}_acc"]))
+            for r in rows[start:]
+            if r.get(f"task_{j}_acc") not in (None, "")
+        ]
+        if len(series) < 2:
+            continue
+        w = max(5, math.ceil(0.1 * len(series)))
+        tail = series[-w:]
+        end_mean = sum(a for _, a in tail) / len(tail)
+        b_j = min(b_pre, end_mean)
+
+        prev_step: Optional[int] = None
+        prev_drop = 0.0
+        for step, acc in series:
+            drop = max(0.0, b_j - acc)
+            if prev_step is not None:
+                total += (step - prev_step) * 0.5 * (drop + prev_drop)
+            prev_step = step
+            prev_drop = drop
+    return float(total)
+
+
+def backfill_area_end(df: pd.DataFrame) -> int:
+    """Fill missing ``stab_gap_area_end`` values in *df* from accuracy curves.
+
+    For every row whose ``stab_gap_area_end`` is absent, recompute it from
+    ``<run_dir>/results/accuracy_curves.csv`` via
+    :func:`compute_area_end_from_curve`.  Modifies *df* in place and returns the
+    number of rows backfilled.
+    """
+    if "stab_gap_area_end" not in df.columns:
+        return 0
+    backfilled = 0
+    for idx in df.index[df["stab_gap_area_end"].isna()]:
+        run_dir_str = df.at[idx, "run_dir"]
+        if not run_dir_str or pd.isna(run_dir_str):
+            continue
+        curve = Path(run_dir_str) / "results" / "accuracy_curves.csv"
+        val = compute_area_end_from_curve(curve)
+        if val is not None:
+            df.at[idx, "stab_gap_area_end"] = val
+            backfilled += 1
+    return backfilled
 
 
 def _fmt_cell(mean: float, std: float) -> str:
@@ -397,6 +513,16 @@ def main() -> None:
 
     rows = [parse_manifest(p) for p in sorted(manifest_paths)]
     df = pd.DataFrame(rows, columns=MASTER_COLUMNS)
+
+    # Backfill stab_gap_area_end for older runs that predate the metric,
+    # recomputing it from each run's accuracy_curves.csv.
+    n_backfilled = backfill_area_end(df)
+    if n_backfilled:
+        print(
+            f"Backfilled stab_gap_area_end for {n_backfilled} run(s) "
+            "from accuracy_curves.csv"
+        )
+
     master_csv = outdir / "master_index.csv"
     df.to_csv(master_csv, index=False)
     print(f"Found {len(manifest_paths)} run manifest(s) under {run_dir}")
