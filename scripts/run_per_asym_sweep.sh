@@ -53,6 +53,20 @@
 #   N_JOBS=4             bash scripts/run_per_asym_sweep.sh     # cap parallelism
 #   CG_ITERS=40          bash scripts/run_per_asym_sweep.sh     # tighter CG solves
 #   DRY_RUN=1            bash scripts/run_per_asym_sweep.sh     # preview only
+#
+# CG-convergence control
+# ----------------------
+# A non-default CG_ITERS is appended to the ablation_value as "_cg<N>" so
+# control runs never mix with the main sweep during aggregation.  The solver
+# control for the δ=0.03 fullbuf relaxation-oscillation cliffs (mean residual
+# ~0.2 at 25 iters; rule out under-convergence before claiming curvature
+# blindness) is:
+#
+#   CG_ITERS=60 DAMPINGS="0.03" BUFFER_SET=full bash scripts/run_per_asym_sweep.sh
+#
+# → PER_asym_d0.03_fullbuf_cg60, 5 seeds.  Readout: cliffs persist at the same
+# window steps (~206-219) → curvature-blindness claim stands; cliffs vanish →
+# it was solver error.
 
 set -euo pipefail
 
@@ -73,7 +87,16 @@ BUFFER_SET="${BUFFER_SET:-both}"
 # only, "both" → both legs.
 MOMENTUM_SET="${MOMENTUM_SET:-off}"
 
-CG_ITERS="${CG_ITERS:-25}"
+CG_ITERS_DEFAULT=25
+CG_ITERS="${CG_ITERS:-${CG_ITERS_DEFAULT}}"
+
+# Non-default CG iteration counts are control runs — suffix the ablation_value
+# so they aggregate separately from the main sweep.
+if [ "$CG_ITERS" != "$CG_ITERS_DEFAULT" ]; then
+    CG_SUFFIX="_cg${CG_ITERS}"
+else
+    CG_SUFFIX=""
+fi
 
 DRY_RUN="${DRY_RUN:-0}"
 
@@ -197,8 +220,8 @@ for mu in $(momentum_values); do
         fi
 
         for delta in $DAMPINGS; do
-            ablation_value="PER_asym_d${delta}${buf_suffix}${mom_suffix}"
-            label="PER_ASYM_D${delta}${buf_suffix}"
+            ablation_value="PER_asym_d${delta}${buf_suffix}${CG_SUFFIX}${mom_suffix}"
+            label="PER_ASYM_D${delta}${buf_suffix}${CG_SUFFIX}"
             echo ""
             echo "=== ${ablation_value}: asymmetric PER, δ=${delta}, buffer=${buf}, µ=${mu} ==="
             tags_csv="${ABLATION_KEY},${label},${mom_tag}"
