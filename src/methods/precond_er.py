@@ -11,6 +11,22 @@ rescales the gradient by inverse curvature — small steps along high-curvature
 directions, large steps along flat ones — which is the "rescale the loss
 landscape" move (as opposed to deflating/removing directions).
 
+An **asymmetric** variant (``apply_to: current``) filters only the incoming
+interference instead of the whole joint gradient:
+
+    d = δ · (F + δI)⁻¹ g_current + g_replay
+
+Rationale: symmetric preconditioning rescales the interfering current-task
+pull and the restorative replay pull identically in every direction, so the
+per-direction drift equilibrium (and hence the trajectory's endpoint) matches
+plain ER — it can only slow traversal of sharp directions.  Worse, the replay
+gradient lies exactly in the top eigenspace of the replay Fisher
+(``g_replay ≈ F_replay (θ − θ_A)`` near the task-A minimum), so the symmetric
+solve suppresses the restoring force hardest.  The asymmetric update lets the
+replay gradient through raw and curvature-filters only the current-task
+gradient — the pairing that actually encodes "be careful with task-A loss"
+(use with ``fisher.target: replay``).
+
 The system ``(F + δI) x = g`` is solved with **Conjugate Gradient** (CG),
 which needs only Fisher-vector products (``src/optim/fisher.py``) and never
 forms ``F``.  CG yields the *full-rank* damped natural gradient: every
@@ -105,6 +121,15 @@ class PrecondER(BaseMethod):
                 f"fisher.target must be 'joint' or 'replay', "
                 f"got '{self._fisher_target}'"
             )
+        # "joint"   — symmetric PER: d = δ(F+δI)⁻¹(g_cur + g_rep).
+        # "current" — asymmetric PER: d = δ(F+δI)⁻¹ g_cur + g_rep; only the
+        #             interference is curvature-filtered, the restorative
+        #             replay gradient passes through raw.
+        self._apply_to: str = str(getattr(mcfg, "apply_to", "joint"))
+        if self._apply_to not in ("joint", "current"):
+            raise ValueError(
+                f"apply_to must be 'joint' or 'current', got '{self._apply_to}'"
+            )
         if self._damping <= 0.0:
             raise ValueError(f"fisher.damping must be > 0, got {self._damping}")
 
@@ -147,6 +172,18 @@ class PrecondER(BaseMethod):
             else:
                 parts.append(torch.zeros(p.numel(), device=self._device))
         return torch.cat(parts)
+
+    def _flat_loss_grad(self, loss: torch.Tensor) -> torch.Tensor:
+        """Flat gradient of a single loss term, without touching ``.grad``."""
+        grads = torch.autograd.grad(loss, self._params, allow_unused=True)
+        return torch.cat(
+            [
+                g.reshape(-1)
+                if g is not None
+                else torch.zeros(p.numel(), device=self._device)
+                for g, p in zip(grads, self._params)
+            ]
+        )
 
     def _overwrite_grad(self, d_flat: torch.Tensor) -> None:
         """Write a flat gradient vector back into the parameter .grad fields."""
@@ -225,13 +262,21 @@ class PrecondER(BaseMethod):
         x_replay = x_replay.to(self._device)
         y_replay = y_replay.to(self._device)
 
-        # ── Joint ER gradient: g = ∇(L_current + L_replay) ────────────────
-        self.optimizer.zero_grad()
+        # ── ER gradient(s) ────────────────────────────────────────────────
+        # apply_to="joint" needs only g = ∇(L_current + L_replay); "current"
+        # needs the two components separately (only g_cur enters the solve).
         current_loss = self.loss_fn(self.model(x_batch), y_batch)
         replay_loss = self.loss_fn(self.model(x_replay), y_replay)
         joint_loss = current_loss + replay_loss
-        joint_loss.backward()
-        g = self._get_flat_grad()
+        if self._apply_to == "current":
+            g_rep = self._flat_loss_grad(replay_loss)
+            rhs = self._flat_loss_grad(current_loss)
+            g = rhs + g_rep
+        else:
+            self.optimizer.zero_grad()
+            joint_loss.backward()
+            g = self._get_flat_grad()
+            rhs = g
         g_norm = torch.linalg.norm(g).item()
 
         # ── Damped natural gradient via CG: solve (F + δI) x = g ───────────
@@ -259,7 +304,7 @@ class PrecondER(BaseMethod):
         x0 = self._prev_x if self._cg_warm_start else None
         x, n_iter = conjugate_gradient(
             fisher_vp,
-            g,
+            rhs,
             damping=self._damping,
             iters=self._cg_iters,
             tol=self._cg_tol,
@@ -268,14 +313,18 @@ class PrecondER(BaseMethod):
         if self._cg_warm_start:
             self._prev_x = x.detach()
 
-        # Final residual for diagnostics: ‖(F + δI)x − g‖ / ‖g‖.
+        # Final residual for diagnostics: ‖(F + δI)x − rhs‖ / ‖rhs‖.
         residual = torch.linalg.norm(
-            fisher_vp(x) + self._damping * x - g
-        ).item() / (g_norm + 1e-12)
+            fisher_vp(x) + self._damping * x - rhs
+        ).item() / (torch.linalg.norm(rhs).item() + 1e-12)
 
         # δ-normalisation: flat directions (λ ≈ 0) keep unit gain, so the step
         # size matches plain ER and δ → ∞ recovers gradient descent exactly.
         d = self._damping * x
+        if self._apply_to == "current":
+            # Asymmetric update: the replay gradient bypassed the solve and is
+            # added back raw, keeping the full restoring force on task A.
+            d = d + g_rep
 
         self._overwrite_grad(d)
         self.optimizer.step()
@@ -284,7 +333,10 @@ class PrecondER(BaseMethod):
             "cg_iters": n_iter,
             "cg_residual": residual,
             # < 1 ⇒ the natural gradient shrank the step (high-curvature energy
-            # removed); ≈ 1 ⇒ direction was already well-conditioned.
+            # removed); ≈ 1 ⇒ direction was already well-conditioned.  For
+            # apply_to="current" the ratio is still ‖d‖/‖g_joint‖ so runs stay
+            # comparable, but the ≤ 1 bound no longer strictly holds (the raw
+            # g_rep component can dominate a partially cancelling g_joint).
             "precond_ratio": torch.linalg.norm(d).item() / (g_norm + 1e-12),
         }
 

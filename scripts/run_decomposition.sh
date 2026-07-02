@@ -26,9 +26,17 @@
 #   G3 — Balanced ER         (buffer 1 k, balanced mode)         − magnitude asymmetry
 #   G4 — Full-data balanced  (buffer 60 k, balanced mode)        − magnitude + estimator
 #   NCL — Standard NCL       (no replay buffer; precision prior) reference path-finding
-#   PER_JOINT  — Preconditioned ER (buffer 1 k; Fisher of joint loss)   preconditioner reference
-#   PER_REPLAY — Preconditioned ER (buffer 1 k; Fisher of replay loss)  preconditioner reference
+#   PER_ASYM — Asymmetric preconditioned ER (buffer 1 k; replay Fisher filters
+#              only the current-task gradient, replay gradient added raw)
+#              preconditioner reference
 #   AGEM— Averaged GEM       (buffer 1 k; gradient projection)   projection reference
+#
+# Opt-in (not in the default set; 5-seed results collected 2026-06-23):
+#   PER_JOINT / PER_REPLAY — symmetric preconditioned ER (Fisher of the joint /
+#   replay loss applied to the whole joint gradient).  Near-identical to each
+#   other by construction (Fisher overlap + symmetric rescaling preserves the
+#   interference/restoration balance); superseded by PER_ASYM as the default
+#   preconditioner condition.
 #
 # Momentum cross (§4.6)
 # ---------------------
@@ -36,7 +44,7 @@
 # SGD baseline) and once at training.momentum=0.9 (the momentum-on condition).
 # Momentum-on names get a "_M" suffix in ablation_value.
 #
-# Total: 8 base × 2 momentum × 5 seeds = 80 runs.  rot-MNIST + MLP runs in
+# Total: 7 base × 2 momentum × 5 seeds = 70 runs.  rot-MNIST + MLP runs in
 # seconds; the full block finishes in <30 min at N_JOBS=5.
 #
 # Per-step instrumentation enabled for all G* conditions:
@@ -67,7 +75,7 @@ set -euo pipefail
 N_JOBS="${N_JOBS:-5}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
-ALL_CONDITIONS_DEFAULT="G1 G2 G3 G4 NCL PER_JOINT PER_REPLAY AGEM"
+ALL_CONDITIONS_DEFAULT="G1 G2 G3 G4 NCL PER_ASYM AGEM"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
 # MOMENTUM_SET: "off" → µ=0.0 only, "on" → µ=0.9 only, "both" → both legs.
@@ -360,13 +368,31 @@ for mu in $(momentum_values); do
         spawn_ncl_block NCL NCL_reference "${mu}" method.ncl.prior_init=0.1
     fi
 
-    # Preconditioned ER comes in two variants, named by the loss whose Fisher
-    # supplies the preconditioner.  Both descend the joint ER loss via the
-    # damped natural gradient δ·(F+δI)⁻¹g (CG over Fisher-vector products);
-    # they differ only in which loss F is the curvature of.  Shared settings
-    # pinned for reproducibility: δ=1.0 damping, 10 CG iters with warm-start.
+    # Preconditioned-ER conditions.  All use the damped natural-gradient solve
+    # δ·(F+δI)⁻¹ (CG over Fisher-vector products) with shared settings pinned
+    # for reproducibility: δ=1.0 damping, 10 CG iters with warm-start.
     # No grad_diagnostics: the g_true buffer-fidelity hooks are ER-only.
+    #
+    # PER_ASYM is the default preconditioner condition: the replay Fisher
+    # filters ONLY the current-task gradient and the replay gradient is added
+    # raw — d = δ(F_rep+δI)⁻¹ g_cur + g_rep.  The symmetric variants below
+    # (PER_JOINT / PER_REPLAY, opt-in) rescale interference and restoration
+    # identically, so they preserve ER's drift equilibrium and can only shrink
+    # the spike; the asymmetric update keeps the full restoring force on
+    # task-A-sharp directions and is the one that targets the trajectory bend.
 
+    if should_run PER_ASYM; then
+        echo "=== PER_ASYM: asymmetric preconditioned ER — replay Fisher on g_cur only, g_rep raw ==="
+        spawn_precond_block PER_ASYM PER_asym "${mu}" \
+            method.apply_to=current \
+            method.fisher.target=replay \
+            method.fisher.damping=1.0 \
+            method.cg.iters=10 \
+            method.cg.warm_start=true
+    fi
+
+    # PER_JOINT / PER_REPLAY — symmetric preconditioner references (opt-in;
+    # 5-seed results collected 2026-06-23, kept runnable for reproducibility).
     if should_run PER_JOINT; then
         echo "=== PER_JOINT: preconditioned ER, Fisher of the JOINT (current+replay) batch ==="
         spawn_precond_block PER_JOINT PER_joint "${mu}" \

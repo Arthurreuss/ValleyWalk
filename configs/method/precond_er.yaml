@@ -17,6 +17,17 @@ replay_batch_size: null
 # so this isolates the replay-gradient estimator variance while bounding cost.
 replay_full_buffer: false
 
+# Which gradient the preconditioner filters:
+#   "joint"   — d = δ(F+δI)⁻¹(g_cur + g_rep): symmetric PER.  Interference and
+#               restoration are rescaled identically per direction, so the
+#               drift equilibrium (trajectory endpoint) matches plain ER; only
+#               the traversal of sharp directions is slowed.
+#   "current" — d = δ(F+δI)⁻¹ g_cur + g_rep: asymmetric PER.  Only the
+#               current-task pull is curvature-filtered; the replay gradient
+#               passes through raw, so task-A-sharp directions keep their full
+#               restoring force.  Pair with fisher.target=replay.
+apply_to: joint
+
 fisher:
   # "joint"  — Fisher of the concatenated current+replay batch (curvature the
   #            step actually moves through).

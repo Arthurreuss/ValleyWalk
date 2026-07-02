@@ -41,11 +41,13 @@ def _make_cfg(
     warm_start: bool = True,
     replay_batch_size=None,
     lr: float = 0.05,
+    apply_to: str = "joint",
 ) -> SimpleNamespace:
     return SimpleNamespace(
         method=SimpleNamespace(
             name="precond_er",
             replay_batch_size=replay_batch_size,
+            apply_to=apply_to,
             fisher=SimpleNamespace(target=target, damping=damping),
             cg=SimpleNamespace(iters=cg_iters, tol=cg_tol, warm_start=warm_start),
         ),
@@ -221,6 +223,10 @@ class TestStructure:
         with pytest.raises(ValueError, match="cg.iters"):
             PrecondER(TinyMLP(), _make_cfg(cg_iters=0), ReservoirBuffer(100))
 
+    def test_bad_apply_to_raises(self):
+        with pytest.raises(ValueError, match="apply_to"):
+            PrecondER(TinyMLP(), _make_cfg(apply_to="bogus"), ReservoirBuffer(100))
+
 
 # ---------------------------------------------------------------------------
 # (d) Task-0 fallback is plain SGD
@@ -318,6 +324,68 @@ class TestNaturalGradient:
         self._restore(params, before)
         g = self._joint_grad(model, params, xc, yc, xr, yr)
         assert torch.allclose(applied, lr * g, atol=1e-3)  # ≈ plain ER step lr·g
+
+    def _component_grads(self, model, params, xc, yc, xr, yr):
+        for p in params:
+            p.grad = None
+        nn.CrossEntropyLoss()(model(xc), yc).backward()
+        g_cur = torch.cat([p.grad.reshape(-1) for p in params])
+        for p in params:
+            p.grad = None
+        nn.CrossEntropyLoss()(model(xr), yr).backward()
+        g_rep = torch.cat([p.grad.reshape(-1) for p in params])
+        return g_cur, g_rep
+
+    def test_asymmetric_step_matches_dense_reference(self):
+        """apply_to=current: the update equals lr · (δ(F+δI)⁻¹ g_cur + g_rep)."""
+        torch.manual_seed(0)
+        model = TinyMLP()
+        buf = ReservoirBuffer(500)
+        delta, lr = 1.0, 0.1
+        m = PrecondER(model, _make_cfg(target="replay", apply_to="current",
+                                       damping=delta, lr=lr,
+                                       cg_iters=400, cg_tol=1e-12,
+                                       warm_start=False), buf)
+        m.end_task(0, _make_loader(n=32, seed=0))
+
+        xc, yc, xr, yr = self._fixed_batches()
+        buf.sample = lambda bs: (xr, yr, [0] * bs)
+
+        params = m._params
+        before = _flat_params(params).clone()
+        m.observe(xc, yc, task_id=1)
+        applied = before - _flat_params(params)
+
+        self._restore(params, before)
+        g_cur, g_rep = self._component_grads(model, params, xc, yc, xr, yr)
+        F = _dense_fisher(model, xr, params)
+        n = F.shape[0]
+        d_ref = delta * torch.linalg.solve(F + delta * torch.eye(n), g_cur) + g_rep
+        assert torch.allclose(applied, lr * d_ref, atol=1e-4)
+
+    def test_asymmetric_large_damping_recovers_plain_er(self):
+        """δ → ∞ ⇒ δ(F+δI)⁻¹ g_cur → g_cur, so the update → lr·(g_cur + g_rep)."""
+        torch.manual_seed(0)
+        model = TinyMLP()
+        buf = ReservoirBuffer(500)
+        lr = 0.1
+        m = PrecondER(model, _make_cfg(target="replay", apply_to="current",
+                                       damping=1e8, lr=lr,
+                                       cg_iters=50, cg_tol=1e-12,
+                                       warm_start=False), buf)
+        m.end_task(0, _make_loader(n=32, seed=0))
+
+        xc, yc, xr, yr = self._fixed_batches()
+        buf.sample = lambda bs: (xr, yr, [0] * bs)
+
+        params = m._params
+        before = _flat_params(params).clone()
+        m.observe(xc, yc, task_id=1)
+        applied = before - _flat_params(params)
+
+        self._restore(params, before)
+        g = self._joint_grad(model, params, xc, yc, xr, yr)
+        assert torch.allclose(applied, lr * g, atol=1e-3)
 
     def test_precond_ratio_not_above_one(self):
         torch.manual_seed(0)
