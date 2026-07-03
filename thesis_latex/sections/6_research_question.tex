@@ -1,7 +1,7 @@
 \section{Research Questions}
 \label{sec:proposed_approach}
 
-The framing of Section~\ref{sec:motivation} makes a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We evaluate them on rotated MNIST with a small multilayer perceptron, the regime in which the envelope-theorem bound is sharply testable, using vanilla and gradient-balanced Experience Replay as baselines. Five research questions structure the experiments.
+The decomposition of Section~\ref{subsec:decomposition} and the bound of Section~\ref{sec:theory} make a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We evaluate them on rotated MNIST with a small multilayer perceptron, the regime in which the envelope-theorem bound is sharply testable, using vanilla and gradient-balanced Experience Replay as baselines. Five research questions structure the experiments.
 
 \begin{description}
     \item[RQ1 (linear curriculum).] Does the linear $\lambda$-curriculum applied to standard ER monotonically reduce stability-gap depth as the ramp length $N$ grows, and does it do so without the final-accuracy cost incurred by gradient balancing?

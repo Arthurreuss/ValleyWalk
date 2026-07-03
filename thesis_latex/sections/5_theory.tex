@@ -1,0 +1,41 @@
+\section{\texorpdfstring{The Envelope-Theorem Bound: Why a Linear $\lambda$-Ramp Works}{The Envelope-Theorem Bound: Why a Linear lambda-Ramp Works}}
+\label{sec:theory}
+
+When a model switches instantly from an old task to a new one ($\lambda$ jumps from $0$ to $1$), the sudden change causes the optimizer to "cut the corner" and veer far off the ideal learning path. This violent detour causes a massive, temporary spike in forgetting, which Section~\ref{subsec:decomposition} identified as the trajectory gap ($G_{\text{traj}}$).
+
+This section outlines why replacing that sudden jump with a slow, continuous transition (a linear ramp over $N$ steps) mathematically eliminates this spike. The full, step-by-step mathematical derivation of this proof is provided in Appendix~\ref{app:detailed_proof}.
+
+The core argument is built on two intuitive pillars:
+
+\subsection{Part A: The perfect path never overshoots}
+\label{subsec:partA_summary}
+
+Imagine an "optimum path" ($\Theta^*(\lambda)$) that perfectly tracks the exact bottom of the combined loss valley as the curriculum transitions from pure replay ($\lambda=0$) to the joint task ($\lambda=1$).
+
+If the model were capable of perfectly walking this ideal path, the replay loss would never experience a sudden spike. As proven in the Appendix using the envelope theorem, the rate of change of the replay loss along this path is mathematically guaranteed to be non-negative:
+\begin{equation}
+    \frac{d}{d\lambda}\, L_{\text{replay}}(\Theta^*(\lambda)) \geq 0 \qquad \text{for all } \lambda \in [0,1].
+\end{equation}
+Because the replay loss can only strictly rise (or stay flat) as it accommodates the new task, it can never decrease. Therefore, it is physically impossible for the loss to spike up and come back down. It simply rises monotonically until it reaches its permanent, unavoidable baseline at the joint optimum ($\theta_{\text{joint}}^*$).
+
+\subsection{Part B: A slow ramp keeps the model on the path}
+\label{subsec:partB_summary}
+
+Part A describes a mathematically perfect path, but real SGD iterates ($\theta(t)$) are clumsy and take discrete steps. However, by analyzing the gradient flow, we can prove that the actual model trajectory acts as though it is tethered to the perfect path.
+
+The distance the model lags behind the perfect path is directly proportional to how fast the valley floor is moving. If the transition is stretched over a sufficiently long ramp (large $N$), the maximum distance the model wanders off the ideal path is tightly bounded:
+\begin{equation}
+    \|\theta(t) - \Theta^*(\lambda(t))\| = O\!\left(\frac{1}{N}\right).
+\end{equation}
+
+\subsection{The Combined Bound}
+\label{subsec:combined_summary}
+
+By combining the "no-overshoot" rule of the perfect path (Part A) with the tracking error of the actual network (Part B), we arrive at the final bound for the highest replay loss the model will experience during the transition:
+\begin{equation}
+    \max_t\, L_{\text{replay}}(\theta(t)) \;\le\; L_{\text{replay}}(\theta_{\text{joint}}^*) + O\!\left(\frac{1}{N}\right).
+    \label{eq:bound}
+\end{equation}
+The first term is the genuine plasticity--stability trade-off: the permanent capacity cost of learning both tasks. The second term is the transient stability gap ($G_{\text{traj}}$).
+
+Because the transient gap shrinks proportionally with $1/N$, a sufficiently slow continuous curriculum physically drives the trajectory overshoot to zero. The model's step-size adaptation is left untouched, cleanly resolving the gap without the need for complex path-finding interventions.

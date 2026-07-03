@@ -20,11 +20,16 @@ thesis_latex/main.out
 thesis_latex/main.synctex.gz
 thesis_latex/main.fdb_latexmk
 thesis_latex/main.fls
+<<<<<<< HEAD
 thesis_latex/main.brf
 texput.log
 .vscode/
 
 thesis_latex/main.synctex.gz
+=======
+texput.log
+
+>>>>>>> 594fa78 (restructuring and teoretical proof)
 
 
 # Python bytecode
