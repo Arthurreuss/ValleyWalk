@@ -1,0 +1,116 @@
+\begin{thebibliography}{20}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Aljundi et~al.(2019)Aljundi, Kelchtermans, and Tuytelaars]{aljundi2019taskfreecontinuallearning}
+Rahaf Aljundi, Klaas Kelchtermans, and Tinne Tuytelaars.
+\newblock Task-free continual learning, 2019.
+\newblock URL \url{https://arxiv.org/abs/1812.03596}.
+
+\bibitem[Bang et~al.(2021)Bang, Kim, Yoo, Ha, and Choi]{bang2021rainbowmemorycontinuallearning}
+Jihwan Bang, Heesu Kim, YoungJoon Yoo, Jung-Woo Ha, and Jonghyun Choi.
+\newblock Rainbow memory: Continual learning with a memory of diverse samples, 2021.
+\newblock URL \url{https://arxiv.org/abs/2103.17230}.
+
+\bibitem[Chaudhry et~al.(2019)Chaudhry, Ranzato, Rohrbach, and Elhoseiny]{chaudhry2019efficientlifelonglearningagem}
+Arslan Chaudhry, Marc'Aurelio Ranzato, Marcus Rohrbach, and Mohamed Elhoseiny.
+\newblock Efficient lifelong learning with a-gem, 2019.
+\newblock URL \url{https://arxiv.org/abs/1812.00420}.
+
+\bibitem[Draxler et~al.(2019)Draxler, Veschgini, Salmhofer, and Hamprecht]{draxler2019essentiallybarriersneuralnetwork}
+Felix Draxler, Kambis Veschgini, Manfred Salmhofer, and Fred~A. Hamprecht.
+\newblock Essentially no barriers in neural network energy landscape, 2019.
+\newblock URL \url{https://arxiv.org/abs/1803.00885}.
+
+\bibitem[Garipov et~al.(2018)Garipov, Izmailov, Podoprikhin, Vetrov, and Wilson]{garipov2018losssurfacesmodeconnectivity}
+Timur Garipov, Pavel Izmailov, Dmitrii Podoprikhin, Dmitry Vetrov, and Andrew~Gordon Wilson.
+\newblock Loss surfaces, mode connectivity, and fast ensembling of dnns, 2018.
+\newblock URL \url{https://arxiv.org/abs/1802.10026}.
+
+\bibitem[Guo et~al.(2024)Guo, Fu, Zhang, Zhao, and Shen]{guo2024efficientcontinualpretrainingmitigating}
+Yiduo Guo, Jie Fu, Huishuai Zhang, Dongyan Zhao, and Yikang Shen.
+\newblock Efficient continual pre-training by mitigating the stability gap, 2024.
+\newblock URL \url{https://arxiv.org/abs/2406.14833}.
+
+\bibitem[Harun and Kanan(2024)]{harun2024overcomingstabilitygapcontinual}
+Md~Yousuf Harun and Christopher Kanan.
+\newblock Overcoming the stability gap in continual learning, 2024.
+\newblock URL \url{https://arxiv.org/abs/2306.01904}.
+
+\bibitem[Hess et~al.(2024)Hess, Tuytelaars, and van~de Ven]{hess2024complementaryperspectivescontinuallearning}
+Timm Hess, Tinne Tuytelaars, and Gido~M. van~de Ven.
+\newblock Two complementary perspectives to continual learning: Ask not only what to optimize, but also how, 2024.
+\newblock URL \url{https://arxiv.org/abs/2311.04898}.
+
+\bibitem[Kamath et~al.(2024)Kamath, Soutif-Cormerais, van~de Weijer, and Raducanu]{kamath2024expandingscopestabilitygap}
+Sandesh Kamath, Albin Soutif-Cormerais, Joost van~de Weijer, and Bogdan Raducanu.
+\newblock The expanding scope of the stability gap: Unveiling its presence in joint incremental learning of homogeneous tasks, 2024.
+\newblock URL \url{https://arxiv.org/abs/2406.05114}.
+
+\bibitem[Kao et~al.(2021)Kao, Jensen, van~de Ven, Bernacchia, and Hennequin]{kao2021naturalcontinuallearningsuccess}
+Ta-Chu Kao, Kristopher~T. Jensen, Gido~M. van~de Ven, Alberto Bernacchia, and Guillaume Hennequin.
+\newblock Natural continual learning: success is a journey, not (just) a destination, 2021.
+\newblock URL \url{https://arxiv.org/abs/2106.08085}.
+
+\bibitem[Kirkpatrick et~al.(2017)Kirkpatrick, Pascanu, Rabinowitz, Veness, Desjardins, Rusu, Milan, Quan, Ramalho, Grabska-Barwinska, Hassabis, Clopath, Kumaran, and Hadsell]{Kirkpatrick_2017}
+James Kirkpatrick, Razvan Pascanu, Neil Rabinowitz, Joel Veness, Guillaume Desjardins, Andrei~A. Rusu, Kieran Milan, John Quan, Tiago Ramalho, Agnieszka Grabska-Barwinska, Demis Hassabis, Claudia Clopath, Dharshan Kumaran, and Raia Hadsell.
+\newblock Overcoming catastrophic forgetting in neural networks.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 114\penalty0 (13):\penalty0 3521–3526, March 2017.
+\newblock ISSN 1091-6490.
+\newblock \doi{10.1073/pnas.1611835114}.
+\newblock URL \url{http://dx.doi.org/10.1073/pnas.1611835114}.
+
+\bibitem[Koh et~al.(2022)Koh, Kim, Ha, and Choi]{koh2022onlinecontinuallearningclass}
+Hyunseo Koh, Dahyun Kim, Jung-Woo Ha, and Jonghyun Choi.
+\newblock Online continual learning on class incremental blurry task configuration with anytime inference, 2022.
+\newblock URL \url{https://arxiv.org/abs/2110.10031}.
+
+\bibitem[Lange et~al.(2023)Lange, van~de Ven, and Tuytelaars]{delange2023continualevaluationlifelonglearning}
+Matthias~De Lange, Gido van~de Ven, and Tinne Tuytelaars.
+\newblock Continual evaluation for lifelong learning: Identifying the stability gap, 2023.
+\newblock URL \url{https://arxiv.org/abs/2205.13452}.
+
+\bibitem[Lopez-Paz and Ranzato(2022)]{lopezpaz2022gradientepisodicmemorycontinual}
+David Lopez-Paz and Marc'Aurelio Ranzato.
+\newblock Gradient episodic memory for continual learning, 2022.
+\newblock URL \url{https://arxiv.org/abs/1706.08840}.
+
+\bibitem[Mccloskey and Cohen(1989)]{mccloskey:catastrophic}
+Michael Mccloskey and Neil~J. Cohen.
+\newblock Catastrophic interference in connectionist networks: {T}he sequential learning problem.
+\newblock \emph{The Psychology of Learning and Motivation}, 24:\penalty0 104--169, 1989.
+
+\bibitem[Mermillod et~al.(2013)Mermillod, Bugaiska, and Bonin]{Mermillod2013Stability-Plasticity}
+Martial Mermillod, Aurélia Bugaiska, and Patrick Bonin.
+\newblock The stability-plasticity dilemma: Investigating the continuum from catastrophic forgetting to age-limited learning effects.
+\newblock \emph{Frontiers in psychology}, 4:\penalty0 504, 08 2013.
+\newblock \doi{10.3389/fpsyg.2013.00504}.
+
+\bibitem[Ratcliff(1990)]{ratclif1990catastrophicforgetting}
+Roger Ratcliff.
+\newblock Connectionist models of recognition memory: Constraints imposed by learning and forgetting functions.
+\newblock \emph{Psychological Review}, 97:\penalty0 285--308, 04 1990.
+\newblock \doi{10.1037/0033-295X.97.2.285}.
+
+\bibitem[Soutif-Cormerais et~al.(2023)Soutif-Cormerais, Carta, and de~Weijer]{soutifcormerais2023improvingonlinecontinuallearning}
+Albin Soutif-Cormerais, Antonio Carta, and Joost~Van de~Weijer.
+\newblock Improving online continual learning performance and stability with temporal ensembles, 2023.
+\newblock URL \url{https://arxiv.org/abs/2306.16817}.
+
+\bibitem[van~de Ven et~al.(2025)van~de Ven, Soures, and Kudithipudi]{van_de_Ven_2025}
+Gido~M. van~de Ven, Nicholas Soures, and Dhireesha Kudithipudi.
+\newblock \emph{Continual learning and catastrophic forgetting}, page 153–168.
+\newblock Elsevier, 2025.
+\newblock ISBN 9780443157554.
+\newblock \doi{10.1016/b978-0-443-15754-7.00073-0}.
+\newblock URL \url{http://dx.doi.org/10.1016/B978-0-443-15754-7.00073-0}.
+
+\bibitem[Łapacz et~al.(2024)Łapacz, Marczak, Szatkowski, and Trzciński]{lapacz2024exploringstabilitygapcontinual}
+Wojciech Łapacz, Daniel Marczak, Filip Szatkowski, and Tomasz Trzciński.
+\newblock Exploring the stability gap in continual learning: The role of the classification head, 2024.
+\newblock URL \url{https://arxiv.org/abs/2411.04723}.
+
+\end{thebibliography}

@@ -1,0 +1,55 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Official template for the Bachelor's Thesis of the Bachelor AI      %%
+%% program of the University of Groningen (NL).                        %%
+%%                                                                     %%
+%% Current version: March 2026                                         %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage{bachelorproject}
+\title{\vspace{-0.5in}\textbf{\textsc{Bachelor's Thesis Template - Title of Project}} \\ 
+    \vspace{1ex} 
+    \normalsize Bachelor's Thesis\vspace{-2ex}
+}
+
+\author{
+    \normalsize Arthur Ernst Henrik Reuss, s5582253, a.e.h.reuss@student.rug.nl, \\ 
+    \normalsize Supervisors: Gido van de Ven
+}
+
+\date{\vspace{-5ex}}
+
+
+\begin{document}
+
+\twocolumn[
+  \maketitle
+  \begin{@twocolumnfalse}
+    \input{./sections/1_abstract}
+  \end{@twocolumnfalse}
+]
+
+\thispagestyle{firststyle}
+
+\input{sections/2_introduction}
+\input{sections/3_literature}
+\input{sections/4_motivation}
+\input{sections/5_research_question}
+\input{sections/6_methods}
+
+
+
+
+
+\bibliographystyle{plainnat}
+\bibliography{ref}
+
+\clearpage
+
+\begin{appendices}
+  % \input{sections/appendixA.tex}
+  % \newpage
+
+\end{appendices}
+
+\end{document}

@@ -1,0 +1,45 @@
+\section{Background and Related Work}
+\label{sec:literature}
+
+\subsection{Continual Learning}
+\label{subsec:continual_learning}
+
+Continual (or lifelong) learning trains a model on a non-stationary stream of tasks $T_0, T_1, T_2, \dots$ without joint access to all of them at once. Standard SGD on such a stream forgets catastrophically \cite{mccloskey:catastrophic, ratclif1990catastrophicforgetting}: gradient updates for a new task overwrite the weights that stored past knowledge, because the objectives are never minimised simultaneously. Three families of methods address this \cite{van_de_Ven_2025}. Regularisation-based methods add a penalty that slows updates to parameters important for past tasks, measured by a diagonal Hessian approximation \cite{kirkpatrick2017overcoming}. Architecture-based methods allocate separate capacity to each task at the cost of a growing model. Replay-based methods keep a memory buffer of past examples and replay them during new-task training; this is the family studied here.
+
+\subsection{Experience Replay}
+\label{subsec:experience_replay}
+
+Experience Replay (ER) is the simplest replay baseline \cite{lopezpaz2022gradientepisodicmemorycontinual}. At each step the model takes one forward--backward pass on the current-task mini-batch and one on a replay mini-batch sampled from the buffer, then sums the two gradients before the optimiser step,
+\begin{equation}
+    \theta \leftarrow \theta - \eta\left(\nabla_\theta L_{\text{current}}(\theta) + \nabla_\theta L_{\text{replay}}(\theta)\right).
+    \label{eq:er_update}
+\end{equation}
+This ``standard'' mode is used throughout the thesis; a ``balanced'' variant that normalises each gradient before summing is treated in Section~\ref{sec:motivation} as a path-finding control. The buffer is populated by reservoir sampling \cite{vitter1985random}, so every sample seen so far occupies a slot with equal probability regardless of arrival order. During $T_0$ the buffer is empty by construction, so ER reduces to plain SGD on the first task and the stability gap is measurable only from $T_1$ onward. ER's simplicity makes it a strong, well-understood baseline, and because it does nothing to balance gradient magnitudes or directions it is the cleanest setting in which each contributor to the gap can be isolated.
+
+A finite buffer is an imperfect estimator of the true past-task distribution. \citet{aljundi2019gradientsampleselection} frame buffer selection as a constraint-reduction problem in which the stored samples approximate the feasibility region defined by the full past data; reservoir sampling is one (non-optimal) policy within that frame. The replay gradient computed on a small buffer therefore differs in direction and magnitude from the gradient on all past data. This estimator gap is present at every step and disappears under no schedule; we report it as a separate, persistent contributor to the stability gap.
+
+\subsection{Path-Finding Methods}
+\label{subsec:path_finding}
+
+A second class of replay-based and replay-adjacent methods navigates the discontinuous landscape at the task boundary by constraining the SGD update with second-order information about the past tasks. GEM projects the new-task gradient onto the nearest direction that does not increase the loss on any past task in the buffer \cite{lopezpaz2022gradientepisodicmemorycontinual}, and A-GEM approximates this with a single averaged past gradient to make it cheap \cite{chaudhry2019efficientlifelonglearningagem}. Both constrain the update direction at the current step but enforce the constraint step-wise, not across the trajectory. EWC adds a Fisher-weighted $L_2$ penalty around the past optimum, slowing updates in directions the old task constrained \cite{kirkpatrick2017overcoming}. NCL preconditions the update by the precision matrix of the past-task loss, producing a natural-gradient step that respects the curvature of the replay loss \cite{kao2021naturalcontinuallearningsuccess}. In the framing of this thesis (Section~\ref{sec:motivation}), all of these are \emph{path-finding} methods: they accept the discontinuity at the task boundary and invest second-order machinery in picking a safe trajectory across the teleported terrain.
+
+\subsection{The Stability Gap}
+\label{subsec:stability_gap}
+
+\citet{delange2023continualevaluationlifelonglearning} characterise the stability gap as the transient accuracy dip on previously seen tasks at the start of new-task training in replay-based methods. They observe that the gap is largest in the first few hundred steps of each task, that larger buffers produce smaller gaps, that recovery is partial with the minimum accuracy systematically below the pre-task baseline, and that the gap survives reservoir sampling and moderate learning rates. \citet{hess2024complementaryperspectivescontinuallearning} add a mechanistic reading: at a task optimum the past-task gradient is near zero, so the first step of new-task training is one-sided, and the geometry of the joint-loss landscape at the transition predicts gap severity. Subsequent work has shown the gap to be broad rather than incidental: it appears in joint incremental learning of homogeneous tasks \cite{kamath2024expandingscopestabilitygap}, in continual pre-training of large models \cite{guo2024efficientcontinualpretrainingmitigating}, and in relation to the classification head \cite{lapacz2024exploringstabilitygapcontinual}, and various mitigations have been proposed, from temporal ensembles \cite{soutifcormerais2023improvingonlinecontinuallearning} to explicit gap-reduction procedures \cite{harun2024overcomingstabilitygapcontinual}.
+
+\subsection{The Gap Survives the Joint-Loss Oracle}
+\label{subsec:kao}
+
+A theoretical anchor for this thesis comes from \citet{kao2021naturalcontinuallearningsuccess}, who isolate a clean fact about gradient descent through a task transition. Remove every replay confound --- no buffer, no sampling noise, no magnitude imbalance --- and give the optimiser exact access to the joint loss $L_{\text{joint}} = L_{T_0} + L_{T_1}$, then run SGD from a stationary point $\theta_0^*$ of $L_{T_0}$. This is the strongest possible replay regime, equivalent to multi-task training with perfect knowledge of the past. Even so, accuracy on $T_0$ dips before recovering. At $\theta_0^*$ the past-task gradient is near zero while the new-task gradient is not, so the first step moves essentially along $-\nabla L_{T_1}(\theta_0^*)$; a second-order expansion gives
+\begin{equation}
+    L_{T_0}(\theta_1) - L_{T_0}(\theta_0^*) \approx \tfrac{1}{2}\eta^2\,
+    \nabla L_{T_1}(\theta_0^*)^\top H_{T_0}(\theta_0^*)\, \nabla L_{T_1}(\theta_0^*) > 0,
+    \label{eq:kao_taylor}
+\end{equation}
+whenever $H_{T_0}$ has positive curvature in the direction of $\nabla L_{T_1}$, which it generically does at a strict minimum. The dip is not caused by bad gradients --- the gradient is exact --- but by the \emph{trajectory} the optimiser takes. Section~\ref{sec:motivation} reproduces this as the cleanest isolation of the trajectory contributor and shows that a continuous schedule removes it in the continuous-time limit.
+
+\subsection{Blurry Task Boundaries}
+\label{subsec:blurry}
+
+A parallel line of work relaxes the assumption of abrupt task boundaries \cite{aljundi2019taskfreecontinuallearning, bang2021rainbowmemorycontinuallearning, koh2022onlinecontinuallearningclass}. In blurry or boundary-free settings the stream does not switch from $T_0$ to $T_1$ at a single step; instead $T_1$ samples are introduced gradually, so at time $t$ the mini-batch is drawn from a mixture $(1-\alpha(t))\,P_{T_0} + \alpha(t)\,P_{T_1}$ with $\alpha(t)$ rising from $0$ to $1$. The expected SGD update is then $\alpha\,\nabla L_{T_1}(\theta) + (1-\alpha)\,\nabla L_{T_0}(\theta)$, a weighted sum of the two task gradients. Substituting $\lambda = \alpha/(1-\alpha)$ shows this is, up to an overall scale, the gradient of $L_{T_0} + \lambda L_{T_1}$ --- the same loss the $\lambda$-curriculum descends. Both interventions implement the same fix to the one-sided first step: they keep the past-task gradient present at full strength from step one while introducing the new-task gradient gradually. The two differ in scope. Blurry boundaries achieve the mixing through the data stream and need no buffer, but lose the past-task signal entirely once $\alpha = 1$; the $\lambda$-curriculum is built on replay and retains an explicit replay signal at $\lambda = 1$. The curriculum is also the cleaner controlled experiment, since it modifies one weight in the loss while data sampling and replay magnitude are held fixed, isolating which ingredient of a gradual transition reduces the gap.

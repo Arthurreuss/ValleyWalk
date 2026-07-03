@@ -1,0 +1,18 @@
+\section{Research Questions}
+\label{sec:proposed_approach}
+
+The framing of Section~\ref{sec:motivation} makes a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We evaluate them on rotated MNIST with a small multilayer perceptron, the regime in which the envelope-theorem bound is sharply testable, using vanilla and gradient-balanced Experience Replay as baselines. Five research questions structure the experiments.
+
+\begin{description}
+    \item[RQ1 (linear curriculum).] Does the linear $\lambda$-curriculum applied to standard ER monotonically reduce stability-gap depth as the ramp length $N$ grows, and does it do so without the final-accuracy cost incurred by gradient balancing?
+
+    \item[RQ2 (adaptive curriculum).] Does an adaptive $\lambda$-schedule, which sets $\lambda$ from the live ratio of replay-to-current gradient magnitudes and so removes the explicit knob $N$, reduce gap depth without that final-accuracy cost?
+
+    \item[RQ3 (momentum).] Does adding momentum on top of the curriculum reduce the residual depth fluctuation predicted by the discrete-time stochastic argument? And does momentum on its own, without the curriculum, produce any comparable benefit --- the prediction being that it does not, since the one-sided first step is deterministic?
+
+    \item[RQ4 ($\lambda_{\min}$).] Does a small floor $\lambda_{\min} > 0$ on the adaptive schedule recover early-task learning speed without re-introducing the depth pathology the curriculum was designed to remove?
+
+    \item[RQ5 (decomposition).] How does the gap depth decompose into the magnitude, estimator, and trajectory contributions of Section~\ref{subsec:decomposition}, and what does each share reveal about why a curriculum is the right shape of fix?
+\end{description}
+
+Section~\ref{sec:methods} describes the testbed, the metrics used to measure gap depth and final accuracy, and the full set of conditions that isolate each contributor and test each prediction.
