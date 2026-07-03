@@ -24,6 +24,7 @@ thesis_latex/main.brf
 texput.log
 .vscode/
 
+thesis_latex/main.synctex.gz
 
 
 # Python bytecode

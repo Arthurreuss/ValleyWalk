@@ -20,16 +20,25 @@ To see why the trajectory itself produces the gap, consider the geometry of sequ
     \label{fig:loss_landscape_visualization}
 \end{figure*}
 
-The discontinuity at the task boundary is the source of this geometry. While Task A is learned the optimiser descends the replay loss alone; the instant Task B begins, the objective switches in a single step to the sum of the replay and current-task losses. The parameter does not move during the switch, but the surface the optimiser follows, and the location of its minimum, jumps from $\theta_0^*$ to $\theta_{\text{joint}}^*$. We call this \emph{landscape teleportation}: from the optimiser's point of view the surface it was descending disappears and is replaced by another whose minimum lies elsewhere. The first step on the new surface is one-sided --- the replay gradient is near zero at $\theta_0^*$ while the current-task gradient is not --- so SGD is shoved out of Task A's basin before the replay term can pull it back.
+% still use the figure to explain the jump in loss landscape, red basin and then the joint purple basis from one step to another. 'Geometry' sounds misleading
+The discontinuity at the task boundary is the source of this geometry. While Task A is learned the optimiser descends the replay loss alone; the instant Task B begins, the objective switches in a single step to the sum of the replay and current-task losses. The parameters do not move during the switch, but the surface the optimiser follows, and the location of its minimum, jumps from $\theta_A^*$ to $\theta_{\text{joint}}^*$. We call this \emph{landscape teleportation}: from the optimiser's point of view the surface it was descending disappears and is replaced by another whose minimum lies elsewhere. The first step on the new surface is one-sided --- the replay gradient is near zero at $\theta_0^*$ while the current-task gradient is not --- so SGD is shoved out of Task A's basin before the replay term can pull it back.
 
+% Maybe also here add the magnitude imbalance as a contributor next to the trajectory issue descrbed before.
+
+% Watch out not all of the methods below use second order information.
+% Can we use other word for homotopy or describe it first before we use it so it is clear to the reader
 Given that the gap follows from a discontinuity, two paradigms address it. \emph{Path-finding} methods accept the discontinuity and navigate the broken landscape carefully, constraining the SGD update with second-order information about the past task so that motion avoids directions in which the replay loss rises sharply \cite{lopezpaz2022gradientepisodicmemorycontinual, chaudhry2019efficientlifelonglearningagem, Kirkpatrick_2017, kao2021naturalcontinuallearningsuccess}. These methods treat the symptoms of the discontinuity; they do nothing about the discontinuity itself. \emph{Landscape-shaping} removes the discontinuity at its source. The \textbf{$\lambda$-curriculum} is a homotopy that ramps the current-task loss weight from $0$ to $1$ over the first $N$ steps of each transition,
+% format this equation in two lines, now it is overreaching line limits and looks bad
 \begin{equation}
-    L_\lambda(t) = L_{\text{replay}} + \lambda(t)\, L_{\text{current}},
+    L_\lambda(t) = L_{\text{replay}} + \lambda(t)\, L_{\text{current}},\\
     \qquad \lambda(t) = \mathrm{clip}\!\left(\tfrac{t}{N}, 0, 1\right),
     \label{eq:lambda_curriculum}
 \end{equation}
 so the optimum $\Theta^*(\lambda)$ traces a continuous curve from $\theta_0^*$ (at $\lambda=0$) to $\theta_{\text{joint}}^*$ (at $\lambda=1$). The model rides this moving valley rather than being teleported across an abyss (fourth panel of Figure~\ref{fig:loss_landscape_visualization}). An envelope-theorem argument (Section~\ref{sec:proposed_approach}) guarantees that the replay loss is monotone non-decreasing along $\Theta^*(\lambda)$, so in the continuous limit no overshoot is possible. The curriculum preserves the natural magnitudes of both gradients --- it modulates only the \emph{weight} on the current-task loss, leaving SGD's step-size adaptation intact.
+% is it good say all of this in the introduction already or am I spoilering what is still to come?
 
+% this is false, the lambda min is only introduced for adative lambda which we are also missing here
 The basic linear ramp has two operational shortcomings, each met by a small refinement. First, a ramp of length $N$ leaves $\lambda$ near zero for the earliest steps, stalling progress on the new task; a \textbf{$\lambda_{\min}$ floor} keeps the current-task gradient present from the first step without re-introducing the depth that the curriculum removes. Second, the per-step accuracy curve retains a stochastic oscillation that the continuous-limit argument abstracts away; \textbf{momentum} acts as a low-pass filter that suppresses this mini-batch noise while preserving the slow drift along $\Theta^*(\lambda)$.
 
+% this can also be deleted or?
 The remainder of this thesis develops these ideas. Section~\ref{sec:literature} reviews continual learning, Experience Replay, the path-finding methods we compare against, the stability-gap literature, and the related work on blurry task boundaries. Section~\ref{sec:motivation} develops the discontinuity framing, decomposes the gap into three contributors, and contrasts path-finding with landscape-shaping. Section~\ref{sec:proposed_approach} states the research questions, and Section~\ref{sec:methods} describes the experimental testbed and the conditions used to test each prediction.
