@@ -1,16 +1,18 @@
 \section{Research Questions}
 \label{sec:proposed_approach}
 
-The decomposition of Section~\ref{subsec:decomposition} and the bound of Section~\ref{sec:theory} make a set of falsifiable predictions about how the $\lambda$-curriculum and its refinements should behave. We first evaluate these predictions on the rotated MNIST toy dataset with a small multilayer perceptron, then test whether they hold on a deeper backbone and a more demanding setting: Domain CIFAR-10, with a deeper architecture and a stronger task shift. The experiments are organised around three primary questions, the second of which carries four sub-questions probing the individual ingredients of the curriculum.
+The two-level account of Section~\ref{sec:motivation} and the bound of Section~\ref{sec:theory} make falsifiable predictions about the gap and about each gate. The experiments are organised around four questions. Each is evaluated first on rotated MNIST with a small multilayer perceptron, where the gap can be probed step by step across many conditions and seeds, and then, for the fourth question, on a deeper backbone and a stronger task shift.
 
-\paragraph{RQ1 --- The cause.} Does the stability gap decompose into the magnitude, estimator, and trajectory contributions of Section~\ref{subsec:decomposition}, and is the discontinuity their dominant source?
+\paragraph{RQ1 --- The account.} Does the stability gap separate into a deterministic arc of the descent path and overshoot of the followed path? The account predicts that the two levels respond to different interventions and are jointly responsible for the gap. Removing the overshoot drivers by construction (balanced gradients, exact replay gradients) should flatten the drop and leave the arc. Placing the optimiser on the reference path (the curriculum) should remove the arc and leave the overshoot. Applying both should remove the gap, while the permanent stability--plasticity cost remains visible elsewhere, as reduced plasticity.
 
-\paragraph{RQ2 --- The fix.} Does removing the discontinuity with the $\lambda$-curriculum reduce the stability gap without final-accuracy cost? Four sub-questions examine how:
+\paragraph{RQ2 --- The scalar feedback gate.} Does the $\lambda$-curriculum reduce the gap by timing the new-task push, and how do its ingredients divide the work? Four sub-questions probe the design:
 \begin{description}
-    \item[RQ2a (linear ramp).] Does the linear curriculum reduce gap depth monotonically as the ramp length $N$ grows?
-    \item[RQ2b (adaptive schedule).] Does an adaptive schedule achieve the same reduction while removing the explicit ramp-length knob $N$?
-    \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early-task learning speed without re-introducing the stability gap?
-    \item[RQ2d (momentum).] Does momentum damp the depth fluctuation that remains after the curriculum is applied, yet do nothing on its own? The first step after a task boundary is deterministic and carries no momentum from the new task.
+    \item[RQ2a (linear ramp).] Does gap depth fall as the ramp length $N$ grows, consistent with the $O(1/N)$ bound?
+    \item[RQ2b (adaptive schedule).] Does the gradient-norm feedback signal match the best fixed ramp while removing the knob $N$?
+    \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early plasticity at a modest depth cost?
+    \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged? The account predicts this composition because the curriculum attenuates the push at source, leaving momentum a clean signal to average and accelerate.
 \end{description}
 
-\paragraph{RQ3 --- Generalisation.} Do these findings carry over to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption)?
+\paragraph{RQ3 --- The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, and where does a feedforward gate fail? The account predicts that depth and arc shrink monotonically as $\delta \to 0$ at little plasticity cost, and it predicts two failure modes: damage that passes through directions the sampled Fisher rates as flat, and a partial undoing of the per-step protection under momentum, because accumulation rebuilds the push the filter removes at each step.
+
+\paragraph{RQ4 --- Frontier and generalisation.} How do the two gates compare on the stability--plasticity frontier, and do the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption)? This includes the momentum predictions of RQ2d and RQ3 as a cross of momentum settings on the deeper backbone.

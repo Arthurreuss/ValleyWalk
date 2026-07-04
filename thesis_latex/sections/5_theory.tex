@@ -1,16 +1,12 @@
-\section{\texorpdfstring{The Envelope-Theorem Bound: Why a Linear $\lambda$-Ramp Works}{The Envelope-Theorem Bound: Why a Linear lambda-Ramp Works}}
+\section{\texorpdfstring{Theory: the Monotone Reference and the $O(1/N)$ Tracking Bound}{Theory: the Monotone Reference and the O(1/N) Tracking Bound}}
 \label{sec:theory}
 
-When a model switches instantly from an old task to a new one ($\lambda$ jumps from $0$ to $1$), the sudden change drives the boundary-tied components of the stability gap: the magnitude asymmetry and the trajectory effect.
+This section supplies the formal ground for the two-level account. Part A constructs the reference path of Section~\ref{subsec:reference} and proves that the replay loss rises monotonically along it, which makes the arc of Section~\ref{subsec:trajectory_problem} avoidable in principle. Part B shows that a slow $\lambda$-ramp keeps a real SGD iterate close to this path, with a tracking error of order $1/N$ in the ramp length. The full derivation is in Appendix~\ref{app:detailed_proof}.
 
-Replacing that sudden jump with a slow, continuous transition (a linear ramp over $N$ steps) removes the trajectory component and tempers the magnitude one, leaving a residual bounded by $O(1/N)$ in the ramp length. The full step-by-step derivation is given in Appendix~\ref{app:detailed_proof}.
-
-The core argument is built on two pillars:
-
-\subsection{Part A: The perfect path never overshoots}
+\subsection{Part A: the Reference Path Rises Monotonically}
 \label{subsec:partA_summary}
 
-Imagine an "optimum path" ($\Theta^*(\lambda)$) that perfectly tracks the exact bottom of the combined loss valley as the curriculum transitions from pure replay ($\lambda=0$) to the joint task ($\lambda=1$). Figure~\ref{fig:lambda_evolution} shows this path directly: as $\lambda$ grows, the minimiser of the curriculum loss $L_\lambda = A + \lambda B$ migrates smoothly from the old-task optimum $A$ to the joint optimum $A{+}B$ along the linear path, so a model that follows it rides a moving valley floor rather than jumping between the two.
+Consider the curriculum objective $L_\lambda = L_{\text{replay}} + \lambda\, L_{\text{current}}$ and the path $\Theta^*(\lambda)$ of its minimiser as $\lambda$ grows from $0$ to $1$. The path starts at the old-task optimum ($\lambda = 0$) and ends at the joint optimum ($\lambda = 1$). Figure~\ref{fig:lambda_evolution} shows it directly: as $\lambda$ grows, the basin of $L_\lambda$ morphs continuously from the old-task basin into the joint basin, and the minimiser slides along a connected valley floor between the two.
 
 \begin{figure}[htbp]
     \centering
@@ -55,24 +51,22 @@ Imagine an "optimum path" ($\Theta^*(\lambda)$) that perfectly tracks the exact 
         {\scriptsize $\lambda = 1$}
     \end{minipage}
 
-    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$ over a shared two-dimensional parameter space. The weight on the new task ramps from $\lambda = 0$ (pure replay) to $\lambda = 1$ (the joint loss); the value of $\lambda$ is printed beneath each panel. $A$ and $B$ mark the two single-task minima and $A{+}B$ the joint minimum. As $\lambda$ increases the contours morph continuously from the old-task basin around $A$ to the joint basin around $A{+}B$, and the current minimiser (\emph{Curr}) slides along the linear path from $A$ toward $A{+}B$, which is the optimum path $\Theta^*(\lambda)$ of Section~\ref{subsec:partA_summary}. At the minimiser the opposing red and blue arrows, the replay- and current-task gradient contributions, cancel by the first-order condition $\nabla L_{\text{replay}} + \lambda\, \nabla L_{\text{current}} = 0$. The golden arrows are their resultant, the net update direction: it vanishes exactly at the minimiser but is non-zero away from it, so the chain of golden arrows traces the descent a tracking model follows down the valley from $A$ to $A{+}B$. Because the minimiser never jumps but only drifts as $\lambda$ grows, such a model rides the moving valley floor instead of being teleported across the landscape.}
+    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$ over a shared two-dimensional parameter space, with the weight $\lambda$ printed beneath each panel. $A$ and $B$ mark the single-task minima and $A{+}B$ the joint minimum. As $\lambda$ increases, the contours morph continuously from the old-task basin around $A$ to the joint basin around $A{+}B$, and the current minimiser (\emph{Curr}) slides from $A$ toward $A{+}B$: this is the reference path $\Theta^*(\lambda)$. At the minimiser the red and blue arrows (the replay and current-task gradient contributions) cancel by the first-order condition $\nabla L_{\text{replay}} + \lambda\, \nabla L_{\text{current}} = 0$. The golden arrows show their resultant, which vanishes at the minimiser and points down the valley away from it, so a tracking model rides the moving valley floor instead of being teleported across the landscape.}
     \label{fig:lambda_evolution}
 \end{figure}
 
-If the model were capable of perfectly walking this ideal path, the replay loss would never experience a sudden spike. As shown in Appendix~\ref{app:detailed_proof} using the envelope theorem, the rate of change of the replay loss along this path is non-negative under a local positive-definiteness condition (made precise below):
+A model that follows this path exactly experiences a smooth replay loss. Appendix~\ref{app:detailed_proof} shows, using the envelope theorem, that the rate of change of the replay loss along the path satisfies
 \begin{equation}
-    \frac{d}{d\lambda}\, L_{\text{replay}}(\Theta^*(\lambda)) \geq 0 \qquad \text{for all } \lambda \in [0,1].
+    \frac{d}{d\lambda}\, L_{\text{replay}}(\Theta^*(\lambda)) \geq 0 \qquad \text{for all } \lambda \in [0,1]
 \end{equation}
-The replay loss can therefore only rise or stay flat as it accommodates the new task: it cannot spike up and fall back, but instead increases monotonically to its permanent baseline at the joint optimum ($\theta_{\text{joint}}^*$).
+under a local positive-definiteness condition made precise below. The replay loss climbs monotonically to its permanent level at the joint optimum. Together with Section~\ref{subsec:reference}, this splits the transition cleanly: the endpoint value is the fixed stability--plasticity price, and any rise \emph{above} that value, the arc and the overshoot, is a deviation from this path.
 
-This guarantee rests on a local condition: the tracked path must stay a family of \emph{local} minima, with the combined Hessian positive-definite along the branch the iterate follows. That holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's; beyond that point positive-definiteness, and with it the non-negativity guarantee, is no longer assured (Appendix~\ref{app:detailed_proof}). On a non-convex backbone such as the CIFAR ResNet this condition can fail, so the bound is best read as a local result that motivates the curriculum rather than a guarantee that covers the deeper-network experiments directly.
+The guarantee is local. The tracked path must remain a family of local minima, with the combined Hessian positive-definite along the branch the iterate follows. This holds automatically near $\lambda = 0$ and persists until the new task's negative curvature overpowers the old task's; beyond that point the monotonicity guarantee lapses (Appendix~\ref{app:detailed_proof}). On a deep non-convex backbone such as the CIFAR ResNet the result therefore serves as motivation rather than a guarantee.
 
-\subsection{Part B: A slow ramp keeps the model on the path}
+\subsection{Part B: a Slow Ramp Keeps the Model on the Path}
 \label{subsec:partB_summary}
 
-Part A describes a mathematically perfect path, but real SGD iterates ($\theta(t)$) are clumsy and take discrete steps. However, by analyzing the gradient flow, we can show that the actual model trajectory behaves as though it is tethered to the perfect path.
-
-The distance the model lags behind the perfect path is directly proportional to how fast the valley floor is moving. If the transition is stretched over a sufficiently long ramp (large $N$), the maximum distance the model wanders off the ideal path is tightly bounded:
+Part A describes an ideal path; a real SGD iterate $\theta(t)$ takes discrete steps and lags behind it. Analysing the gradient flow shows that the iterate behaves as if tethered to the path: its distance from the moving minimiser is proportional to how fast the valley floor moves. Stretching the transition over a ramp of $N$ steps slows the floor down, and the maximum lag obeys
 \begin{equation}
     \|\theta(t) - \Theta^*(\lambda(t))\| = O\!\left(\frac{1}{N}\right).
 \end{equation}
@@ -80,14 +74,11 @@ The distance the model lags behind the perfect path is directly proportional to 
 \subsection{The Combined Bound}
 \label{subsec:combined_summary}
 
-By combining the "no-overshoot" rule of the perfect path (Part A) with the tracking error of the actual network (Part B), we arrive at the final bound for the highest replay loss the model will experience during the transition:
+Combining the monotone path (Part A) with the tracking error (Part B) bounds the highest replay loss the model experiences during the transition:
 \begin{equation}
     \max_t\, L_{\text{replay}}(\theta(t)) \;\le\; L_{\text{replay}}(\theta_{\text{joint}}^*) + O\!\left(\frac{1}{N}\right).
     \label{eq:bound}
 \end{equation}
-The first term is the genuine plasticity--stability trade-off: the permanent capacity cost of learning both tasks. The second term is the transient stability gap.\\
+The first term is the permanent price; the second is the transient, and it shrinks with the ramp length.
 
-Conversely, an instantaneous task switch (small $N$) produces a large gap driven by two $O(1)$ boundary contributors (Section~\ref{subsec:decomposition}). First, the magnitude asymmetry ($G_{\text{mag}}$) causes a sharp initial spike: the new task's gradient dominates the first step, immediately throwing the iterate out of the replay basin. Second, the trajectory effect ($G_{\text{traj}}$) causes a sustained loss: the descent path bows outward (Figure~\ref{fig:loss_landscape_visualization}), forcing the iterate to cross through high-loss regions before reaching the joint minimum.
-
-Stretching the transition over $N$ steps resolves both issues. Introducing the new task at a weight of $\lambda \approx 1/N$ dampens the initial gradient shock ($G_{\text{mag}}$), since its first-step contribution is scaled down with the ramp length. The descent trajectory straightens toward the optimal path $\Theta^*(\lambda)$, reducing $G_{\text{traj}}$ as $O(1/N)$ (Appendix~\ref{app:detailed_proof}). The trajectory deviation is the slower of the two to close, so it sets the overall $O(1/N)$ bound in~\eqref{eq:bound}. In the large-$N$ limit a sufficiently slow continuous curriculum drives both boundary-tied overshoots toward zero, leaving only the estimator variance $G_{\text{est}}$ inherent to the finite buffer. This preserves the model's step-size adaptation and resolves the gap without complex path-finding interventions (Appendix~\ref{app:detailed_proof}).
-
+The bound reads naturally in the two-level language of Section~\ref{sec:motivation}. An instantaneous switch ($N$ small) puts the optimiser on the bowed steepest-descent path of the abruptly assembled joint loss (level one) and launches it from the maximally imbalanced boundary state (level two). A slow ramp addresses both at once. The moving minimiser replaces the fixed one, so the flow path becomes the reference path and the arc disappears. And the new task enters at weight $\lambda \approx 1/N$, so the first steps carry a small push: there is little for a discrete step to leap along and little for momentum to accumulate. What the continuous-limit argument leaves out is the per-step noise of the finite buffer; the stochastic part of the overshoot survives any ramp length and needs a separate remedy, which the momentum experiments of Section~\ref{subsec:momentum} provide.

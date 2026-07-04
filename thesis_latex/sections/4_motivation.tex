@@ -1,28 +1,73 @@
-\section{Motivating a Landscape-Shaping Approach}
+\section{The Stability Gap as a Trajectory Problem}
 \label{sec:motivation}
 
-This thesis defends one claim: in its dominant components, the stability gap is the downstream symptom of the discontinuity at the task boundary (Section~\ref{sec:introduction}). We make the claim precise in two steps. First we decompose the gap into three contributors (Section~\ref{subsec:decomposition}). We then contrast the two ways one can intervene on the discontinuity (Section~\ref{subsec:pathfinding_vs_shaping}), which is what motivates the landscape-shaping approach the rest of the thesis develops.
+This section develops the claim the thesis defends: the stability gap separates into two levels, a bent descent path and overshoot of the followed path, and both are controlled by gating the new-task gradient. Section~\ref{subsec:reference} splits the permanent cost of learning a new task from the transient the gap consists of. Sections~\ref{subsec:trajectory_problem} and~\ref{subsec:overshoot} develop the two levels. Section~\ref{subsec:gates} derives the gate as the shared tool and organises the methods of this thesis along its two design axes.
 
-\subsection{Decomposing the Stability Gap}
-\label{subsec:decomposition}
+\subsection{The Permanent Cost and the Reference Path}
+\label{subsec:reference}
 
-We unify the causes scattered across the literature --- gradient imbalance, the finite-buffer estimator, and the trajectory effect (Sections~\ref{subsec:experience_replay} and~\ref{subsec:stability_gap}) --- into a single decomposition of three forces, and isolate and measure each empirically in Section~\ref{sec:methods}.
+Learning a second task moves the model. In a quadratic picture with task losses $L_A$ and $L_B$ and Hessians $H_A$ and $H_B$, the joint minimum sits at displacement $\theta_{\text{joint}}^* - \theta_A^* = (H_A+H_B)^{-1}H_B\,(\theta_B^*-\theta_A^*)$ from the old optimum, and the replay loss ends higher by approximately $\tfrac{1}{2}\,d^\top H_A\, d$ for that displacement $d$. This rise is the permanent stability--plasticity price. Every method pays it, and it is distinct from the stability gap.
 
+The rise can be monotone. Consider the family of objectives $L_\lambda = L_{\text{replay}} + \lambda L_{\text{current}}$ and the path $\Theta^*(\lambda)$ traced by its minimiser as $\lambda$ grows from $0$ to $1$. Section~\ref{sec:theory} shows, with an envelope-theorem argument, that the replay loss increases monotonically along this path under a local positive-definiteness condition. The path starts at $\theta_A^*$, ends at $\theta_{\text{joint}}^*$, and the replay loss climbs directly to its final level with no excursion above it. We call $\Theta^*(\lambda)$ the \emph{reference path}. Mode connectivity gives the empirical counterpart: low-loss routes between the sequential and joint solutions exist in trained networks (Section~\ref{subsec:lmc}).
 
-\paragraph{Magnitude asymmetry ($G_{\text{mag}}$).}
-Consider the first step of vanilla Experience Replay (ER) at the start of a new task, $T_1$, taken from the previous task's optimum $\theta_0^*$. Because $\theta_0^*$ is a stationary point of the replay loss, the true replay gradient there is near zero, so the update is driven almost entirely by the new-task gradient. This large and unopposed new-task gradient carries the iterate out of the replay basin. The replay loss rises the further the iterate moves from $\theta_0^*$, until it grows strong enough to pull the iterate back and the old task is relearned. Because the imbalance is fixed by the relative gradient magnitudes at this first step, it is the dominant contributor to the gap, and corresponds to the gradient-imbalance effect observed by \citet{delange2023continualevaluationlifelonglearning}.
+The reference path defines the gap. Everything the past-task loss does \emph{above its eventual settled level, and back}, exceeds what learning the new task requires. The stability gap is exactly this transient excess: a dip below the settled accuracy level followed by recovery. The gap metrics of Section~\ref{subsec:metrics} operationalise this definition, and the rest of this section explains where the excess comes from.
 
+\subsection{Level One: the Path Bows}
+\label{subsec:trajectory_problem}
 
-\paragraph{Estimator variance ($G_{\text{est}}$).} In any individual training run, the replay buffer provides only a finite-sample estimate of the past data (Section~\ref{subsec:experience_replay}) \cite{aljundi2019gradientbasedsampleselection}. This per-step sampling noise creates a baseline loss degradation that persists regardless of the learning schedule, as it is independent of how the loss terms are composed.
+Take the most idealised optimiser available: exact gradients and vanishing step size, pure gradient flow on the joint loss, started at $\theta_A^*$ the moment the task switches. Its path still deviates from the reference. The steepest-descent direction of the joint loss and the direction toward the joint minimum disagree whenever curvature is anisotropic, so the flow bows outward, leaves the old task's basin, crosses a region of higher replay loss, and approaches the joint minimum from outside \citep{kao2021naturalcontinuallearningsuccess}. Along this bow the replay loss rises above its final level and returns, an out-and-back \emph{arc}. Figure~\ref{fig:loss_landscape_visualization} draws it as the green curve.
 
-\paragraph{Trajectory effect ($G_{\text{traj}}$).} Even in an idealized scenario where magnitude asymmetry is corrected and buffer noise is eliminated, a geometric penalty remains: an instantaneous switch in objectives forces the iterate off the optimal path of the joint loss (Section~\ref{subsec:stability_gap}). Along this new trajectory, the replay loss is strictly higher than it would be at the joint-loss optimum $\theta_{\text{joint}}^*$.
+The arc is the structural core of the gap, for three reasons. It is deterministic: gradient noise, learning rate, and momentum play no role in it, so it survives exact replay gradients and careful step sizes. It explains the persistence results of Section~\ref{subsec:stability_gap}: a perfect objective changes which surface is descended, but leaves the descent direction, and with it the bow, in place. And its cost scales with recovery time: the arc shows up as a dip that stays open while the iterate walks around the bow, so it dominates on networks that reconverge slowly. Fixing the arc requires changing which path the dynamics define; following the bowed path more carefully leaves it untouched.
 
-These three components dominate at different timescales: $G_{\text{mag}}$ drives the massive disruption at step one, $G_{\text{traj}}$ dictates the curve over the first equilibration window, and $G_{\text{est}}$ provides constant noise across all steps.
+\subsection{Level Two: Overshoot of the Followed Path}
+\label{subsec:overshoot}
 
-\subsection{Path-Finding versus Landscape-Shaping}
-\label{subsec:pathfinding_vs_shaping}
-There are two ways to intervene, distinguished by what they do with the discontinuity.
+Real optimisers deviate beyond the path their dynamics define. Three mechanisms drive this overshoot, and all three are armed by the same boundary state. When the task switches, the objective jumps in one step from the replay loss to the joint loss; the minimum the parameters chase teleports from $\theta_A^*$ to $\theta_{\text{joint}}^*$ while the parameters stand still. The iterate now sits where the replay gradient is near zero, by convergence on Task A, and where the new-task gradient is at its largest, because Task B is unlearned \citep{delange2023continualevaluationlifelonglearning}.
 
-\paragraph{Path-finding:} accepts the discontinuity. The objective still jumps at the boundary, from the replay loss alone to the sum of the replay and current-task losses, and the intervention instead reshapes \emph{how} the optimiser moves across that jump. Rather than taking a plain gradient step, it reweights each update using information about the past tasks, steering the optimiser away from directions that would sharply raise the replay loss. This past-task information takes different forms: the curvature estimate of EWC \cite{Kirkpatrick_2017}, the posterior precision of NCL \cite{kao2021naturalcontinuallearningsuccess}, or the gradient projection of GEM \cite{lopezpaz2022gradientepisodicmemorycontinual}. The path-finding methods of Section~\ref{subsec:path_finding} all sit here.
+\begin{description}
+    \item[Imbalance $\times$ step size.] Under gradient flow the imbalanced push bends the path but produces no jump. With a finite learning rate, the first discrete steps ride the unopposed new-task gradient far past where the flow would be, a single large leap out of the old basin. This is the mechanism behind the sharp first-step drop.
+    \item[Estimator variance.] The buffer gradient is a noisy version of the true past-task gradient (Section~\ref{subsec:experience_replay}). Noise in the restoring force lets the iterate wander off the path and settle back slowly, which adds both instantaneous excursions and a lingering residual to the transient.
+    \item[Momentum accumulation.] Momentum accumulates the sustained early push toward roughly $1/(1-\beta)$ times its per-step size. At the boundary the sustained direction is the provisional, old-task-degrading one, so the amplification lands exactly where it hurts.
+\end{description}
 
-\paragraph{Landscape-shaping:} removes the discontinuity. It modifies the objective near the boundary so the surface the optimiser descends is continuous through the transition, leaving the geometry of each step to SGD's natural step-size adaptation. The $\lambda$-curriculum is the canonical example: instead of switching the objective from the replay loss to the joint loss in a single step, it ramps the weight on the current-task loss up from zero to one over a continuous schedule, while holding the replay loss fixed. Two consequences distinguish it from path-finding. A preconditioner rescales the gradient and so breaks SGD's step-size adaptation, whereas the curriculum only reweights the loss and leaves the step size untouched; and where a preconditioned update must build past-task information into every step, the curriculum adds nothing more than a single changing weight. Section~\ref{sec:theory} shows that this continuity is enough to remove the trajectory contributor $G_{\text{traj}}$, and that it simultaneously tempers $G_{\text{mag}}$ by introducing the new-task gradient gradually rather than all at once.
+Two properties matter. First, the drivers interact: the displacement grows roughly with the size of the push, the number of steps before the restoring gradient bites, and the amplification on top, with noise jittering the whole excursion. They are mechanisms of one process, and their contributions resist clean separation into additive shares. Second, overshoot is path-agnostic: it inflates the arc of the bowed path, and it is the entire residual transient around the reference path once the arc is gone.
+
+The two levels also assign the gap's two dimensions. The perceived depth of the drop is set by overshoot; the hanging tail is the arc plus the slow resolution of the stochastic residual. This yields the falsifiable core of the thesis, tested as RQ1: removing the overshoot drivers should flatten the drop and leave the arc; placing the optimiser on the reference path should remove the arc and leave the overshoot; doing both should remove the gap while the permanent cost of Section~\ref{subsec:reference} remains.
+
+\subsection{Two Gates}
+\label{subsec:gates}
+
+The unified update of Equation~\eqref{eq:unified_update} shows that replay methods differ only in how they weight the two gradients. One asymmetry in the problem dictates how the weights should be used. The replay gradient is the only force pulling the iterate back toward the reference path, so attenuating it works against retention; the new-task gradient is the source of both the bow and the overshoot, so attenuation belongs there. Generalising the current-task weight from a scalar to an operator $G$ gives the shared form
+\begin{equation}
+    d \;=\; G\, g_{\text{cur}} \;+\; g_{\text{rep}},
+    \label{eq:gate}
+\end{equation}
+a \emph{gate} on the new-task push with the restoring force at full strength. A symmetric alternative, filtering the summed gradient through past-task curvature, damps the restoring force most of all, because the replay gradient lives in the top eigendirections of the past-task metric by construction. The gate must therefore be one-sided.
+
+Every method of Section~\ref{subsec:path_finding} instantiates Equation~\eqref{eq:gate}, and two design axes span the family (Table~\ref{tab:gates}). The gate's \emph{domain} is scalar or directional: a scalar gate attenuates the whole push, so protection is paid in plasticity, while a directional gate attenuates per direction, passing the push where the past task is flat and braking it where the past task is steep, protection nearly for free when the metric is right. The gate's \emph{control} is feedback or feedforward: a feedback gate reads a live damage signal and reacts to harm from any direction, while a feedforward gate commits to a schedule or a precomputed filter and is only as good as its model of where harm lives.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \resizebox{\columnwidth}{!}{%
+        \begin{tabular}{@{}l l l l@{}}
+            \hline
+            Method           & Gate $G$                               & Domain      & Control     \\
+            \hline
+            Vanilla ER       & $I$                                    & ---         & ---         \\
+            GEM / A-GEM      & reweight on conflict                   & scalar      & feedback    \\
+            MEGA             & loss ratio                             & scalar      & feedback    \\
+            Balancing        & norm matching                          & scalar      & feedback    \\
+            Linear curric.   & $\lambda(t)\,I$, clock                 & scalar      & feedforward \\
+            Adaptive curric. & $\lambda(t)\,I$, norm ratio            & scalar      & feedback    \\
+            Asym.\ PER       & $\delta(F_{\text{rep}}+\delta I)^{-1}$ & directional & feedforward \\
+            \hline
+        \end{tabular}%
+    }
+    \caption{Replay methods as gates on the new-task gradient, Equation~\eqref{eq:gate}. The two methods of this thesis occupy the pure corners: a scalar feedback gate and a directional feedforward gate.}
+    \label{tab:gates}
+\end{table}
+
+The two methods of this thesis are the pure corners. The \textbf{adaptive $\lambda$-curriculum} is the scalar feedback gate: $\lambda(t)$ rises with the ratio of replay to new-task gradient norms, a signal that fires whichever direction damage arrives from. Because $\lambda$ scales the loss itself, the gate deforms the objective into the homotopy of Section~\ref{subsec:reference}: it schedules the landscape so that the route the optimiser naturally takes is the reference path. \textbf{Asymmetric PER} is the directional feedforward gate: it filters the push through the replay Fisher, Equation~\eqref{eq:asym_per}, with the damping $\delta$ as its single knob. At $\delta \to \infty$ the filter opens fully and plain ER returns; at $\delta \to 0$ motion concentrates in directions the past task is flat in, while restoration keeps full strength.
+
+The taxonomy predicts how each corner should succeed and fail, before any experiment runs. The scalar feedback gate is hard to blind-side but slows the new task everywhere, so it should pay a plasticity cost that a separate accelerator must repay. The directional gate should protect the past task at little plasticity cost, but only within what its sampled curvature metric sees; damage arriving through directions the metric rates as flat passes unbraked. The axes also predict opposite interactions with momentum. The curriculum attenuates the push \emph{at source}: with $\lambda \approx 0$ early, momentum finds nothing to accumulate, and by the time $\lambda$ grows the trajectory points the right way, so acceleration helps. The preconditioner attenuates each \emph{step} while the underlying gradient keeps its size, so accumulation across steps can rebuild the push the filter removed, and momentum should partially undo the protection. Sections~\ref{sec:proposed_approach} and~\ref{sec:methods} turn these predictions into the research questions and the experimental design.
