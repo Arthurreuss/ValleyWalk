@@ -69,7 +69,7 @@ tracking:
     tags: []                         # auto-populated at runtime: [method, dataset, ablation]
     # W&B Artifacts — versioned model + results linked to each run
     artifacts:
-      log_checkpoints: true          # upload model checkpoints as W&B Artifacts
+      log_checkpoints: false          # upload model checkpoints as W&B Artifacts
       log_results: true              # upload results/ dir as W&B Artifact at run end
       checkpoint_type: model         # W&B Artifact type for checkpoints
       results_type: results          # W&B Artifact type for results bundle
