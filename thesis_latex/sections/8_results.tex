@@ -9,7 +9,7 @@ Depth is reported in percentage points (pp); a depth of $19.5$ means the worst p
 \subsection{The Two Levels, Separated (RQ1)}
 \label{subsec:res_levels}
 
-RQ1 asks whether the gap separates into a deterministic arc of the descent path and overshoot of whatever path is followed, such that removing the overshoot drivers and fixing the path are separately insufficient but jointly sufficient. The test crosses the two interventions at momentum $0$: the driver-removal conditions G1--G4 fix nothing about the path, and the curriculum conditions C7/C8 fix the path while leaving or removing the variance driver. Table~\ref{tab:res_2x2} is the $2\times2$ this produces.
+RQ1 asks whether the gap separates into a deterministic arc of the descent path and overshoot of whatever path is followed, such that removing the overshoot drivers and fixing the path are separately insufficient but jointly sufficient. The test crosses the two interventions at momentum $0$: the driver-removal conditions D1--D4 fix nothing about the path, and the curriculum conditions C7/C8 fix the path while leaving or removing the variance driver. Table~\ref{tab:res_2x2} is the $2\times2$ this produces.
 
 \begin{table}[htbp]
     \centering
@@ -19,16 +19,16 @@ RQ1 asks whether the gap separates into a deterministic arc of the descent path 
         \hline
                                     & Drivers present        & Drivers removed         \\
         \hline
-        \textbf{Bowed path} (no gate)      & G1: $19.5$ / $6.3$ / $0.873$  & G4: $1.9$ / $3.2$ / $0.869$ \\
+        \textbf{Bowed path} (no gate)      & D1: $19.5$ / $6.3$ / $0.873$  & D4: $1.9$ / $3.2$ / $0.869$ \\
         \textbf{Valley-floor} (curriculum) & C7: $13.9$ / $2.7$ / $0.837$  & C8: $0.2$ / $0.05$ / $0.818$ \\
         \hline
     \end{tabular}}
-    \caption{The RQ1 $2\times2$ on rot-MNIST at momentum $0$, each cell reporting \texttt{gap\_depth} (pp) / \texttt{gap\_area\_end} / ACC. Rows cross the path (bowed steepest descent vs.\ the valley-floor path the curriculum follows); columns cross the overshoot drivers (present vs.\ removed by balancing and the exact full-buffer replay gradient). Removing the drivers alone (G4) leaves a deterministic arc; fixing the path alone (C7) leaves the overshoot; doing both (C8) closes the gap, while the permanent stability--plasticity cost stays visible as the lowest ACC in the table.}
+    \caption{The RQ1 $2\times2$ on rot-MNIST at momentum $0$, each cell reporting \texttt{gap\_depth} (pp) / \texttt{gap\_area\_end} / ACC. Rows cross the path (bowed steepest descent vs.\ the valley-floor path the curriculum follows); columns cross the overshoot drivers (present vs.\ removed by balancing and the exact full-buffer replay gradient). Removing the drivers alone (D4) leaves a deterministic arc; fixing the path alone (C7) leaves the overshoot; doing both (C8) closes the gap, while the permanent stability--plasticity cost stays visible as the lowest ACC in the table.}
     \label{tab:res_2x2}
 \end{table}
 
 \paragraph{Removing the drivers leaves the arc.}
-Table~\ref{tab:res_drivers} follows the driver-removal path. Unit-norm balancing (G3) removes the boundary imbalance and takes $13.8$ pp off the depth ($19.5 \rightarrow 5.7$, complete directional agreement), by far the largest single drop; swapping the reservoir for the exact past-task gradient (G4) removes the estimator variance and takes off a further $3.8$ pp ($5.7 \rightarrow 1.9$). The gradient-fidelity diagnostics confirm the driver each condition switches off: the finite-buffer conditions G1 and G3 reach only $\bar{\cos}(g_{\text{replay}}, g_{\text{true}}) \approx 0.71$ and $0.66$ with per-step minima near zero, whereas the full-data conditions G2 and G4 sit at $1.000$ by construction (Appendix~\ref{app:grad_full}). What no driver removal touches is the descent path, and the area column shows this: with the depth spike gone at G4 (only $1.9$ pp) a clear bend remains, \texttt{gap\_area\_end} $= 3.2$. Because the full-data conditions carry zero gradient noise, that area cannot be stochastic residual; it is a deterministic bend. It is the arc of Section~\ref{subsec:trajectory_problem}, and Figure~\ref{fig:g_curves} shows it directly: the exact-gradient curves (G2, G4) trace a smooth dip-and-recover with no jitter, the fingerprint the account attaches to a bowed path rather than a spike.
+Table~\ref{tab:res_drivers} follows the driver-removal path. Unit-norm balancing (D3) removes the boundary imbalance and takes $13.8$ pp off the depth ($19.5 \rightarrow 5.7$, complete directional agreement), by far the largest single drop; swapping the reservoir for the exact past-task gradient (D4) removes the estimator variance and takes off a further $3.8$ pp ($5.7 \rightarrow 1.9$). The gradient-fidelity diagnostics confirm the driver each condition switches off: the finite-buffer conditions D1 and D3 reach only $\bar{\cos}(g_{\text{replay}}, g_{\text{true}}) \approx 0.71$ and $0.66$ with per-step minima near zero, whereas the full-data conditions D2 and D4 sit at $1.000$ by construction (Appendix~\ref{app:grad_full}). What no driver removal touches is the descent path, and the area column shows this: with the depth spike gone at D4 (only $1.9$ pp) a clear bend remains, \texttt{gap\_area\_end} $= 3.2$. Because the full-data conditions carry zero gradient noise, that area cannot be stochastic residual; it is a deterministic bend. It is the arc of Section~\ref{subsec:trajectory_problem}, and Figure~\ref{fig:g_curves} shows it directly: the exact-gradient curves (D2, D4) trace a smooth dip-and-recover with no jitter, the fingerprint the account attaches to a bowed path rather than a spike.
 
 \begin{table}[htbp]
     \centering
@@ -38,20 +38,20 @@ Table~\ref{tab:res_drivers} follows the driver-removal path. Unit-norm balancing
         \hline
         Condition              & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC               \\
         \hline
-        G1: Vanilla ER         & $19.5 \pm 4.1$           & $6.3 \pm 0.5$           & $0.873 \pm 0.005$ \\
-        G2: Full-data ER       & $18.3 \pm 2.5$           & $8.1 \pm 0.7$           & $0.890 \pm 0.009$ \\
-        G3: Balanced ER        & $5.7 \pm 1.9$            & $1.4 \pm 0.4$           & $0.849 \pm 0.005$ \\
-        G4: Full-data balanced & $1.9 \pm 1.3$            & $3.2 \pm 0.5$           & $0.869 \pm 0.002$ \\
+        D1: Vanilla ER         & $19.5 \pm 4.1$           & $6.3 \pm 0.5$           & $0.873 \pm 0.005$ \\
+        D2: Full-data ER       & $18.3 \pm 2.5$           & $8.1 \pm 0.7$           & $0.890 \pm 0.009$ \\
+        D3: Balanced ER        & $5.7 \pm 1.9$            & $1.4 \pm 0.4$           & $0.849 \pm 0.005$ \\
+        D4: Full-data balanced & $1.9 \pm 1.3$            & $3.2 \pm 0.5$           & $0.869 \pm 0.002$ \\
         \hline
     \end{tabular}}
-    \caption{Driver-removal conditions on rot-MNIST (momentum $0$). Balancing (G3) removes most of the depth; the exact replay gradient (G4) removes the rest. Neither removes the bend: G4 has a depth of only $1.9$ pp yet a deterministic arc of area $3.2$.}
+    \caption{Driver-removal conditions on rot-MNIST (momentum $0$). Balancing (D3) removes most of the depth; the exact replay gradient (D4) removes the rest. Neither removes the bend: D4 has a depth of only $1.9$ pp yet a deterministic arc of area $3.2$.}
     \label{tab:res_drivers}
 \end{table}
 
 \begin{figure*}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{img/results/G/G task 0 no momentum zoomed in.png}
-    \caption{Per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation. The sharp boundary drop shrinks along G1 $\rightarrow$ G3 $\rightarrow$ G4 as the overshoot drivers are removed, but a smooth dip-and-recover \emph{bend} survives every removal, cleanest in the exact-gradient conditions (G2, G4) where the curve carries no jitter. The bend is the deterministic arc: it responds to no amount of optimiser hygiene, only to a change of path. (The additional curve is a curvature-preconditioner reference retained from an earlier analysis and is not part of this account.)}
+    \includegraphics[width=\linewidth]{img/results/D/D task 0 no momentum zoomed in.png}
+    \caption{Per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation. The sharp boundary drop shrinks along D1 $\rightarrow$ D3 $\rightarrow$ D4 as the overshoot drivers are removed, but a smooth dip-and-recover \emph{bend} survives every removal, cleanest in the exact-gradient conditions (D2, D4) where the curve carries no jitter. The bend is the deterministic arc: it responds to no amount of optimiser hygiene, only to a change of path. (The additional curve is a curvature-preconditioner reference retained from an earlier analysis and is not part of this account.)}
     \label{fig:g_curves}
 \end{figure*}
 
@@ -164,7 +164,7 @@ RQ3 asks whether asymmetric PER shrinks the gap as its filter strengthens ($\del
         $0.03$ & $4.8 \pm 1.9$  & $1.0$ & $0.880$ & $0.741$ & & $9.5 \pm 8.2$          & $0.4$ & $0.903$ & $0.787$ \\
         \hline
     \end{tabular}
-    \caption{Asymmetric-PER $\delta$ sweep on rot-MNIST at momentum $0$, five seeds. Depth and area fall as $\delta \to 0$ while ACC and $\mathrm{WP}_{100}$ \emph{rise}: the directional gate protects the past task at no plasticity cost. On the full buffer, where the area is the deterministic arc, the arc shrinks with the filter, and the strongest clean setting ($\delta{=}0.3$) undercuts the driver-removal floor (G4: $1.9$ pp). The far cell is the exception: at $\delta{=}0.03$ full buffer the mean depth jumps to $9.5$ pp with a large std, the cliffs of the text.}
+    \caption{Asymmetric-PER $\delta$ sweep on rot-MNIST at momentum $0$, five seeds. Depth and area fall as $\delta \to 0$ while ACC and $\mathrm{WP}_{100}$ \emph{rise}: the directional gate protects the past task at no plasticity cost. On the full buffer, where the area is the deterministic arc, the arc shrinks with the filter, and the strongest clean setting ($\delta{=}0.3$) undercuts the driver-removal floor (D4: $1.9$ pp). The far cell is the exception: at $\delta{=}0.03$ full buffer the mean depth jumps to $9.5$ pp with a large std, the cliffs of the text.}
     \label{tab:res_per}
 \end{table*}
 
@@ -172,7 +172,7 @@ RQ3 asks whether asymmetric PER shrinks the gap as its filter strengthens ($\del
 On the standard buffer, depth falls from $9.0$ to $4.8$ pp as $\delta$ goes from $1.0$ to $0.03$ while ACC \emph{rises} from $0.869$ to $0.880$ and $\mathrm{WP}_{100}$ from $0.733$ to $0.741$; every one of these three trends holds across all five seeds. The plasticity cost the scalar gate pays (roughly $4$ pp of ACC at momentum $0$, Table~\ref{tab:res_curriculum}) never materialises here, because the filter blocks the push only in the directions the past task is steep in and lets it through everywhere else. This is the scalar gate's weakness inverted, and it is what makes the two gates complements rather than a strong and a weak version of the same thing.
 
 \paragraph{The gate reshapes the path.}
-The full-buffer leg isolates the arc: with the variance driver off, the area is the deterministic bend, and it shrinks with the filter, $2.3 \rightarrow 1.0 \rightarrow 0.4$ for $\delta = 1.0 \rightarrow 0.3 \rightarrow 0.1$ (the $1.0 \rightarrow 0.3$ area drop holds across all seeds). This is the independent level-1 evidence promised in Section~\ref{subsec:res_levels}: the directional gate bends the followed path back toward the reference, exactly as the curriculum does by another route. The strongest clean setting, $\delta = 0.3$ full buffer, reaches $1.5$ pp of depth, undercutting the driver-removal floor G4 ($1.9$ pp) at the best momentum-$0$ accuracy in the benchmark ($0.900$ vs.\ $0.869$), and without disturbing the step-size adaptation that unit-norm balancing changes.
+The full-buffer leg isolates the arc: with the variance driver off, the area is the deterministic bend, and it shrinks with the filter, $2.3 \rightarrow 1.0 \rightarrow 0.4$ for $\delta = 1.0 \rightarrow 0.3 \rightarrow 0.1$ (the $1.0 \rightarrow 0.3$ area drop holds across all seeds). This is the independent level-1 evidence promised in Section~\ref{subsec:res_levels}: the directional gate bends the followed path back toward the reference, exactly as the curriculum does by another route. The strongest clean setting, $\delta = 0.3$ full buffer, reaches $1.5$ pp of depth, undercutting the driver-removal floor D4 ($1.9$ pp) at the best momentum-$0$ accuracy in the benchmark ($0.900$ vs.\ $0.869$), and without disturbing the step-size adaptation that unit-norm balancing changes.
 
 \paragraph{At momentum $0$ the directional gate dominates the scalar gate.}
 Head to head at momentum $0$, the strongest standard-buffer directional setting ($\delta{=}0.03$: $4.8$ pp / $0.880$) beats the shipping curriculum (C7: $13.9$ pp / $0.837$) on both axes, with complete directional agreement on each; it is lower in depth and higher in accuracy at once. Part of this is that the curvature filter also damps how far a noisy gradient moves the past-task loss, so it suppresses the \emph{expression} of variance per step where the scalar gate has no such side effect and needs momentum or a larger buffer for its residual (Section~\ref{subsec:res_scalar}). The scalar gate's case is not the momentum-$0$ corner; it is momentum composability and blind-spot robustness, which the next two results show the directional gate lacking.
@@ -186,7 +186,7 @@ Momentum undoes the directional gate's protection, the opposite of what it does 
 \subsection{The Frontier (RQ4a)}
 \label{subsec:res_frontier}
 
-The two gates do not order; they trace a stability--plasticity frontier. Figure~\ref{fig:frontier} plots every rot-MNIST gate condition in the accuracy--depth plane, the $\lambda$-path (scalar feedback) against the $\delta$-path (directional feedforward), anchored by the no-gate baseline (G1), the driver-removal floor (G4), and the diagnostic floor (C8).
+The two gates do not order; they trace a stability--plasticity frontier. Figure~\ref{fig:frontier} plots every rot-MNIST gate condition in the accuracy--depth plane, the $\lambda$-path (scalar feedback) against the $\delta$-path (directional feedforward), anchored by the no-gate baseline (D1), the driver-removal floor (D4), and the diagnostic floor (C8).
 
 \begin{figure*}[htbp]
     \centering
@@ -195,7 +195,7 @@ The two gates do not order; they trace a stability--plasticity frontier. Figure~
     \label{fig:frontier}
 \end{figure*}
 
-Two regimes read off the figure. At momentum $0$ (left panel) the directional gate dominates: its points lie above and to the right of the scalar gate's, lower in depth and higher in accuracy, with the driver floor G4 reached and undercut by the full-buffer $\delta$-path and the cliff point the lone exception. Under momentum (right panel) the picture inverts into a genuine trade. The scalar gate reaches the lowest depths ($2.5$--$3.7$ pp) because momentum composes with its source attenuation, but caps out near vanilla accuracy; the directional gate cannot go as low in depth (momentum re-inflates it to $\approx 8$ pp) but reaches the highest accuracies ($\approx 0.965$), because its per-step filter never slowed the new task at source. A practitioner evaluated on worst-case retention during the transition, who can absorb the accuracy, takes the scalar gate; one who needs peak accuracy and can tolerate a modest transient takes the directional gate. The result of RQ4a is the frontier itself.
+Two regimes read off the figure. At momentum $0$ (left panel) the directional gate dominates: its points lie above and to the right of the scalar gate's, lower in depth and higher in accuracy, with the driver floor D4 reached and undercut by the full-buffer $\delta$-path and the cliff point the lone exception. Under momentum (right panel) the picture inverts into a genuine trade. The scalar gate reaches the lowest depths ($2.5$--$3.7$ pp) because momentum composes with its source attenuation, but caps out near vanilla accuracy; the directional gate cannot go as low in depth (momentum re-inflates it to $\approx 8$ pp) but reaches the highest accuracies ($\approx 0.965$), because its per-step filter never slowed the new task at source. A practitioner evaluated on worst-case retention during the transition, who can absorb the accuracy, takes the scalar gate; one who needs peak accuracy and can tolerate a modest transient takes the directional gate. The result of RQ4a is the frontier itself.
 
 \subsection{Generalisation to CIFAR-10 (RQ4b)}
 \label{subsec:res_cifar}
@@ -210,14 +210,14 @@ The CIFAR-10 block tests whether both gates carry to a ResNet-18, a clean $\righ
         Norm & Method                               & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC               & min-ACC           \\
         \hline
         \multirow{3}{*}{BatchNorm}
-             & D1: Vanilla ER                          & $11.8 \pm 2.5$          & $17.5 \pm 4.6$          & $0.723 \pm 0.008$ & $0.644 \pm 0.023$ \\
-             & D3: Curriculum ($\lambda_{\min}{=}0.20$) & $\mathbf{4.8 \pm 0.7}$ & $\mathbf{3.6 \pm 2.2}$ & $0.722 \pm 0.011$ & $0.713 \pm 0.017$ \\
-             & P1: Asym.\ PER ($\delta{=}0.1$)         & $5.9 \pm 4.3$           & $3.3 \pm 3.0$           & $0.715 \pm 0.011$ & $0.698 \pm 0.023$ \\
+             & G1: Vanilla ER                          & $11.8 \pm 2.5$          & $17.5 \pm 4.6$          & $0.723 \pm 0.008$ & $0.644 \pm 0.023$ \\
+             & G3: Curriculum ($\lambda_{\min}{=}0.20$) & $\mathbf{4.8 \pm 0.7}$ & $\mathbf{3.6 \pm 2.2}$ & $0.722 \pm 0.011$ & $0.713 \pm 0.017$ \\
+             & G7: Asym.\ PER ($\delta{=}0.1$)         & $5.9 \pm 4.3$           & $3.3 \pm 3.0$           & $0.715 \pm 0.011$ & $0.698 \pm 0.023$ \\
         \hline
         \multirow{3}{*}{GroupNorm}
-             & D4: Vanilla ER                          & $41.2 \pm 13.5$         & $34.9 \pm 23.7$         & $0.730 \pm 0.011$ & $0.309 \pm 0.111$ \\
-             & D6: Curriculum ($\lambda_{\min}{=}0.20$) & $\mathbf{5.2 \pm 2.1}$ & $\mathbf{1.7 \pm 0.9}$ & $0.731 \pm 0.020$ & $0.670 \pm 0.055$ \\
-             & P2: Asym.\ PER ($\delta{=}0.1$)         & $5.6 \pm 1.1$           & $4.8 \pm 3.8$           & $0.741 \pm 0.009$ & $0.673 \pm 0.023$ \\
+             & G4: Vanilla ER                          & $41.2 \pm 13.5$         & $34.9 \pm 23.7$         & $0.730 \pm 0.011$ & $0.309 \pm 0.111$ \\
+             & G6: Curriculum ($\lambda_{\min}{=}0.20$) & $\mathbf{5.2 \pm 2.1}$ & $\mathbf{1.7 \pm 0.9}$ & $0.731 \pm 0.020$ & $0.670 \pm 0.055$ \\
+             & G8: Asym.\ PER ($\delta{=}0.1$)         & $5.6 \pm 1.1$           & $4.8 \pm 3.8$           & $0.741 \pm 0.009$ & $0.673 \pm 0.023$ \\
         \hline
     \end{tabular}
     \caption{CIFAR-10 headline block (ResNet-18, momentum $0.9$, buffer $5{,}000$, five seeds). Both gates cut gap depth and area far below vanilla ER at matched final accuracy and much higher worst-case retention (min-ACC), under both normalisations. Neither was given a CIFAR-specific sweep; both carry their rot-MNIST configurations.}
@@ -230,11 +230,11 @@ The rot-MNIST result carries over and strengthens for both gates. Under batch no
 \begin{figure*}[htbp]
     \centering
     \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/D/cifar_vanilla.png}\\
+        \includegraphics[width=\linewidth]{img/results/G/cifar_vanilla.png}\\
         {\scriptsize (a) Vanilla ER}
     \end{minipage}\hfill
     \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/D/cifar_adaptive.png}\\
+        \includegraphics[width=\linewidth]{img/results/G/cifar_adaptive.png}\\
         {\scriptsize (b) Curriculum ($\lambda_{\min}{=}0.20$)}
     \end{minipage}
     \caption{Per-step $T_0$ accuracy across the CIFAR-10 transition (ResNet-18, momentum $0.9$, buffer $5{,}000$); each panel overlays batch norm and group norm, seed mean with $\pm$std bands. Vanilla ER (a) dips shallowly but reconverges slowly under batch norm and crashes deep under group norm, a stability gap that stays open a long time either way. The curriculum (b) holds $T_0$ almost flat through the switch under both norms, closing the gap fast; asymmetric PER behaves similarly (Table~\ref{tab:res_cifar}, Appendix~\ref{app:cifar_headline_full}).}
@@ -284,4 +284,4 @@ A further block pairs the shipping curriculum against a vanilla-ER control on sh
 \subsection{Summary of Findings}
 \label{subsec:res_summary}
 
-The ladder holds end to end. (i) The gap separates into a deterministic arc and overshoot of the followed path: removing the drivers leaves the arc (G4: $1.9$ pp depth, area $3.2$), fixing the path leaves the overshoot (C7: $13.9$ pp), doing both closes the gap (C8: $0.2$ pp), while the permanent stability--plasticity cost stays on the ledger (C8 ACC $0.818$). (ii) The scalar feedback gate times the push down the valley-floor path and, with momentum, reaches $3.7$ pp of depth at vanilla accuracy; momentum closes its gap by averaging variance and pays back the plasticity the schedule borrows, so the curriculum needs momentum for accuracy, not for the gap. (iii) The directional feedforward gate shrinks depth and arc monotonically as $\delta \to 0$ at no plasticity cost and dominates the scalar gate at momentum $0$, but has curvature blind spots (the $\delta{=}0.03$ cliffs, solver-controlled) and re-inflates under momentum. (iv) The two gates trace a stability--plasticity frontier rather than an ordering, and both legs carry to a ResNet-18 on CIFAR-10 under both normalisations at matched accuracy and much improved worst-case retention; the vanilla and curriculum momentum signatures carry too, with the directional re-inflation confounded by under-convergence on the deep backbone, and a single three-task group-norm sequence flagged as a reliability boundary of the adaptive ratio. The discussion reads these findings against the account of Sections~\ref{sec:motivation} and~\ref{sec:theory}.
+The ladder holds end to end. (i) The gap separates into a deterministic arc and overshoot of the followed path: removing the drivers leaves the arc (D4: $1.9$ pp depth, area $3.2$), fixing the path leaves the overshoot (C7: $13.9$ pp), doing both closes the gap (C8: $0.2$ pp), while the permanent stability--plasticity cost stays on the ledger (C8 ACC $0.818$). (ii) The scalar feedback gate times the push down the valley-floor path and, with momentum, reaches $3.7$ pp of depth at vanilla accuracy; momentum closes its gap by averaging variance and pays back the plasticity the schedule borrows, so the curriculum needs momentum for accuracy, not for the gap. (iii) The directional feedforward gate shrinks depth and arc monotonically as $\delta \to 0$ at no plasticity cost and dominates the scalar gate at momentum $0$, but has curvature blind spots (the $\delta{=}0.03$ cliffs, solver-controlled) and re-inflates under momentum. (iv) The two gates trace a stability--plasticity frontier rather than an ordering, and both legs carry to a ResNet-18 on CIFAR-10 under both normalisations at matched accuracy and much improved worst-case retention; the vanilla and curriculum momentum signatures carry too, with the directional re-inflation confounded by under-convergence on the deep backbone, and a single three-task group-norm sequence flagged as a reliability boundary of the adaptive ratio. The discussion reads these findings against the account of Sections~\ref{sec:motivation} and~\ref{sec:theory}.

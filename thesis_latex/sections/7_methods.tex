@@ -62,7 +62,7 @@ Across conditions we compare metrics with the paired Wilcoxon signed-rank test o
         \hline
         Block                         & Section                 & RQ        & Conditions                                                                             \\
         \hline
-        Overshoot drivers             & \ref{subsec:drivers}    & RQ1       & G1--G4                                                                                 \\
+        Overshoot drivers             & \ref{subsec:drivers}    & RQ1       & D1--D4                                                                                 \\
         $\lambda$-curriculum sweep    & \ref{subsec:curriculum} & RQ2a--c   & C1--C7                                                                                 \\
         Full-buffer diagnostic        & \ref{subsec:curriculum} & RQ1, RQ2d & C8, C8$_M$                                                                             \\
         Momentum cross                & \ref{subsec:momentum}   & RQ2d, RQ3 & every rot-MNIST condition at $\mu \in \{0.0, 0.9\}$                                    \\
@@ -88,19 +88,19 @@ Each block maps to one or more research questions (Table~\ref{tab:overview}) and
         \hline
         Condition                   & Replay buffer    & Gradient handling  & Driver removed by construction             \\
         \hline
-        G1 --- Vanilla ER           & $1$k reservoir   & unbalanced         & none (all drivers active)                  \\
-        G2 --- Full-data ER         & $60$k (all past) & unbalanced         & estimator variance (exact replay gradient) \\
-        G3 --- Balanced ER          & $1$k reservoir   & unit-norm balanced & boundary imbalance                         \\
-        G4 --- Full-data + balanced & $60$k            & unit-norm balanced & imbalance and variance                     \\
+        D1 --- Vanilla ER           & $1$k reservoir   & unbalanced         & none (all drivers active)                  \\
+        D2 --- Full-data ER         & $60$k (all past) & unbalanced         & estimator variance (exact replay gradient) \\
+        D3 --- Balanced ER          & $1$k reservoir   & unit-norm balanced & boundary imbalance                         \\
+        D4 --- Full-data + balanced & $60$k            & unit-norm balanced & imbalance and variance                     \\
         \hline
     \end{tabular}
     \caption{Driver-removal conditions. Each condition switches off one or two overshoot drivers relative to vanilla ER; what all four leave in place is the descent path itself, so the arc should survive throughout.}
     \label{tab:drivers}
 \end{table*}
 
-\paragraph{Design.} Table~\ref{tab:drivers} lists the four conditions. Balancing (G3, G4) gives $g_{\text{new}}$ and $g_{\text{replay}}$ equal magnitude from the first step, which switches off the boundary imbalance: an unbalanced step at $\theta_0^*$ is driven almost entirely by $g_{\text{new}}$, whereas a balanced step carries the replay direction at equal weight. The full-data buffer (G2, G4) replaces vanilla ER's noisy $256$-sample replay gradient with the exact empirical past-task gradient, which switches off the estimator variance. The mechanics of both are in Appendix~\ref{app:impl_er}.
+\paragraph{Design.} Table~\ref{tab:drivers} lists the four conditions. Balancing (D3, D4) gives $g_{\text{new}}$ and $g_{\text{replay}}$ equal magnitude from the first step, which switches off the boundary imbalance: an unbalanced step at $\theta_0^*$ is driven almost entirely by $g_{\text{new}}$, whereas a balanced step carries the replay direction at equal weight. The full-data buffer (D2, D4) replaces vanilla ER's noisy $256$-sample replay gradient with the exact empirical past-task gradient, which switches off the estimator variance. The mechanics of both are in Appendix~\ref{app:impl_er}.
 
-\paragraph{How the conditions are read.} The drivers interact (Section~\ref{subsec:overshoot}), so we read the conditions as interventions rather than as an additive decomposition. Depth differences between conditions measure how much of the drop each driver carries in that context. The area, and the shape of the per-step curve, carry the level-one signal: with variance switched off (G2, G4) any dip-and-recover bend that remains in the curve is deterministic, which is the arc's fingerprint.
+\paragraph{How the conditions are read.} The drivers interact (Section~\ref{subsec:overshoot}), so we read the conditions as interventions rather than as an additive decomposition. Depth differences between conditions measure how much of the drop each driver carries in that context. The area, and the shape of the per-step curve, carry the level-one signal: with variance switched off (D2, D4) any dip-and-recover bend that remains in the curve is deterministic, which is the arc's fingerprint.
 
 
 \subsubsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum Sweep}
@@ -134,13 +134,13 @@ Each block maps to one or more research questions (Table~\ref{tab:overview}) and
 
 The adaptive schedule (C4) is the feedback variant: it sets $\lambda$ to a clipped exponential moving average of the gradient-norm ratio $r := \|g_{\text{replay}}\| / \|g_{\text{new}}\|$. At $\theta_0^*$ the replay gradient is near zero by stationarity, so $r$ and $\lambda$ start near $0$. As the iterate moves, $\|g_{\text{replay}}\|$ grows while $\|g_{\text{new}}\|$ shrinks, so $\lambda \to 1$ at the pace the damage signal dictates, with no ramp length to choose. The floor $\lambda_{\min}$ (C5--C7) keeps the schedule from sitting at $\lambda \approx 0$ during the first steps, when the EMA of $r$ is still close to zero, and thereby buys back early plasticity.
 
-\paragraph{Full-buffer diagnostic (C8).} C8 combines the shipping curriculum (C7) with the full $60$k buffer of G2/G4, so the path is fixed \emph{and} the variance driver is switched off at the source. Its role is diagnostic: if the curriculum's remaining transient at momentum $0$ is stochastic overshoot, C8 should close the gap with no momentum at all, and the comparison of C8 with C8$_M$ separates momentum's two candidate roles, variance reduction (replaceable by the full buffer) and acceleration (which only momentum provides). C8 stores the entire past task and therefore breaks the limited-memory premise of continual learning; it is a probe, and C7 remains the practical configuration.
+\paragraph{Full-buffer diagnostic (C8).} C8 combines the shipping curriculum (C7) with the full $60$k buffer of D2/D4, so the path is fixed \emph{and} the variance driver is switched off at the source. Its role is diagnostic: if the curriculum's remaining transient at momentum $0$ is stochastic overshoot, C8 should close the gap with no momentum at all, and the comparison of C8 with C8$_M$ separates momentum's two candidate roles, variance reduction (replaceable by the full buffer) and acceleration (which only momentum provides). C8 stores the entire past task and therefore breaks the limited-memory premise of continual learning; it is a probe, and C7 remains the practical configuration.
 
 
 \subsubsection{Momentum Cross}
 \label{subsec:momentum}
 
-Every rot-MNIST condition, the driver G-series, the curriculum C-series, and the asymmetric-PER sweep, is run at momentum $0.0$ and $0.9$; momentum-on runs carry an $M$ subscript (e.g.\ $\text{G1}_M$). The cross tests the composability prediction of Section~\ref{subsec:gates}: whether momentum helps or hurts a method's gap should depend on where the method attenuates the push. This yields the three signatures of RQ2d and RQ3, vanilla depth left unchanged, the curriculum's residual composed away, and the directional gate's per-step protection re-inflated.
+Every rot-MNIST condition, the driver D-series, the curriculum C-series, and the asymmetric-PER P-series, is run at momentum $0.0$ and $0.9$; momentum-on runs carry an $M$ subscript (e.g.\ $\text{D1}_M$). The cross tests the composability prediction of Section~\ref{subsec:gates}: whether momentum helps or hurts a method's gap should depend on where the method attenuates the push. This yields the three signatures of RQ2d and RQ3, vanilla depth left unchanged, the curriculum's residual composed away, and the directional gate's per-step protection re-inflated.
 
 \subsubsection{Asymmetric-PER \texorpdfstring{$\delta$}{delta} Sweep}
 \label{subsec:per_asym}
@@ -149,7 +149,7 @@ Every rot-MNIST condition, the driver G-series, the curriculum C-series, and the
 
 \paragraph{Method.} Asymmetric PER implements Equation~\eqref{eq:asym_per}: it filters the new-task push through the replay Fisher $F_{\text{rep}}$, the model's own estimate of which directions the past task depends on \citep{amari1998natural}. Normalising by $\delta$ keeps flat directions at unit gain: along an eigendirection of curvature $\rho$ the gain is $\delta/(\rho+\delta)$, so directions the past task is flat in pass through whole and steep ones are shrunk toward zero. The damping $\delta$ is the single knob: at $\delta \to \infty$ every direction passes and plain ER returns, while as $\delta \to 0$ the push concentrates in the replay-flat directions with the restoring gradient $g_{\text{rep}}$ at full strength throughout. The push is applied matrix-free by conjugate gradients over Fisher-vector products; solver details are in Appendix~\ref{app:impl_per}.
 
-\paragraph{Design.} The sweep crosses the damping $\delta \in \{1.0, 0.3, 0.1, 0.03\}$ with two buffer legs, at both momentum settings (Section~\ref{subsec:momentum}). The \emph{standard} leg uses the $1$k reservoir buffer and matches the practical regime of the curriculum sweep. The \emph{full-buffer} leg makes the replay gradient exact, switching off the variance driver as in G2/G4, so the remaining area measures the deterministic arc and the sweep reads out directly whether the directional gate shrinks the arc itself. A solver control (Appendix~\ref{app:impl_per}) confirms the results are not an artefact of an under-converged solve.
+\paragraph{Design.} The sweep crosses the damping $\delta \in \{1.0, 0.3, 0.1, 0.03\}$ with two buffer legs, at both momentum settings (Section~\ref{subsec:momentum}). The \emph{standard} leg uses the $1$k reservoir buffer and matches the practical regime of the curriculum sweep. The \emph{full-buffer} leg makes the replay gradient exact, switching off the variance driver as in D2/D4, so the remaining area measures the deterministic arc and the sweep reads out directly whether the directional gate shrinks the arc itself. A solver control (Appendix~\ref{app:impl_per}) confirms the results are not an artefact of an under-converged solve.
 
 
 \subsubsection{Generalisation: CIFAR-10}
@@ -166,16 +166,16 @@ Every rot-MNIST condition, the driver G-series, the curriculum C-series, and the
         \hline
         Label & Method                           & Norm      & $\mu$ \\
         \hline
-        D1    & Vanilla ER                       & BatchNorm & $0.9$ \\
-        D3    & Adaptive $\lambda_{\min}{=}0.20$ & BatchNorm & $0.9$ \\
-        D4    & Vanilla ER                       & GroupNorm & $0.9$ \\
-        D6    & Adaptive $\lambda_{\min}{=}0.20$ & GroupNorm & $0.9$ \\
-        P1    & Asym.\ PER $\delta{=}0.1$        & BatchNorm & $0.9$ \\
-        P2    & Asym.\ PER $\delta{=}0.1$        & GroupNorm & $0.9$ \\
+        G1    & Vanilla ER                       & BatchNorm & $0.9$ \\
+        G3    & Adaptive $\lambda_{\min}{=}0.20$ & BatchNorm & $0.9$ \\
+        G4    & Vanilla ER                       & GroupNorm & $0.9$ \\
+        G6    & Adaptive $\lambda_{\min}{=}0.20$ & GroupNorm & $0.9$ \\
+        G7    & Asym.\ PER $\delta{=}0.1$        & BatchNorm & $0.9$ \\
+        G8    & Asym.\ PER $\delta{=}0.1$        & GroupNorm & $0.9$ \\
         \hline
-        M1    & Vanilla ER                       & GroupNorm & $0.0$ \\
-        M2    & Adaptive $\lambda_{\min}{=}0.20$ & GroupNorm & $0.0$ \\
-        M3    & Asym.\ PER $\delta{=}0.1$        & GroupNorm & $0.0$ \\
+        G9    & Vanilla ER                       & GroupNorm & $0.0$ \\
+        G10    & Adaptive $\lambda_{\min}{=}0.20$ & GroupNorm & $0.0$ \\
+        G11    & Asym.\ PER $\delta{=}0.1$        & GroupNorm & $0.0$ \\
         \hline
     \end{tabular}
     \caption{CIFAR-10 conditions (two-task Gaussian-noise shift, buffer $5{,}000$, five seeds). Top: the headline block at momentum $0.9$. Bottom: the momentum cross, which pairs momentum-$0$ runs of all three methods against their momentum-$0.9$ counterparts at GroupNorm.}

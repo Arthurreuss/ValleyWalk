@@ -90,14 +90,14 @@ set is a uniform sample of the past stream at any budget. Three modes appear in
 the experiments:
 
 \begin{itemize}
-    \item \emph{Standard ER} (the G1 and all C-series conditions): each step takes
+    \item \emph{Standard ER} (the D1 and all C-series conditions): each step takes
           one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
           with half the mini-batch drawn from the current task and half sampled
           with replacement from the buffer.
-    \item \emph{Balanced ER} (G3): two separate backward passes whose gradients are
+    \item \emph{Balanced ER} (D3): two separate backward passes whose gradients are
           individually unit-normalised before being combined $50/50$, removing the
           magnitude asymmetry between $g_{\text{new}}$ and $g_{\text{replay}}$.
-    \item \emph{Full-data replay} (G2, G4): the replay gradient is computed on
+    \item \emph{Full-data replay} (D2, D4): the replay gradient is computed on
           \emph{every} stored sample exactly once per step (no sub-sampling). Paired
           with a buffer equal to the full past-task training set ($60{,}000$ for
           rot-MNIST $T_0$), this yields the deterministic empirical past-task
