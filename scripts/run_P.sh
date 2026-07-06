@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# scripts/run_per_asym_sweep.sh
+# scripts/run_P.sh
 #
-# Damping sweep for asymmetric preconditioned ER (PER_ASYM).
+# P-series: damping sweep for asymmetric preconditioned ER (PER_ASYM).
+# (Formerly run_per_asym_sweep.sh.)
 #
 # Aim
 # ---
@@ -17,12 +18,12 @@
 #
 # The decomposition sweep only probed δ=1, which leaves every direction with
 # λ ≲ 1 essentially unfiltered.  This sweep turns the filter up and asks the
-# actual question: does the task-0 dip approach the G4 trajectory floor as
+# actual question: does the task-0 dip approach the D4 trajectory floor as
 # δ → 0, and at what plasticity (WP) cost — or does interference through the
 # Fisher's blind spots put a floor under the dip?
 #
 # Prediction: stability-gap depth falls monotonically with δ while WP10/WP100
-# degrade.  The money plot is depth (and area) vs δ against the G4 reference.
+# degrade.  The money plot is depth (and area) vs δ against the D4 reference.
 #
 # Conditions
 # ----------
@@ -31,7 +32,7 @@
 #             The raw g_rep carries buffer sampling noise, which inflates
 #             per-seed depth minima (see PER_asym vs PER_replay at µ=0).
 #   fullbuf — replay gradient over the full 60 k buffer (zero estimator noise,
-#             mirrors G2/G4).  The Fisher metric stays on a sampled subset
+#             mirrors D2/D4).  The Fisher metric stays on a sampled subset
 #             (see precond_er.py).  Isolates mechanism from estimator variance.
 #
 # Fixed across all runs: apply_to=current, fisher.target=replay, warm-started
@@ -45,14 +46,14 @@
 #
 # Usage
 # -----
-#   bash scripts/run_per_asym_sweep.sh                          # full default sweep
-#   DAMPINGS="0.1 0.03" bash scripts/run_per_asym_sweep.sh      # subset of δ
-#   BUFFER_SET=full      bash scripts/run_per_asym_sweep.sh     # fullbuf leg only
-#   MOMENTUM_SET=both    bash scripts/run_per_asym_sweep.sh     # add the µ=0.9 leg
-#   SEEDS="1,2,3,4,5"    bash scripts/run_per_asym_sweep.sh     # custom seeds
-#   N_JOBS=4             bash scripts/run_per_asym_sweep.sh     # cap parallelism
-#   CG_ITERS=40          bash scripts/run_per_asym_sweep.sh     # tighter CG solves
-#   DRY_RUN=1            bash scripts/run_per_asym_sweep.sh     # preview only
+#   bash scripts/run_P.sh                          # full default sweep
+#   DAMPINGS="0.1 0.03" bash scripts/run_P.sh      # subset of δ
+#   BUFFER_SET=full      bash scripts/run_P.sh     # fullbuf leg only
+#   MOMENTUM_SET=both    bash scripts/run_P.sh     # add the µ=0.9 leg
+#   SEEDS="1,2,3,4,5"    bash scripts/run_P.sh     # custom seeds
+#   N_JOBS=4             bash scripts/run_P.sh     # cap parallelism
+#   CG_ITERS=40          bash scripts/run_P.sh     # tighter CG solves
+#   DRY_RUN=1            bash scripts/run_P.sh     # preview only
 #
 # CG-convergence control
 # ----------------------
@@ -62,7 +63,7 @@
 # ~0.2 at 25 iters; rule out under-convergence before claiming curvature
 # blindness) is:
 #
-#   CG_ITERS=60 DAMPINGS="0.03" BUFFER_SET=full bash scripts/run_per_asym_sweep.sh
+#   CG_ITERS=60 DAMPINGS="0.03" BUFFER_SET=full bash scripts/run_P.sh
 #
 # → PER_asym_d0.03_fullbuf_cg60, 5 seeds.  Readout: cliffs persist at the same
 # window steps (~206-219) → curvature-blindness claim stands; cliffs vanish →
@@ -221,7 +222,7 @@ for mu in $(momentum_values); do
 
         for delta in $DAMPINGS; do
             ablation_value="PER_asym_d${delta}${buf_suffix}${CG_SUFFIX}${mom_suffix}"
-            label="PER_ASYM_D${delta}${buf_suffix}${CG_SUFFIX}"
+            label="P_d${delta}${buf_suffix}${CG_SUFFIX}"
             echo ""
             echo "=== ${ablation_value}: asymmetric PER, δ=${delta}, buffer=${buf}, µ=${mu} ==="
             tags_csv="${ABLATION_KEY},${label},${mom_tag}"

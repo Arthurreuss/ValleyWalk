@@ -1,51 +1,62 @@
 #!/bin/bash
-# scripts/habrok_cifar_PM.slurm
+# scripts/habrok.slurm
 #
-# Habrok (RUG) SLURM launcher for the CIFAR "P" and "M" blocks of run_cifar.sh.
-#
-#   P  = per_asym       block: P1, P2         (asym PER δ=0.1, BN/GN) — SLOW (CG)
-#   M  = momentum_cross block: M1, M2, M3     (µ=0 legs, norm=CROSS_NORM)
+# Habrok (RUG) SLURM launcher — general dispatcher for every experiment script.
+# (Formerly habrok_cifar_PM.slurm, which only ran the CIFAR P/M blocks.)
 #
 # One SLURM array task == one (condition, seed) == one train.py run on one GPU.
-# All Hydra overrides are owned by scripts/run_cifar.sh — this launcher just
-# selects which condition+seed each array task runs, so cluster runs stay in
-# lock-step with local runs (no override duplication to drift).
+# All Hydra overrides are owned by the run_*.sh scripts; this launcher only
+# selects which script + block + condition + seed each array task runs, so
+# cluster runs stay in lock-step with local runs (no override duplication).
 #
-# Array index → task map (built below):
-#   1 – 10   P block  (P1,P2 × seeds 1..5)   ← CG-heavy, give it more --time
-#   11 – 25  M block  (M1,M2,M3 × seeds 1..5)
+# ─── SUITES ─────────────────────────────────────────────────────────────────
+# Pick one or more suites via the SUITE env var (space-separated).  Each suite
+# expands to a fixed list of (condition, seed) array tasks:
 #
-# Checkpoints + results are uploaded to W&B automatically (already enabled in
-# configs/config.yaml: tracking.wandb.artifacts.log_checkpoints/log_results).
-# Auth comes from the ~/.netrc written by `wandb login` on the login node
-# (shared home FS → visible on compute nodes). No key needs to live in here.
+#   D           decomposition (run_D.sh, rot-MNIST):  D1..D6 × 5 seeds, µ both  = 30
+#   C           curriculum    (run_C.sh, rot-MNIST):  C1..C7 × 5 seeds, µ both  = 35
+#   C-5task     long sequence (run_C.sh, rot-MNIST):  L1..L4 × 5 seeds          = 20
+#   P           PER sweep     (run_P.sh, rot-MNIST):  δ∈{1.0,0.3,0.1,0.03} × 5  = 20
+#   G-headline  CIFAR headline(run_G.sh):             G1..G6 × 5 seeds          = 30
+#   G-gen       CIFAR general.(run_G.sh):             Gs1..Gt1v × 3 seeds       = 18
+#   G-per       CIFAR asym PER(run_G.sh):             G7,G8 × 5 seeds  (CG SLOW) = 10
+#   G-mom       CIFAR momentum(run_G.sh):             G9,G10,G11 × 5 seeds      = 15
+#
+# Default SUITE is "G-per G-mom" (25 tasks) — the old habrok_cifar_PM behaviour.
+#
+# The rot-MNIST suites (D, C, C-5task, P) run an MLP in seconds and do not need
+# a GPU, but running them here is harmless if you want one submission path.
 #
 # ─── USAGE ────────────────────────────────────────────────────────────────
-# Submit FROM THE REPO ROOT (git tree must be clean — run_cifar.sh enforces it).
+# Submit FROM THE REPO ROOT (git tree must be clean — the run_*.sh enforce it).
 #
-#   0) ONE-TIME, on the login node, pre-download CIFAR-10 so 25 jobs don't race
-#      the download/extract (the script also flock-guards this, but doing it
-#      once up front is the clean fix):
+#   0) Preview the task list + count for a suite WITHOUT SLURM (sets --array):
+#        SUITE="G-per G-mom" bash scripts/habrok.slurm
+#        SUITE="D C P"       bash scripts/habrok.slurm
+#
+#   1) ONE-TIME on the login node, pre-download CIFAR-10 (only needed for G-*):
 #        python -c "import torchvision as t; \
 #          t.datasets.CIFAR10('data', train=True,  download=True); \
 #          t.datasets.CIFAR10('data', train=False, download=True)"
 #
-#   1) Cost-probe ONE P seed first (per_asym runs ~25 Fisher-vector products
-#      per step — time it before committing the block, then tune --time):
-#        sbatch --array=1 scripts/habrok_cifar_PM.slurm
+#   2) Cost-probe a single slow task first (G-per is CG-heavy — tune --time):
+#        SUITE="G-per" sbatch --array=1 scripts/habrok.slurm
 #
-#   2) Launch everything (all 25):
-#        sbatch scripts/habrok_cifar_PM.slurm
+#   3) Launch a suite (set --array to the count the preview printed):
+#        SUITE="G-per"  sbatch --array=1-10 --time=1-00:00:00 scripts/habrok.slurm
+#        SUITE="G-mom"  sbatch --array=1-15 --time=08:00:00   scripts/habrok.slurm
+#        SUITE="D"      sbatch --array=1-30 scripts/habrok.slurm
+#      …or throttle concurrency (max 8 at a time):
+#        SUITE="G-headline" sbatch --array=1-30%8 scripts/habrok.slurm
 #
-#      …or split so each block gets a fitting wall limit:
-#        sbatch --array=1-10  --time=1-00:00:00 scripts/habrok_cifar_PM.slurm   # P (slow)
-#        sbatch --array=11-25 --time=08:00:00   scripts/habrok_cifar_PM.slurm   # M
+# SUITE must be exported to sbatch: prefix it (SUITE=... sbatch ...) or use
+# `sbatch --export=ALL,SUITE="..."`.  --array must match the printed count.
 #
-#      …or throttle concurrency (max 8 at a time) to be nice to the queue:
-#        sbatch --array=1-25%8 scripts/habrok_cifar_PM.slurm
+# Checkpoints + results upload to W&B automatically (configs/config.yaml).
+# Auth comes from ~/.netrc written by `wandb login` on the login node.
 #
 # ─── SBATCH DIRECTIVES ─────────────────────────────────────────────────────
-#SBATCH --job-name=vw_cifar_PM
+#SBATCH --job-name=vw_habrok
 #SBATCH --partition=gpu
 #SBATCH --gpus-per-node=a100:1
 #SBATCH --nodes=1
@@ -54,72 +65,126 @@
 #SBATCH --mem=32G
 #SBATCH --time=1-00:00:00
 #SBATCH --array=1-25
-#SBATCH --output=logs/cifar_PM_%A_%a.out
-#SBATCH --error=logs/cifar_PM_%A_%a.err
+#SBATCH --output=logs/habrok_%A_%a.out
+#SBATCH --error=logs/habrok_%A_%a.err
 
 set -euo pipefail
 
+# ─── Suite selection ──────────────────────────────────────────────────────
+SUITE="${SUITE:-G-per G-mom}"
+SEEDS_5=(1 2 3 4 5)
+SEEDS_3=(1 2 3)
+
+# Each TASKS entry is "SCRIPT|ENV ASSIGNMENTS|human-label".  The middle field
+# may contain spaces (multiple VAR=val); IFS='|' read keeps it intact.
+TASKS=()
+add() { TASKS+=("$1"); }
+
+for suite in $SUITE; do
+    case "$suite" in
+        D)
+            for c in D1 D2 D3 D4 D5 D6; do for s in "${SEEDS_5[@]}"; do
+                add "run_D.sh|CONDITIONS=$c SEEDS=$s MOMENTUM_SET=both|D/$c/s$s"
+            done; done ;;
+        C)
+            for c in C1 C2 C3 C4 C5 C6 C7; do for s in "${SEEDS_5[@]}"; do
+                add "run_C.sh|BLOCKS=rot_mnist CONDITIONS=$c SEEDS=$s MOMENTUM_SET=both|C/$c/s$s"
+            done; done ;;
+        C-5task)
+            for c in L1 L2 L3 L4; do for s in "${SEEDS_5[@]}"; do
+                add "run_C.sh|BLOCKS=rot_mnist_5task CONDITIONS=$c SEEDS=$s|C-5task/$c/s$s"
+            done; done ;;
+        P)
+            for d in 1.0 0.3 0.1 0.03; do for s in "${SEEDS_5[@]}"; do
+                add "run_P.sh|DAMPINGS=$d BUFFER_SET=both MOMENTUM_SET=off SEEDS=$s|P/d$d/s$s"
+            done; done ;;
+        G-headline)
+            for c in G1 G2 G3 G4 G5 G6; do for s in "${SEEDS_5[@]}"; do
+                add "run_G.sh|BLOCKS=headline CONDITIONS=$c SEEDS_HEADLINE=$s|G/$c/s$s"
+            done; done ;;
+        G-gen)
+            for c in Gs1 Gs1v Gs2 Gs2v Gt1 Gt1v; do for s in "${SEEDS_3[@]}"; do
+                add "run_G.sh|BLOCKS=generalization CONDITIONS=$c SEEDS_GEN=$s|G/$c/s$s"
+            done; done ;;
+        G-per)
+            for c in G7 G8; do for s in "${SEEDS_5[@]}"; do
+                add "run_G.sh|BLOCKS=per_asym CONDITIONS=$c SEEDS_PER=$s|G/$c/s$s"
+            done; done ;;
+        G-mom)
+            for c in G9 G10 G11; do for s in "${SEEDS_5[@]}"; do
+                add "run_G.sh|BLOCKS=momentum_cross CONDITIONS=$c SEEDS_CROSS=$s|G/$c/s$s"
+            done; done ;;
+        *)
+            echo "ERROR: unknown SUITE '$suite'. Valid: D C C-5task P G-headline G-gen G-per G-mom" >&2
+            exit 1 ;;
+    esac
+done
+
+NTASKS="${#TASKS[@]}"
+
+# ─── Preview mode (no SLURM) ──────────────────────────────────────────────
+# Running this file directly (not under sbatch) prints the plan and the
+# --array range to use, then exits without launching anything.
+if [ -z "${SLURM_ARRAY_TASK_ID:-}" ]; then
+    echo "SUITE = ${SUITE}"
+    echo "${NTASKS} array tasks  ->  submit with  --array=1-${NTASKS}"
+    echo "---"
+    i=1
+    for t in "${TASKS[@]}"; do
+        IFS='|' read -r script envs label <<< "$t"
+        printf "  %3d  %-10s  %-14s  %s\n" "$i" "$script" "$label" "$envs"
+        i=$((i+1))
+    done
+    exit 0
+fi
+
 # ─── Environment ──────────────────────────────────────────────────────────
-# We are using the local .venv built by `uv sync` on the login node. 
-# This environment already contains the correct Linux/CUDA wheels.
-
-# Ensure the cluster's base modules don't interfere with our uv environment
+# Use the local .venv built by `uv sync` on the login node (correct CUDA wheels).
 module purge
-
-# Explicitly set the Python path to our local virtual environment
 export PYTHON="$SLURM_SUBMIT_DIR/.venv/bin/python"
-
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs data
 
-# ─── CIFAR-10 download guard (safety net for step 0 above) ────────────────
-# Serialise first-time download/extract across array tasks sharing this FS.
-# Once the data is present torchvision's integrity check makes this a fast
-# no-op, so the lock is only ever contended on a truly cold start.
-(
-    flock -x 200
-    "$PYTHON" - <<'PY'
-import torchvision as t
-t.datasets.CIFAR10("data", train=True,  download=True)
-t.datasets.CIFAR10("data", train=False, download=True)
-PY
-) 200>data/.cifar_download.lock
-
-# ─── Array index → (block, condition, seed) ───────────────────────────────
-SEEDS=(1 2 3 4 5)
-TASKS=()
-for c in P1 P2;    do for s in "${SEEDS[@]}"; do TASKS+=("per_asym $c $s");       done; done  # idx 1..10
-for c in M1 M2 M3; do for s in "${SEEDS[@]}"; do TASKS+=("momentum_cross $c $s"); done; done  # idx 11..25
-
+# ─── Select this array task ───────────────────────────────────────────────
 idx=$((SLURM_ARRAY_TASK_ID - 1))
-if [ "$idx" -lt 0 ] || [ "$idx" -ge "${#TASKS[@]}" ]; then
-    echo "ERROR: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID out of range (1..${#TASKS[@]})" >&2
+if [ "$idx" -lt 0 ] || [ "$idx" -ge "$NTASKS" ]; then
+    echo "ERROR: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID out of range (1..$NTASKS for SUITE='$SUITE')" >&2
     exit 1
 fi
-read -r BLOCK COND SEED <<< "${TASKS[$idx]}"
+IFS='|' read -r SCRIPT ENVS LABEL <<< "${TASKS[$idx]}"
 
 echo "=========================================================="
-echo " Array task : $SLURM_ARRAY_TASK_ID / ${#TASKS[@]}"
-echo " Block      : $BLOCK"
-echo " Condition  : $COND"
-echo " Seed       : $SEED"
+echo " Array task : $SLURM_ARRAY_TASK_ID / $NTASKS"
+echo " Suite      : $SUITE"
+echo " Script     : $SCRIPT"
+echo " Task       : $LABEL"
+echo " Env        : $ENVS"
 echo " Node       : $(hostname)"
 echo " Python     : $PYTHON"
 echo "=========================================================="
 
-# ─── Dispatch ─────────────────────────────────────────────────────────────
-# One condition, one seed. run_cifar.sh applies every Hydra override for the
-# selected block/condition. SEEDS_PER drives per_asym, SEEDS_CROSS drives
-# momentum_cross; setting both to $SEED is harmless (only the chosen block
-# runs). CROSS_NORM/PER_CG_ITERS keep run_cifar.sh's defaults unless overridden
-# in the submit environment.
-CONDITIONS="$COND" \
-BLOCKS="$BLOCK" \
-SEEDS_PER="$SEED" \
-SEEDS_CROSS="$SEED" \
-CROSS_NORM="${CROSS_NORM:-gn}" \
-PER_CG_ITERS="${PER_CG_ITERS:-25}" \
-N_JOBS=1 \
-bash scripts/run_cifar.sh
+# ─── CIFAR-10 download guard (only for the G-* suites) ────────────────────
+# Serialise first-time download/extract across array tasks sharing this FS.
+# Once present, torchvision's integrity check makes this a fast no-op.
+if [ "$SCRIPT" = "run_G.sh" ]; then
+    (
+        flock -x 200
+        "$PYTHON" - <<'PY'
+import torchvision as t
+t.datasets.CIFAR10("data", train=True,  download=True)
+t.datasets.CIFAR10("data", train=False, download=True)
+PY
+    ) 200>data/.cifar_download.lock
+fi
 
-echo "=== array task $SLURM_ARRAY_TASK_ID ($BLOCK/$COND seed $SEED) done ==="
+# ─── Dispatch ─────────────────────────────────────────────────────────────
+# One condition, one seed.  The run_*.sh applies every Hydra override.  Pass
+# CROSS_NORM/PER_CG_ITERS through if set in the submit environment (they only
+# affect the CIFAR per_asym / momentum blocks; harmless otherwise).
+env $ENVS \
+    N_JOBS=1 \
+    CROSS_NORM="${CROSS_NORM:-gn}" \
+    PER_CG_ITERS="${PER_CG_ITERS:-25}" \
+    bash "scripts/$SCRIPT"
+
+echo "=== array task $SLURM_ARRAY_TASK_ID ($LABEL) done ==="

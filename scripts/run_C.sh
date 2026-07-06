@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# scripts/run_curriculum.sh
+# scripts/run_C.sh  (formerly run_curriculum.sh)
 #
 # Implements the λ-curriculum sweep, the λ_min refinement, and the momentum
 # cross-cut over those conditions on rot-MNIST (Chapter 4 §4.5–§4.6), plus
 # the five-task rot-MNIST long-sequence block (§5.7).
 #
-# CIFAR-10 generalisation lives in scripts/run_cifar.sh (the unified CIFAR
+# CIFAR-10 generalisation lives in scripts/run_G.sh (the unified CIFAR
 # sweep — headline + generalization blocks).  This script is rot-MNIST only.
 #
 # Conditions (rot-MNIST, applied on top of standard ER, buffer 1 k reservoir)
@@ -27,8 +27,8 @@
 # "_M" suffix in ablation_value.
 #
 # The "momentum-alone, no curriculum" falsifier (RQ3) lives in
-# scripts/run_decomposition.sh as G1_M (vanilla ER at µ=0.9): if G1_M shows no
-# depth reduction relative to G1, the prediction depth(no curr., µ=0.9) ≈
+# scripts/run_D.sh as D1_M (vanilla ER at µ=0.9): if D1_M shows no
+# depth reduction relative to D1, the prediction depth(no curr., µ=0.9) ≈
 # depth(no curr., µ=0.0) is confirmed.  No separate condition is needed here.
 #
 # Long-sequence rot-MNIST (§5.7, TODO 1.2)
@@ -41,7 +41,7 @@
 #   L3 — Adaptive curriculum, λ_min = 0.00
 #   L4 — Adaptive curriculum, λ_min = 0.10
 # Single momentum setting (MOM_LSEQ, default 0.9) — the C-series and the
-# G1/G1_M decomposition already establish that momentum-on dominates µ=0 on
+# D1/D1_M decomposition already establish that momentum-on dominates µ=0 on
 # stability-gap depth, so running both legs here would burn 20 extra runs
 # without addressing the long-sequence research question.
 #
@@ -67,16 +67,16 @@
 #   rot_mnist          — C-series, two-task rot-MNIST
 #   rot_mnist_5task    — L-series, five-task rot-MNIST (long-sequence)
 #
-#   BLOCKS="rot_mnist" bash scripts/run_curriculum.sh                       # C-series only
-#   BLOCKS="rot_mnist_5task" bash scripts/run_curriculum.sh                 # L-series only
-#   BLOCKS="rot_mnist rot_mnist_5task" bash scripts/run_curriculum.sh       # both
-#   CONDITIONS="C1 C4 C6" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh # subset
-#   CONDITIONS="L3 L4" BLOCKS="rot_mnist_5task" bash scripts/run_curriculum.sh
-#   MOMENTUM_SET="off" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh    # µ=0 leg only
-#   GRAD_DIAG=on CONDITIONS="C4 C7" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh
-#   SEEDS="1,2,3,4,5" BLOCKS="rot_mnist" bash scripts/run_curriculum.sh
-#   N_JOBS=4     BLOCKS="rot_mnist" bash scripts/run_curriculum.sh          # parallelism cap
-#   DRY_RUN=1    BLOCKS="rot_mnist" bash scripts/run_curriculum.sh          # preview only
+#   BLOCKS="rot_mnist" bash scripts/run_C.sh                       # C-series only
+#   BLOCKS="rot_mnist_5task" bash scripts/run_C.sh                 # L-series only
+#   BLOCKS="rot_mnist rot_mnist_5task" bash scripts/run_C.sh       # both
+#   CONDITIONS="C1 C4 C6" BLOCKS="rot_mnist" bash scripts/run_C.sh # subset
+#   CONDITIONS="L3 L4" BLOCKS="rot_mnist_5task" bash scripts/run_C.sh
+#   MOMENTUM_SET="off" BLOCKS="rot_mnist" bash scripts/run_C.sh    # µ=0 leg only
+#   GRAD_DIAG=on CONDITIONS="C4 C7" BLOCKS="rot_mnist" bash scripts/run_C.sh
+#   SEEDS="1,2,3,4,5" BLOCKS="rot_mnist" bash scripts/run_C.sh
+#   N_JOBS=4     BLOCKS="rot_mnist" bash scripts/run_C.sh          # parallelism cap
+#   DRY_RUN=1    BLOCKS="rot_mnist" bash scripts/run_C.sh          # preview only
 
 set -euo pipefail
 
@@ -165,7 +165,7 @@ MOM_ON=0.9
 
 if [ -z "$BLOCKS" ]; then
     echo "ERROR: BLOCKS environment variable not set — every block is opt-in." >&2
-    echo "Usage: BLOCKS=\"<block> [<block> ...]\" bash scripts/run_curriculum.sh" >&2
+    echo "Usage: BLOCKS=\"<block> [<block> ...]\" bash scripts/run_C.sh" >&2
     echo "       Valid blocks: ${VALID_BLOCKS[*]}" >&2
     exit 1
 fi
@@ -181,7 +181,7 @@ for _b in $BLOCKS; do
     fi
 done
 
-if [ -n "$(git status --porcelain)" ]; then
+if [ "$DRY_RUN" != "1" ] && [ -n "$(git status --porcelain)" ]; then
     echo "ERROR: dirty git working tree — commit or stash all changes before" \
          "launching the sweep." >&2
     git status --porcelain >&2

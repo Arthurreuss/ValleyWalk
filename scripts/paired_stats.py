@@ -8,7 +8,7 @@ claims).  Both operate on per-seed deltas ``delta_s = m(A, s) - m(B, s)``, with
 seeds matched by their ``seed`` value across the two conditions.
 
 A *condition* is a ``run_id`` with its trailing ``_s<seed>`` suffix removed, so
-``er_rot_mnist_decomposition_G1_vanilla`` names the five-seed group
+``er_rot_mnist_decomposition_D1_vanilla`` names the five-seed group
 ``..._s1 ... _s5``.  Pass two such keys to ``--pair`` to compare them.
 
 Note on five-seed power: with five paired seeds the smallest attainable
@@ -20,8 +20,8 @@ Usage
 -----
     # One explicit comparison on gap depth (the momentum-alone null, p ~ 0.44):
     python scripts/paired_stats.py \
-        --pair er_rot_mnist_decomposition_G1_vanilla \
-               er_rot_mnist_decomposition_G1_vanilla_M \
+        --pair er_rot_mnist_decomposition_D1_vanilla \
+               er_rot_mnist_decomposition_D1_vanilla_M \
         --metric stab_gap_depth
 
     # Several metrics at once, and write a CSV:

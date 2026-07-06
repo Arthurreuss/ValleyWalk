@@ -104,7 +104,7 @@ GROUP_COLUMNS: List[str] = ["method", "ablation_key", "ablation_value"]
 # missing the seeds they were never meant to have.
 #
 #   cifar_generalization — run at 3 seeds (SEEDS_GEN="1,2,3" in
-#                          scripts/run_cifar.sh), not the full headline set.
+#                          scripts/run_G.sh), not the full headline set.
 EXPECTED_SEEDS_BY_KEY: Dict[str, List[int]] = {
     "cifar_generalization": [1, 2, 3],
 }

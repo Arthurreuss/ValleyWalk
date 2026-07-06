@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# scripts/run_cifar.sh
+# scripts/run_G.sh
 #
-# Unified CIFAR-10 sweep — replaces the old D-block in run_curriculum.sh and
-# the H-block in run_cifar_gap_anatomy.sh.  All new CIFAR work happens here.
+# Unified CIFAR-10 sweep (G-series).  Supersedes the earlier ad-hoc CIFAR
+# blocks that lived in other scripts; all CIFAR work happens here now.
 #
 # Four opt-in blocks
 # ------------------
@@ -22,17 +22,17 @@
 #         10 epochs/task, µ = 0.9, eval_freq_steps = 1, window_steps = 250.
 #
 #   Label  Method                            Norm   Buffer
-#   D1     Vanilla ER                        BN     5000
-#   D2     NCL (α = 0.1, damp = 1e-3)        BN     n/a    ← NCL has no buffer
-#   D3     Adaptive curr.  λ_min = 0.20      BN     5000
-#   D4     Vanilla ER                        GN     5000
-#   D5     NCL (α = 0.1, damp = 1e-3)        GN     n/a
-#   D6     Adaptive curr.  λ_min = 0.20      GN     5000
+#   G1     Vanilla ER                        BN     5000
+#   G2     NCL (α = 0.1, damp = 1e-3)        BN     n/a    ← NCL has no buffer
+#   G3     Adaptive curr.  λ_min = 0.20      BN     5000
+#   G4     Vanilla ER                        GN     5000
+#   G5     NCL (α = 0.1, damp = 1e-3)        GN     n/a
+#   G6     Adaptive curr.  λ_min = 0.20      GN     5000
 #
-# λ_min = 0.20 is the headline curriculum setting (rot-MNIST C7 / old D3)
+# λ_min = 0.20 is the headline curriculum setting (rot-MNIST C7)
 # after the multi-seed CIFAR sweep showed it gave the best final accuracies.
 #
-# NCL's "buffer" lines are silently identical between D2 and any buffer
+# NCL's "buffer" lines are silently identical between G2 and any buffer
 # setting — NCL uses a precision-prior path-finding mechanism, not replay.
 # Listed at "n/a" for clarity; the actual run is the same code path.
 #
@@ -43,12 +43,12 @@
 # The control answers "does our method still beat vanilla on this new shift?"
 #
 #   Label  Setup                                              Method
-#   S1     2 tasks [none, shot_noise]                         adaptive (D3 config)
-#   S1v    2 tasks [none, shot_noise]                         vanilla ER (D1 config)
-#   S2     2 tasks [none, contrast]                           adaptive (D3 config)
-#   S2v    2 tasks [none, contrast]                           vanilla ER (D1 config)
-#   T1     3 tasks [none, gaussian_noise, shot_noise]         adaptive (D3 config)
-#   T1v    3 tasks [none, gaussian_noise, shot_noise]         vanilla ER (D1 config)
+#   Gs1     2 tasks [none, shot_noise]                         adaptive (G3 config)
+#   Gs1v    2 tasks [none, shot_noise]                         vanilla ER (G1 config)
+#   Gs2     2 tasks [none, contrast]                           adaptive (G3 config)
+#   Gs2v    2 tasks [none, contrast]                           vanilla ER (G1 config)
+#   Gt1     3 tasks [none, gaussian_noise, shot_noise]         adaptive (G3 config)
+#   Gt1v    3 tasks [none, gaussian_noise, shot_noise]         vanilla ER (G1 config)
 #
 # If the headline block reveals GN beats BN, swap SHIP_NORM=gn and rerun the
 # generalization block; the env var changes only the normalisation on the
@@ -59,24 +59,24 @@
 # The directional feedforward gate  d = δ(F_rep+δI)⁻¹ g_cur + g_rep  on the
 # deep backbone, matched to the headline protocol (dom_cifar10 2-task
 # gaussian_noise, buffer 5000, µ = 0.9) so rows are directly comparable to
-# D1/D3/D4/D6.  Single damping δ = 0.1: strong rot-MNIST performer on both
+# G1/G3/G4/G6.  Single damping δ = 0.1: strong rot-MNIST performer on both
 # axes (fullbuf µ=0 depth 0.022 / area 0.44; best momentum leg 0.076 depth at
 # 0.965 ACC) while staying clear of the δ = 0.03 cliff regime.  Fixed like
 # the rot-MNIST sweep: apply_to=current, fisher.target=replay, warm-started
 # CG at 25 iters.
 #
 #   Label  Method                     δ      Norm   Buffer
-#   P1     Asymmetric PER             0.1    BN     5000
-#   P2     Asymmetric PER             0.1    GN     5000
+#   G7     Asymmetric PER             0.1    BN     5000
+#   G8     Asymmetric PER             0.1    GN     5000
 #
-# Vanilla / curriculum comparators are D1/D3 (BN) and D4/D6 (GN) — no new
+# Vanilla / curriculum comparators are G1/G3 (BN) and G4/G6 (GN) — no new
 # controls needed.  Note µ = 0.9 is the directional gate's *weakest* regime
 # (momentum re-inflation), which is the honest test; rot-MNIST predicts depth
 # between vanilla and curriculum at ≥ vanilla ACC.
 #
 # COST PROBE FIRST: CG runs ~25 Fisher-vector products per step on the
 # ResNet-18.  Before committing the block, time a single seed:
-#   CONDITIONS="P1" SEEDS_PER="1" BLOCKS="per_asym" bash scripts/run_cifar.sh
+#   CONDITIONS="G7" SEEDS_PER="1" BLOCKS="per_asym" bash scripts/run_G.sh
 # If cost forces cuts, drop a norm before dropping seeds.
 #
 # A non-default PER_CG_ITERS is appended to the ablation_value as "_cg<N>"
@@ -91,21 +91,21 @@
 #   vanilla ER  — depth ~unchanged, tail cut          (nothing tamed, noise averaged)
 #   curriculum  — gap helped/held, ACC up             (push attenuated at source)
 #   asym PER    — depth re-inflated, ACC up           (push attenuated per step)
-# The µ = 0.9 legs already exist (D4, D6 / P2 for gn; D1, D3 / P1 for bn);
+# The µ = 0.9 legs already exist (G4, G6 / G8 for gn; G1, G3 / G7 for bn);
 # this block supplies the µ = 0 legs, at ONE norm.  Default CROSS_NORM=gn:
 # the GN transient is pure optimisation dynamics (no cross-batch statistics
 # to re-adapt), so the momentum mechanism reads out clean.  Set CROSS_NORM=bn
 # to replicate.
 #
 #   Label  Method                          δ      µ     Norm         Buffer
-#   M1     Vanilla ER                      —      0.0   $CROSS_NORM  5000
-#   M2     Adaptive curr.  λ_min = 0.20    —      0.0   $CROSS_NORM  5000
-#   M3     Asymmetric PER                  0.1    0.0   $CROSS_NORM  5000
+#   G9     Vanilla ER                      —      0.0   $CROSS_NORM  5000
+#   G10     Adaptive curr.  λ_min = 0.20    —      0.0   $CROSS_NORM  5000
+#   G11     Asymmetric PER                  0.1    0.0   $CROSS_NORM  5000
 #
 # CAVEAT — probe before committing: µ = 0 SGD may under-converge task 0 in
 # 10 epochs (lower pre-switch baseline).  Gap metrics are baseline-relative,
 # so the cross stays readable, but check T0 convergence on one seed first:
-#   CONDITIONS="M1" SEEDS_CROSS="1" BLOCKS="momentum_cross" bash scripts/run_cifar.sh
+#   CONDITIONS="G9" SEEDS_CROSS="1" BLOCKS="momentum_cross" bash scripts/run_G.sh
 #
 # Total runs (all blocks at default seed counts)
 # ----------------------------------------------
@@ -120,19 +120,19 @@
 # BLOCKS is required — every block is opt-in.  Valid block names:
 #   headline | generalization | per_asym | momentum_cross
 #
-#   BLOCKS="headline"                      bash scripts/run_cifar.sh
-#   BLOCKS="generalization"                bash scripts/run_cifar.sh
-#   BLOCKS="per_asym"                      bash scripts/run_cifar.sh
-#   BLOCKS="per_asym momentum_cross"       bash scripts/run_cifar.sh
-#   CONDITIONS="D3 D6" BLOCKS="headline"   bash scripts/run_cifar.sh   # subset
-#   CONDITIONS="P1" SEEDS_PER="1" BLOCKS="per_asym" bash scripts/run_cifar.sh  # cost probe
-#   CONDITIONS="M1" SEEDS_CROSS="1" BLOCKS="momentum_cross" bash scripts/run_cifar.sh  # µ=0 probe
-#   SEEDS_HEADLINE="1,2,3" BLOCKS="headline" bash scripts/run_cifar.sh
-#   SEEDS_GEN="1,2,3,4,5" BLOCKS="generalization" bash scripts/run_cifar.sh
-#   PER_CG_ITERS=40 BLOCKS="per_asym"      bash scripts/run_cifar.sh   # solver control
-#   CROSS_NORM=bn BLOCKS="momentum_cross"  bash scripts/run_cifar.sh
-#   SHIP_NORM=gn BLOCKS="generalization"   bash scripts/run_cifar.sh
-#   DRY_RUN=1 BLOCKS="headline" bash scripts/run_cifar.sh
+#   BLOCKS="headline"                      bash scripts/run_G.sh
+#   BLOCKS="generalization"                bash scripts/run_G.sh
+#   BLOCKS="per_asym"                      bash scripts/run_G.sh
+#   BLOCKS="per_asym momentum_cross"       bash scripts/run_G.sh
+#   CONDITIONS="G3 G6" BLOCKS="headline"   bash scripts/run_G.sh   # subset
+#   CONDITIONS="G7" SEEDS_PER="1" BLOCKS="per_asym" bash scripts/run_G.sh  # cost probe
+#   CONDITIONS="G9" SEEDS_CROSS="1" BLOCKS="momentum_cross" bash scripts/run_G.sh  # µ=0 probe
+#   SEEDS_HEADLINE="1,2,3" BLOCKS="headline" bash scripts/run_G.sh
+#   SEEDS_GEN="1,2,3,4,5" BLOCKS="generalization" bash scripts/run_G.sh
+#   PER_CG_ITERS=40 BLOCKS="per_asym"      bash scripts/run_G.sh   # solver control
+#   CROSS_NORM=bn BLOCKS="momentum_cross"  bash scripts/run_G.sh
+#   SHIP_NORM=gn BLOCKS="generalization"   bash scripts/run_G.sh
+#   DRY_RUN=1 BLOCKS="headline" bash scripts/run_G.sh
 
 set -euo pipefail
 
@@ -150,10 +150,10 @@ SEEDS_GEN="${SEEDS_GEN:-1,2,3}"
 SEEDS_PER="${SEEDS_PER:-${SEEDS_HEADLINE}}"
 SEEDS_CROSS="${SEEDS_CROSS:-${SEEDS_HEADLINE}}"
 
-ALL_HEADLINE_CONDITIONS="D1 D2 D3 D4 D5 D6"
-ALL_GEN_CONDITIONS="S1 S1v S2 S2v T1 T1v"
-ALL_PER_CONDITIONS="P1 P2"
-ALL_CROSS_CONDITIONS="M1 M2 M3"
+ALL_HEADLINE_CONDITIONS="G1 G2 G3 G4 G5 G6"
+ALL_GEN_CONDITIONS="Gs1 Gs1v Gs2 Gs2v Gt1 Gt1v"
+ALL_PER_CONDITIONS="G7 G8"
+ALL_CROSS_CONDITIONS="G9 G10 G11"
 ALL_CONDITIONS_DEFAULT="${ALL_HEADLINE_CONDITIONS} ${ALL_GEN_CONDITIONS} ${ALL_PER_CONDITIONS} ${ALL_CROSS_CONDITIONS}"
 CONDITIONS="${CONDITIONS:-$ALL_CONDITIONS_DEFAULT}"
 
@@ -161,7 +161,7 @@ BLOCKS="${BLOCKS:-}"
 VALID_BLOCKS=(headline generalization per_asym momentum_cross)
 
 # Which norm the momentum-cross block runs at (its µ=0.9 counterparts are
-# D4/D6/P2 for gn, D1/D3/P1 for bn).
+# G4/G6/G8 for gn, G1/G3/G7 for bn).
 CROSS_NORM="${CROSS_NORM:-gn}"
 
 # CG iterations for the per_asym block (rot-MNIST sweep default).  Non-default
@@ -215,7 +215,7 @@ EVAL_OVERRIDES=(
 BUFFER_BIG=5000
 
 # Adaptive λ-curriculum knobs — λ_min = 0.20 is the headline setting from
-# the CIFAR sweep (D3 in the old numbering).
+# the CIFAR sweep (the headline adaptive-BN condition, G3).
 ADAPTIVE_CURRICULUM=(
     method=er
     method.mode=standard
@@ -266,7 +266,7 @@ TWO_TASK_GAUSSIAN=(
 
 if [ -z "$BLOCKS" ]; then
     echo "ERROR: BLOCKS environment variable not set — every block is opt-in." >&2
-    echo "Usage: BLOCKS=\"<block> [<block> ...]\" bash scripts/run_cifar.sh" >&2
+    echo "Usage: BLOCKS=\"<block> [<block> ...]\" bash scripts/run_G.sh" >&2
     echo "       Valid blocks: ${VALID_BLOCKS[*]}" >&2
     exit 1
 fi
@@ -366,7 +366,7 @@ has_block() {
 }
 
 # spawn_condition — single condition × all listed seeds.
-#   $1: label                ($1=D1, D2, …, S1, …)
+#   $1: label                ($1=G1, G2, …, Gs1, …)
 #   $2: ablation_value       (descriptive)
 #   $3: family tag           (vanilla | ncl | adaptive)
 #   $4: ablation_key         (cifar_headline | cifar_generalization)
@@ -405,42 +405,42 @@ if has_block headline; then
     echo "  CIFAR headline — 3 methods × {BN, GN}, buffer 5000, µ=0.9"
     echo "=================================================================="
 
-    if should_run D1; then
-        echo "=== D1: vanilla ER, BN, buffer 5k ==="
-        spawn_condition D1 D1_vanilla_BN_buf5k vanilla cifar_headline "$SEEDS_HEADLINE" \
+    if should_run G1; then
+        echo "=== G1: vanilla ER, BN, buffer 5k ==="
+        spawn_condition G1 G1_vanilla_BN_buf5k vanilla cifar_headline "$SEEDS_HEADLINE" \
             "${TWO_TASK_GAUSSIAN[@]}" "${VANILLA_ER[@]}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run D2; then
-        echo "=== D2: NCL, BN  (buffer setting irrelevant — NCL has no replay) ==="
-        spawn_condition D2 D2_NCL_BN ncl cifar_headline "$SEEDS_HEADLINE" \
+    if should_run G2; then
+        echo "=== G2: NCL, BN  (buffer setting irrelevant — NCL has no replay) ==="
+        spawn_condition G2 G2_NCL_BN ncl cifar_headline "$SEEDS_HEADLINE" \
             "${TWO_TASK_GAUSSIAN[@]}" "${NCL_CONFIG[@]}"
     fi
 
-    if should_run D3; then
-        echo "=== D3: adaptive curriculum (λ_min=0.20), BN, buffer 5k ==="
-        spawn_condition D3 D3_adaptive_lmin0.20_BN_buf5k adaptive cifar_headline "$SEEDS_HEADLINE" \
+    if should_run G3; then
+        echo "=== G3: adaptive curriculum (λ_min=0.20), BN, buffer 5k ==="
+        spawn_condition G3 G3_adaptive_lmin0.20_BN_buf5k adaptive cifar_headline "$SEEDS_HEADLINE" \
             "${TWO_TASK_GAUSSIAN[@]}" "${ADAPTIVE_CURRICULUM[@]}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run D4; then
-        echo "=== D4: vanilla ER, GN, buffer 5k ==="
-        spawn_condition D4 D4_vanilla_GN_buf5k vanilla cifar_headline "$SEEDS_HEADLINE" \
+    if should_run G4; then
+        echo "=== G4: vanilla ER, GN, buffer 5k ==="
+        spawn_condition G4 G4_vanilla_GN_buf5k vanilla cifar_headline "$SEEDS_HEADLINE" \
             "${TWO_TASK_GAUSSIAN[@]}" "${VANILLA_ER[@]}" "${GN_OVERRIDES[@]}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run D5; then
-        echo "=== D5: NCL, GN ==="
-        spawn_condition D5 D5_NCL_GN ncl cifar_headline "$SEEDS_HEADLINE" \
+    if should_run G5; then
+        echo "=== G5: NCL, GN ==="
+        spawn_condition G5 G5_NCL_GN ncl cifar_headline "$SEEDS_HEADLINE" \
             "${TWO_TASK_GAUSSIAN[@]}" "${NCL_CONFIG[@]}" "${GN_OVERRIDES[@]}"
     fi
 
-    if should_run D6; then
-        echo "=== D6: adaptive curriculum (λ_min=0.20), GN, buffer 5k ==="
-        spawn_condition D6 D6_adaptive_lmin0.20_GN_buf5k adaptive cifar_headline "$SEEDS_HEADLINE" \
+    if should_run G6; then
+        echo "=== G6: adaptive curriculum (λ_min=0.20), GN, buffer 5k ==="
+        spawn_condition G6 G6_adaptive_lmin0.20_GN_buf5k adaptive cifar_headline "$SEEDS_HEADLINE" \
             "${TWO_TASK_GAUSSIAN[@]}" "${ADAPTIVE_CURRICULUM[@]}" "${GN_OVERRIDES[@]}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
@@ -476,46 +476,46 @@ if has_block generalization; then
         'dataset.corruption_types=[none,gaussian_noise,shot_noise]'
     )
 
-    if should_run S1; then
-        echo "=== S1: ship config on 2-task [none, shot_noise] ==="
-        spawn_condition S1 "S1_ship_shot_noise_${SHIP_NORM}" adaptive cifar_generalization "$SEEDS_GEN" \
+    if should_run Gs1; then
+        echo "=== Gs1: ship config on 2-task [none, shot_noise] ==="
+        spawn_condition Gs1 "Gs1_ship_shot_noise_${SHIP_NORM}" adaptive cifar_generalization "$SEEDS_GEN" \
             "${TWO_TASK_SHOT[@]}" "${ADAPTIVE_CURRICULUM[@]}" \
             "${SHIP_NORM_OVERRIDES[@]:+${SHIP_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
-    if should_run S1v; then
-        echo "=== S1v: vanilla-ER control on 2-task [none, shot_noise] ==="
-        spawn_condition S1v "S1v_vanilla_shot_noise_${SHIP_NORM}" vanilla cifar_generalization "$SEEDS_GEN" \
+    if should_run Gs1v; then
+        echo "=== Gs1v: vanilla-ER control on 2-task [none, shot_noise] ==="
+        spawn_condition Gs1v "Gs1v_vanilla_shot_noise_${SHIP_NORM}" vanilla cifar_generalization "$SEEDS_GEN" \
             "${TWO_TASK_SHOT[@]}" "${VANILLA_ER[@]}" \
             "${SHIP_NORM_OVERRIDES[@]:+${SHIP_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run S2; then
-        echo "=== S2: ship config on 2-task [none, contrast] ==="
-        spawn_condition S2 "S2_ship_contrast_${SHIP_NORM}" adaptive cifar_generalization "$SEEDS_GEN" \
+    if should_run Gs2; then
+        echo "=== Gs2: ship config on 2-task [none, contrast] ==="
+        spawn_condition Gs2 "Gs2_ship_contrast_${SHIP_NORM}" adaptive cifar_generalization "$SEEDS_GEN" \
             "${TWO_TASK_CONTRAST[@]}" "${ADAPTIVE_CURRICULUM[@]}" \
             "${SHIP_NORM_OVERRIDES[@]:+${SHIP_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
-    if should_run S2v; then
-        echo "=== S2v: vanilla-ER control on 2-task [none, contrast] ==="
-        spawn_condition S2v "S2v_vanilla_contrast_${SHIP_NORM}" vanilla cifar_generalization "$SEEDS_GEN" \
+    if should_run Gs2v; then
+        echo "=== Gs2v: vanilla-ER control on 2-task [none, contrast] ==="
+        spawn_condition Gs2v "Gs2v_vanilla_contrast_${SHIP_NORM}" vanilla cifar_generalization "$SEEDS_GEN" \
             "${TWO_TASK_CONTRAST[@]}" "${VANILLA_ER[@]}" \
             "${SHIP_NORM_OVERRIDES[@]:+${SHIP_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run T1; then
-        echo "=== T1: ship config on 3-task [none, gaussian_noise, shot_noise] ==="
-        spawn_condition T1 "T1_ship_3task_${SHIP_NORM}" adaptive cifar_generalization "$SEEDS_GEN" \
+    if should_run Gt1; then
+        echo "=== Gt1: ship config on 3-task [none, gaussian_noise, shot_noise] ==="
+        spawn_condition Gt1 "Gt1_ship_3task_${SHIP_NORM}" adaptive cifar_generalization "$SEEDS_GEN" \
             "${THREE_TASK[@]}" "${ADAPTIVE_CURRICULUM[@]}" \
             "${SHIP_NORM_OVERRIDES[@]:+${SHIP_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
-    if should_run T1v; then
-        echo "=== T1v: vanilla-ER control on 3-task [none, gaussian_noise, shot_noise] ==="
-        spawn_condition T1v "T1v_vanilla_3task_${SHIP_NORM}" vanilla cifar_generalization "$SEEDS_GEN" \
+    if should_run Gt1v; then
+        echo "=== Gt1v: vanilla-ER control on 3-task [none, gaussian_noise, shot_noise] ==="
+        spawn_condition Gt1v "Gt1v_vanilla_3task_${SHIP_NORM}" vanilla cifar_generalization "$SEEDS_GEN" \
             "${THREE_TASK[@]}" "${VANILLA_ER[@]}" \
             "${SHIP_NORM_OVERRIDES[@]:+${SHIP_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
@@ -527,7 +527,7 @@ fi
 # ──────────────────────────────────────────────────────────────────────────────
 #
 # Directional feedforward gate on the headline protocol.  Comparators are the
-# existing D1/D3 (BN) and D4/D6 (GN) rows — same tasks, buffer, µ, eval.
+# existing G1/G3 (BN) and G4/G6 (GN) rows — same tasks, buffer, µ, eval.
 
 if has_block per_asym; then
     echo ""
@@ -535,17 +535,17 @@ if has_block per_asym; then
     echo "  CIFAR asym PER — δ=0.1 × {BN, GN}, buffer 5000, µ=0.9"
     echo "=================================================================="
 
-    if should_run P1; then
-        echo "=== P1: asym PER δ=0.1, BN, buffer 5k ==="
-        spawn_condition P1 "PER_asym_d0.1_BN_buf5k${PER_CG_SUFFIX}" per_asym cifar_per_asym "$SEEDS_PER" \
+    if should_run G7; then
+        echo "=== G7: asym PER δ=0.1, BN, buffer 5k ==="
+        spawn_condition G7 "G7_PER_asym_d0.1_BN_buf5k${PER_CG_SUFFIX}" per_asym cifar_per_asym "$SEEDS_PER" \
             "${TWO_TASK_GAUSSIAN[@]}" "${PER_ASYM_BASE[@]}" \
             method.fisher.damping=0.1 \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run P2; then
-        echo "=== P2: asym PER δ=0.1, GN, buffer 5k ==="
-        spawn_condition P2 "PER_asym_d0.1_GN_buf5k${PER_CG_SUFFIX}" per_asym cifar_per_asym "$SEEDS_PER" \
+    if should_run G8; then
+        echo "=== G8: asym PER δ=0.1, GN, buffer 5k ==="
+        spawn_condition G8 "G8_PER_asym_d0.1_GN_buf5k${PER_CG_SUFFIX}" per_asym cifar_per_asym "$SEEDS_PER" \
             "${TWO_TASK_GAUSSIAN[@]}" "${PER_ASYM_BASE[@]}" "${GN_OVERRIDES[@]}" \
             method.fisher.damping=0.1 \
             "memory.total_budget=${BUFFER_BIG}"
@@ -570,25 +570,25 @@ if has_block momentum_cross; then
 
     COND_MOMENTUM=0.0
 
-    if should_run M1; then
-        echo "=== M1: vanilla ER, ${CROSS_NORM}, µ=0, buffer 5k ==="
-        spawn_condition M1 "M1_vanilla_${CROSS_NORM}_buf5k_m0" vanilla cifar_momentum_cross "$SEEDS_CROSS" \
+    if should_run G9; then
+        echo "=== G9: vanilla ER, ${CROSS_NORM}, µ=0, buffer 5k ==="
+        spawn_condition G9 "G9_vanilla_${CROSS_NORM}_buf5k_m0" vanilla cifar_momentum_cross "$SEEDS_CROSS" \
             "${TWO_TASK_GAUSSIAN[@]}" "${VANILLA_ER[@]}" \
             "${CROSS_NORM_OVERRIDES[@]:+${CROSS_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run M2; then
-        echo "=== M2: adaptive curriculum (λ_min=0.20), ${CROSS_NORM}, µ=0, buffer 5k ==="
-        spawn_condition M2 "M2_adaptive_lmin0.20_${CROSS_NORM}_buf5k_m0" adaptive cifar_momentum_cross "$SEEDS_CROSS" \
+    if should_run G10; then
+        echo "=== G10: adaptive curriculum (λ_min=0.20), ${CROSS_NORM}, µ=0, buffer 5k ==="
+        spawn_condition G10 "G10_adaptive_lmin0.20_${CROSS_NORM}_buf5k_m0" adaptive cifar_momentum_cross "$SEEDS_CROSS" \
             "${TWO_TASK_GAUSSIAN[@]}" "${ADAPTIVE_CURRICULUM[@]}" \
             "${CROSS_NORM_OVERRIDES[@]:+${CROSS_NORM_OVERRIDES[@]}}" \
             "memory.total_budget=${BUFFER_BIG}"
     fi
 
-    if should_run M3; then
-        echo "=== M3: asym PER δ=0.1, ${CROSS_NORM}, µ=0, buffer 5k ==="
-        spawn_condition M3 "M3_PER_asym_d0.1_${CROSS_NORM}_buf5k_m0${PER_CG_SUFFIX}" per_asym cifar_momentum_cross "$SEEDS_CROSS" \
+    if should_run G11; then
+        echo "=== G11: asym PER δ=0.1, ${CROSS_NORM}, µ=0, buffer 5k ==="
+        spawn_condition G11 "G11_PER_asym_d0.1_${CROSS_NORM}_buf5k_m0${PER_CG_SUFFIX}" per_asym cifar_momentum_cross "$SEEDS_CROSS" \
             "${TWO_TASK_GAUSSIAN[@]}" "${PER_ASYM_BASE[@]}" \
             "${CROSS_NORM_OVERRIDES[@]:+${CROSS_NORM_OVERRIDES[@]}}" \
             method.fisher.damping=0.1 \
