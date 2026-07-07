@@ -192,97 +192,80 @@ indicated normalisation, over three seeds.
     \resizebox{\textwidth}{!}{%
         \begin{tabular}{l ccc cc c cc}
             \hline
-            Condition            & ACC                 & FORG                 & min-ACC             & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC              & Depth           & Area end        \\
+            Condition            & ACC                 & FORG                & min-ACC             & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC              & Depth           & Area end         \\
             \hline
-            L1 vanilla ER        & 0.889\,$\pm$\,0.007 & 0.096\,$\pm$\,0.008  & 0.845\,$\pm$\,0.007 & 0.065\,$\pm$\,0.008 & 0.317\,$\pm$\,0.006 & 0.870\,$\pm$\,0.006 & 8.9\,$\pm$\,1.7 & 1.0\,$\pm$\,0.2 \\
-            L2 NCL               & 0.815\,$\pm$\,0.003 & -0.033\,$\pm$\,0.004 & 0.811\,$\pm$\,0.006 & 0.159\,$\pm$\,0.009 & 0.423\,$\pm$\,0.006 & 0.783\,$\pm$\,0.006 & 2.5\,$\pm$\,0.6 & 0.4\,$\pm$\,0.0 \\
-            L3 adaptive lmin0.00 & 0.896\,$\pm$\,0.003 & 0.037\,$\pm$\,0.003  & 0.877\,$\pm$\,0.003 & 0.030\,$\pm$\,0.001 & 0.426\,$\pm$\,0.005 & 0.883\,$\pm$\,0.003 & 4.4\,$\pm$\,0.2 & 1.5\,$\pm$\,0.2 \\
-            L4 adaptive lmin0.10 & 0.896\,$\pm$\,0.003 & 0.060\,$\pm$\,0.003  & 0.877\,$\pm$\,0.006 & 0.034\,$\pm$\,0.004 & 0.384\,$\pm$\,0.005 & 0.890\,$\pm$\,0.005 & 4.5\,$\pm$\,0.6 & 0.3\,$\pm$\,0.1 \\
+            \multicolumn{9}{l}{\emph{Momentum $0.0$}}                                                                                                                                                                          \\
+            L1 vanilla ER                      & 0.861\,$\pm$\,0.004 & 0.060\,$\pm$\,0.004 & 0.670\,$\pm$\,0.055 & 0.207\,$\pm$\,0.053 & 0.443\,$\pm$\,0.011 & 0.722\,$\pm$\,0.043 & 21.0\,$\pm$\,5.8 & 3.14\,$\pm$\,0.77 \\
+            L2 curriculum $\lambda_{\min}{=}0.20$ & 0.860\,$\pm$\,0.002 & 0.031\,$\pm$\,0.005 & 0.828\,$\pm$\,0.007 & 0.073\,$\pm$\,0.005 & 0.400\,$\pm$\,0.003 & 0.840\,$\pm$\,0.005 & 4.1\,$\pm$\,0.8  & 1.62\,$\pm$\,0.42 \\
+            L3 asym.\ PER $\delta{=}0.1$       & 0.870\,$\pm$\,0.003 & 0.053\,$\pm$\,0.006 & 0.843\,$\pm$\,0.008 & 0.038\,$\pm$\,0.007 & 0.381\,$\pm$\,0.003 & 0.862\,$\pm$\,0.007 & 4.7\,$\pm$\,1.2  & 0.38\,$\pm$\,0.24 \\
+            \hline
+            \multicolumn{9}{l}{\emph{Momentum $0.9$}}                                                                                                                                                                          \\
+            L1 vanilla ER                      & 0.889\,$\pm$\,0.007 & 0.096\,$\pm$\,0.008 & 0.845\,$\pm$\,0.007 & 0.065\,$\pm$\,0.008 & 0.317\,$\pm$\,0.006 & 0.870\,$\pm$\,0.006 & 8.9\,$\pm$\,1.7  & 1.68\,$\pm$\,0.69 \\
+            L2 curriculum $\lambda_{\min}{=}0.20$ & 0.897\,$\pm$\,0.002 & 0.071\,$\pm$\,0.003 & 0.871\,$\pm$\,0.005 & 0.041\,$\pm$\,0.004 & 0.364\,$\pm$\,0.005 & 0.888\,$\pm$\,0.004 & 5.4\,$\pm$\,0.6  & 0.60\,$\pm$\,0.14 \\
+            L3 asym.\ PER $\delta{=}0.1$       & 0.884\,$\pm$\,0.004 & 0.104\,$\pm$\,0.004 & 0.849\,$\pm$\,0.006 & 0.054\,$\pm$\,0.004 & 0.325\,$\pm$\,0.005 & 0.873\,$\pm$\,0.005 & 7.5\,$\pm$\,1.5  & 0.80\,$\pm$\,0.63 \\
             \hline
         \end{tabular}%
     }
-    \caption{Five-task rot-MNIST (rotations $[-90,-60,-30,0,30]^\circ$, four
-        transitions, momentum $0.9$, five seeds). Depth and area are means over the
-        four task boundaries.}
+    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
+        consecutive transitions, five seeds), the refactored L-series: the two
+        shipping gates against vanilla ER, at both momentum settings. Depth is the
+        worst single-boundary drop (\texttt{gap\_depth}) and area the end-referenced
+        transient (\texttt{gap\_area\_end}), aggregated as in the two-task blocks so
+        the numbers are directly comparable. At momentum $0$ both gates cut the depth
+        from $21$ pp to ${\approx}4$ pp; under momentum, where the per-boundary drops
+        are already smaller, the curriculum stays ahead on cumulative retention
+        (lowest FORG, highest ACC and WC-ACC) while asymmetric PER holds the smallest
+        per-boundary area but, its per-step filter re-inflated by momentum
+        (Section~\ref{subsec:res_directional}), gives up its retention edge and
+        tracks vanilla on FORG.}
     \label{tab:app_longseq}
 \end{table}
 
 \subsection{Supplementary Figures}
 \label{app:supp_figures}
 
-This subsection collects supplementary per-step curves: the full five-task
-rot-MNIST sequence (a multi-transition check reported in Table~\ref{tab:app_longseq})
+This subsection collects supplementary per-step curves: the five-task
+rot-MNIST sequence (the multi-transition check reported in Table~\ref{tab:app_longseq})
 and the three-task group-norm generalisation outlier discussed in
 Section~\ref{subsec:res_cifar}.
 
 \begin{figure*}[htbp]
     \centering
-    \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/L/longseq_t0.png}\\
-        {\scriptsize (a) $T_0$}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/L/longseq_t1.png}\\
-        {\scriptsize (b) $T_1$}
-    \end{minipage}
-
-    \vspace{4pt}
-    \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/L/longseq_t2.png}\\
-        {\scriptsize (c) $T_2$}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/L/longseq_t3.png}\\
-        {\scriptsize (d) $T_3$}
-    \end{minipage}
-
-    \vspace{4pt}
-    \begin{minipage}[t]{0.49\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/L/longseq_t4.png}\\
-        {\scriptsize (e) $T_4$}
-    \end{minipage}
-    \caption{Per-step test accuracy of each task across the full five-task rot-MNIST
-        sequence (rotations $[-90,-60,-30,0,30]^\circ$, four transitions, momentum
-        $0.9$), mean over five seeds with $\pm$std bands. Panels (a)--(e) are tasks
-        $T_0$--$T_4$; conditions are vanilla ER (L1, brown), NCL (L2, green), and the
-        adaptive curriculum at $\lambda_{\min}=0$ (L3, cyan) and $\lambda_{\min}=0.10$
-        (L4, pink). For the earlier tasks (a--d) each later boundary produces a small
-        transient and a step down in the plateau: vanilla ER steps down furthest and
-        holds the lowest plateau (cumulative forgetting, the per-boundary bends being
-        small), the adaptive curricula hold higher, and NCL stays flattest but lowest.
-        The final task (e, $T_4$) sees no later boundary and so shows current-task
-        plasticity rather than a gap: vanilla fits it best and NCL underfits it badly,
-        while the curriculum tracks vanilla. This is where NCL's flat retention is
-        paid for in accuracy.}
+    \includegraphics[width=\linewidth]{img/results/L/longseq.png}
+    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
+        consecutive switches, five seeds with $\pm$std bands), the refactored
+        L-series: first-task $T_0$ accuracy across the whole sequence for vanilla ER
+        (red), the shipping curriculum $\lambda_{\min}{=}0.20$ (blue) and asymmetric
+        PER $\delta{=}0.1$ (aqua); dashed lines mark the four switches, and the two
+        panels are the two momentum settings. \textbf{(a) Momentum $0$:} both gates
+        hold $T_0$ almost flat through every boundary --- asymmetric PER the smoothest
+        of all, with only shallow dips (smallest per-boundary area,
+        Table~\ref{tab:app_longseq}) --- while vanilla ER takes a sharp instantaneous
+        drop at each switch. This is the near-gap-free directional-gate regime the
+        two-task sweep also finds at momentum $0$. \textbf{(b) Momentum $0.9$:}
+        momentum re-inflates PER's per-step filter, exactly as on the two-task
+        benchmark (Section~\ref{subsec:res_directional}), so its boundary transients
+        return and it tracks vanilla on cumulative retention; the curriculum keeps the
+        boundaries smoothest and holds the highest plateau, the least cumulative
+        forgetting on the long horizon. The single-transition reading thus carries
+        past one boundary, and the momentum roles carry with it.}
     \label{fig:longseq}
 \end{figure*}
 
 \begin{figure*}[htbp]
     \centering
-    \begin{minipage}[t]{0.32\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/T/failure_t0.png}\\
-        {\scriptsize (a) $T_0$ (none)}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.32\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/T/failure_t1.png}\\
-        {\scriptsize (b) $T_1$ (Gaussian)}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.32\linewidth}\centering
-        \includegraphics[width=\linewidth]{img/results/T/failure_t2.png}\\
-        {\scriptsize (c) $T_2$ (shot)}
-    \end{minipage}
-    \caption{Per-step test accuracy of each task across the three-task CIFAR-10
+    \includegraphics[width=\linewidth]{img/results/T/cifar_3task_failure.png}
+    \caption{Per-step past-task accuracy across the three-task CIFAR-10
         generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot,
-        ResNet-18, ship config, three seeds with $\pm$std bands), comparing the
-        group-norm run (orange) against its batch-norm counterpart (teal). Panels
-        (a)--(c) are tasks $T_0$--$T_2$; the two boundaries fall at $\sim$2k and
-        $\sim$4k steps. The first boundary (none $\rightarrow$ Gaussian) barely
-        perturbs past-task accuracy in either norm. The second boundary (Gaussian
-        $\rightarrow$ shot, two near-identical corruptions) drives a deep transient in
-        $T_0$ (a) and $T_1$ (b) under group norm only, while the batch-norm run holds
-        flat through both switches; the incoming task $T_2$ (c) is still learned
-        normally under both norms. The dip is thus localised entirely to the second
-        transition and to group norm, the reliability boundary discussed in
+        ResNet-18, shipping curriculum, three seeds with $\pm$std bands), comparing
+        the group-norm run (orange) against its batch-norm counterpart (blue). The
+        two switches (dashed) fall at ${\sim}2$k and ${\sim}4$k steps. The first
+        boundary (none $\rightarrow$ Gaussian) barely perturbs the past tasks in
+        either norm. The second (Gaussian $\rightarrow$ shot, two near-identical
+        corruptions) drives a deep transient in $T_0$ (a) and $T_1$ (b) under group
+        norm only, while the batch-norm run holds flat through both switches. The dip
+        is thus localised entirely to the second transition and to group norm, the
+        adaptive-ratio reliability boundary discussed in
         Section~\ref{subsec:res_cifar}.}
     \label{fig:failure_curves}
 \end{figure*}
