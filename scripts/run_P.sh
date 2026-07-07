@@ -65,7 +65,7 @@
 #
 #   CG_ITERS=60 DAMPINGS="0.03" BUFFER_SET=full bash scripts/run_P.sh
 #
-# → PER_asym_d0.03_fullbuf_cg60, 5 seeds.  Readout: cliffs persist at the same
+# → P4_d0.03_fullbuf_cg60, 5 seeds.  Readout: cliffs persist at the same
 # window steps (~206-219) → curvature-blindness claim stands; cliffs vanish →
 # it was solver error.
 
@@ -221,8 +221,18 @@ for mu in $(momentum_values); do
         fi
 
         for delta in $DAMPINGS; do
-            ablation_value="PER_asym_d${delta}${buf_suffix}${CG_SUFFIX}${mom_suffix}"
-            label="P_d${delta}${buf_suffix}${CG_SUFFIX}"
+            # P-number by damping (matches the numbered style of the other
+            # series): P1=δ1.0, P2=δ0.3, P3=δ0.1, P4=δ0.03.  δ, buffer, CG and
+            # momentum stay as descriptive suffixes on the ablation_value.
+            case "$delta" in
+                1.0)  pnum=1 ;;
+                0.3)  pnum=2 ;;
+                0.1)  pnum=3 ;;
+                0.03) pnum=4 ;;
+                *)    pnum="x" ;;   # off-grid δ — labelled Px so it can't clash
+            esac
+            ablation_value="P${pnum}_d${delta}${buf_suffix}${CG_SUFFIX}${mom_suffix}"
+            label="P${pnum}"
             echo ""
             echo "=== ${ablation_value}: asymmetric PER, δ=${delta}, buffer=${buf}, µ=${mu} ==="
             tags_csv="${ABLATION_KEY},${label},${mom_tag}"
