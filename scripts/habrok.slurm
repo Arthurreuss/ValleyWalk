@@ -15,7 +15,7 @@
 #
 #   D           decomposition (run_D.sh, rot-MNIST):  D1..D6 × 5 seeds, µ both  = 30
 #   C           curriculum    (run_C.sh, rot-MNIST):  C1..C7 × 5 seeds, µ both  = 35
-#   C-5task     long sequence (run_C.sh, rot-MNIST):  L1..L4 × 5 seeds          = 20
+#   L           long sequence (run_L.sh, rot-MNIST):  L1..L3 × 5 seeds, µ both  = 15
 #   P           PER sweep     (run_P.sh, rot-MNIST):  δ∈{1.0,0.3,0.1,0.03} × 5  = 20
 #   G-headline  CIFAR headline(run_G.sh):             G1..G6 × 5 seeds          = 30
 #   G-gen       CIFAR general.(run_G.sh):             Gs1..Gt1v × 3 seeds       = 18
@@ -24,7 +24,7 @@
 #
 # Default SUITE is "G-per G-mom" (25 tasks) — the old habrok_cifar_PM behaviour.
 #
-# The rot-MNIST suites (D, C, C-5task, P) run an MLP in seconds and do not need
+# The rot-MNIST suites (D, C, L, P) run an MLP in seconds and do not need
 # a GPU, but running them here is harmless if you want one submission path.
 #
 # ─── USAGE ────────────────────────────────────────────────────────────────
@@ -88,11 +88,11 @@ for suite in $SUITE; do
             done; done ;;
         C)
             for c in C1 C2 C3 C4 C5 C6 C7; do for s in "${SEEDS_5[@]}"; do
-                add "run_C.sh|BLOCKS=rot_mnist CONDITIONS=$c SEEDS=$s MOMENTUM_SET=both|C/$c/s$s"
+                add "run_C.sh|CONDITIONS=$c SEEDS=$s MOMENTUM_SET=both|C/$c/s$s"
             done; done ;;
-        C-5task)
-            for c in L1 L2 L3 L4; do for s in "${SEEDS_5[@]}"; do
-                add "run_C.sh|BLOCKS=rot_mnist_5task CONDITIONS=$c SEEDS=$s|C-5task/$c/s$s"
+        L)
+            for c in L1 L2 L3; do for s in "${SEEDS_5[@]}"; do
+                add "run_L.sh|CONDITIONS=$c SEEDS=$s MOMENTUM_SET=both|L/$c/s$s"
             done; done ;;
         P)
             for d in 1.0 0.3 0.1 0.03; do for s in "${SEEDS_5[@]}"; do
@@ -115,7 +115,7 @@ for suite in $SUITE; do
                 add "run_G.sh|BLOCKS=momentum_cross CONDITIONS=$c SEEDS_CROSS=$s|G/$c/s$s"
             done; done ;;
         *)
-            echo "ERROR: unknown SUITE '$suite'. Valid: D C C-5task P G-headline G-gen G-per G-mom" >&2
+            echo "ERROR: unknown SUITE '$suite'. Valid: D C L P G-headline G-gen G-per G-mom" >&2
             exit 1 ;;
     esac
 done
