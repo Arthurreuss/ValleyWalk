@@ -35,20 +35,34 @@
 #             mirrors D2/D4).  The Fisher metric stays on a sampled subset
 #             (see precond_er.py).  Isolates mechanism from estimator variance.
 #
-# Fixed across all runs: apply_to=current, fisher.target=replay, warm-started
-# CG.  cg.iters is raised to 25 (default; override via CG_ITERS): the system
-# (F+δI) has condition number ~λ_max/δ, so small δ needs more CG iterations —
-# check the logged cg_residual if you push δ below 0.03.
+# Variant (VARIANT_SET, see below): the apply_to knob selects which gradient
+# the damped-natural-gradient solve filters.
+#   asym — apply_to=current: only the interfering current-task gradient is
+#          curvature-filtered; the restorative g_rep passes through raw.  This
+#          is the shipping gate and the default.
+#   sym  — apply_to=joint: the whole joint step δ(F+δI)⁻¹(g_cur+g_rep) is
+#          filtered, so the restorative replay gradient is suppressed in the
+#          same directions as the interference (near-identity to plain ER at
+#          the endpoint; the diagnostic contrast — see precond_er.py).
 #
-# Default: 4 dampings × 2 buffer legs × 1 momentum leg (µ=0) × 5 seeds
-# = 40 runs.  Momentum legs opt-in via MOMENTUM_SET (see below): the µ=0.9
-# transient confounds the δ readout, so answer the µ=0 question first.
+# Fixed across all runs: fisher.target=replay, warm-started CG.  apply_to is
+# set per variant by VARIANT_SET.  cg.iters is raised to 25 (default; override
+# via CG_ITERS): the system (F+δI) has condition number ~λ_max/δ, so small δ
+# needs more CG iterations — check the logged cg_residual if you push δ below
+# 0.03.
+#
+# Default: 1 variant (asym) × 4 dampings × 2 buffer legs × 1 momentum leg (µ=0)
+# × 5 seeds = 40 runs.  The symmetric variant is opt-in via VARIANT_SET, and
+# momentum legs via MOMENTUM_SET (see below): the µ=0.9 transient confounds the
+# δ readout, so answer the µ=0 question first.
 #
 # Usage
 # -----
 #   bash scripts/run_P.sh                          # full default sweep
 #   DAMPINGS="0.1 0.03" bash scripts/run_P.sh      # subset of δ
 #   BUFFER_SET=full      bash scripts/run_P.sh     # fullbuf leg only
+#   VARIANT_SET=sym      bash scripts/run_P.sh     # symmetric PER only
+#   VARIANT_SET=both     bash scripts/run_P.sh     # asym + sym variants
 #   MOMENTUM_SET=both    bash scripts/run_P.sh     # add the µ=0.9 leg
 #   SEEDS="1,2,3,4,5"    bash scripts/run_P.sh     # custom seeds
 #   N_JOBS=4             bash scripts/run_P.sh     # cap parallelism
@@ -87,6 +101,10 @@ BUFFER_SET="${BUFFER_SET:-both}"
 # MOMENTUM_SET: "off" → µ=0.0 only (default — clean δ readout), "on" → µ=0.9
 # only, "both" → both legs.
 MOMENTUM_SET="${MOMENTUM_SET:-off}"
+
+# VARIANT_SET: "asym" → asymmetric only (apply_to=current, default — the
+# shipping gate), "sym" → symmetric only (apply_to=joint), "both" → both.
+VARIANT_SET="${VARIANT_SET:-asym}"
 
 CG_ITERS_DEFAULT=25
 CG_ITERS="${CG_ITERS:-${CG_ITERS_DEFAULT}}"
@@ -144,6 +162,7 @@ echo "Git commit:    ${GIT_COMMIT}"
 echo "Python:        ${PYTHON}"
 echo "Dampings:      ${DAMPINGS}"
 echo "Buffer set:    ${BUFFER_SET}"
+echo "Variant set:   ${VARIANT_SET}"
 echo "Momentum set:  ${MOMENTUM_SET}"
 echo "CG iters:      ${CG_ITERS}"
 echo "Seeds:         ${SEEDS}"
@@ -203,6 +222,15 @@ buffer_values() {
     esac
 }
 
+variant_values() {
+    case "${VARIANT_SET}" in
+        asym) echo "asym" ;;
+        sym)  echo "sym" ;;
+        both) echo "asym sym" ;;
+        *) echo "ERROR: unknown VARIANT_SET=${VARIANT_SET} (expected asym|sym|both)" >&2; exit 1 ;;
+    esac
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Sweep
 # ──────────────────────────────────────────────────────────────────────────────
@@ -231,29 +259,48 @@ for mu in $(momentum_values); do
                 0.03) pnum=4 ;;
                 *)    pnum="x" ;;   # off-grid δ — labelled Px so it can't clash
             esac
-            ablation_value="P${pnum}_d${delta}${buf_suffix}${CG_SUFFIX}${mom_suffix}"
-            label="P${pnum}"
-            echo ""
-            echo "=== ${ablation_value}: asymmetric PER, δ=${delta}, buffer=${buf}, µ=${mu} ==="
-            tags_csv="${ABLATION_KEY},${label},${mom_tag}"
-            for seed in "${SEED_ARRAY[@]}"; do
-                spawn_job \
-                    method=precond_er \
-                    "${DATASET_OVERRIDES[@]}" \
-                    "${EVAL_OVERRIDES[@]}" \
-                    "training.momentum=${mu}" \
-                    "seed=${seed}" \
-                    "+ablation_key=${ABLATION_KEY}" \
-                    "+ablation_value=${ablation_value}" \
-                    "tracking.wandb.tags=[${tags_csv}]" \
-                    method.apply_to=current \
-                    method.fisher.target=replay \
-                    "method.fisher.damping=${delta}" \
-                    "method.cg.iters=${CG_ITERS}" \
-                    method.cg.warm_start=true \
-                    "${BUF_OVERRIDES[@]+"${BUF_OVERRIDES[@]}"}"
+
+            for variant in $(variant_values); do
+                # apply_to selects the variant: "current" filters only the
+                # interfering current-task gradient (asymmetric, the shipping
+                # gate); "joint" curvature-filters the whole g_cur+g_rep step
+                # (symmetric — the restorative g_rep is suppressed in the same
+                # directions; see src/methods/precond_er.py).  The asymmetric
+                # leg keeps its original ablation_value so its outputs stay
+                # byte-identical to earlier sweeps; the symmetric leg adds a
+                # "_sym" suffix so the two aggregate separately.
+                if [ "$variant" = "sym" ]; then
+                    apply_to="joint";   variant_suffix="_sym"; variant_tag="sym"
+                    variant_name="symmetric"
+                else
+                    apply_to="current"; variant_suffix="";     variant_tag="asym"
+                    variant_name="asymmetric"
+                fi
+
+                ablation_value="P${pnum}_d${delta}${variant_suffix}${buf_suffix}${CG_SUFFIX}${mom_suffix}"
+                label="P${pnum}"
+                echo ""
+                echo "=== ${ablation_value}: ${variant_name} PER, δ=${delta}, buffer=${buf}, µ=${mu} ==="
+                tags_csv="${ABLATION_KEY},${label},${mom_tag},${variant_tag}"
+                for seed in "${SEED_ARRAY[@]}"; do
+                    spawn_job \
+                        method=precond_er \
+                        "${DATASET_OVERRIDES[@]}" \
+                        "${EVAL_OVERRIDES[@]}" \
+                        "training.momentum=${mu}" \
+                        "seed=${seed}" \
+                        "+ablation_key=${ABLATION_KEY}" \
+                        "+ablation_value=${ablation_value}" \
+                        "tracking.wandb.tags=[${tags_csv}]" \
+                        "method.apply_to=${apply_to}" \
+                        method.fisher.target=replay \
+                        "method.fisher.damping=${delta}" \
+                        "method.cg.iters=${CG_ITERS}" \
+                        method.cg.warm_start=true \
+                        "${BUF_OVERRIDES[@]+"${BUF_OVERRIDES[@]}"}"
+                done
+                wait_block "${ablation_value}"
             done
-            wait_block "${ablation_value}"
         done
     done
 done
