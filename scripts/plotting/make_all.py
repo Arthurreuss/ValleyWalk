@@ -10,16 +10,18 @@ Run scripts/aggregate_results.py first if outputs/ has changed.
 from __future__ import annotations
 
 from scripts.plotting import (
-    fig_drivers, fig_curriculum, fig_per_sweep, fig_frontier,
-    fig_cifar, fig_longseq, fig_cifar_failure,
+    fig_drivers, fig_rq1_cross, fig_curriculum, fig_per_sweep, fig_regime,
+    fig_frontier, fig_cifar, fig_longseq, fig_cifar_failure,
 )
 
 FIGURES = [
     ("RQ1  driver arc",            fig_drivers),
+    ("RQ1  path x drivers cross",  fig_rq1_cross),
     ("RQ2  curriculum",            fig_curriculum),
     ("RQ3  asym-PER delta sweep",  fig_per_sweep),
-    ("RQ4a frontier",              fig_frontier),
-    ("RQ4b CIFAR headline",        fig_cifar),
+    ("syn  momentum regime",       fig_regime),
+    ("app  frontier scatter",      fig_frontier),
+    ("RQ4  CIFAR headline",        fig_cifar),
     ("app  long sequence",         fig_longseq),
     ("app  CIFAR 3-task outlier",  fig_cifar_failure),
 ]
