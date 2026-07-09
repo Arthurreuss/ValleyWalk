@@ -22,6 +22,12 @@
 
 
 \usepackage{epstopdf}
+
+% Page layout: wider & longer columns. geometry owns the vertical layout,
+% so the manual \voffset below is disabled to avoid fighting it.
+% headheight/headsep are kept small so body pages don't reserve a tall (empty)
+% header band; the first-page logo lives in the body flow instead (see main.tex).
+\usepackage[a4paper,top=1.2cm,bottom=2cm,left=2cm,right=2cm,columnsep=0.7cm,headheight=14pt,headsep=10pt,includeheadfoot]{geometry}
 \selectlanguage{english}
 \DeclareCaptionFont{bold}{\bfseries}
 \DeclareCaptionFont{normal}{\color{black}}
@@ -37,13 +43,19 @@
 \renewcommand{\abstractnamefont}{\normalfont\normalsize\bfseries}
 \renewcommand{\abstracttextfont}{\normalfont\normalsize}
 
+% Title block (titling): the RUG logo rides above the title so body pages need
+% no tall header band. \droptitle nudges the whole block toward the page top.
+\setlength{\droptitle}{-1cm}
+\pretitle{\begin{center}\includegraphics[width=14cm]{./img/rugr_fse_ai_en_rood}\\[3ex]\LARGE\bfseries}
+\posttitle{\par\end{center}\vskip 0.5em}
+
 % Header configuration
 
 \pagestyle{fancy}
 \fancyhead{} % remove default contents
 \fancyfoot{} % remove default contents
-\setlength{\voffset}{-0.75in}
-\setlength{\headheight}{0.6in}
+% \setlength{\voffset}{-0.75in}  % disabled: geometry now owns vertical layout
+% \setlength{\headheight}{0.6in}  % disabled: geometry sets a small headheight now
 \renewcommand{\headrulewidth}{0pt} % remove hline
 \rfoot{
     \thepage
@@ -53,7 +65,7 @@
 {
     \fancyhf{}
     \rfoot{\thepage}
-    \chead{\includegraphics[width=14cm]{./img/rugr_fse_ai_en_rood}}
+    % logo moved into the body flow (main.tex) so body pages need no tall header
 }
 
 

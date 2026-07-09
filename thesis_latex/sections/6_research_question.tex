@@ -1,18 +1,18 @@
 \section{Research Questions}
 \label{sec:proposed_approach}
 
-The two-level account of Section~\ref{sec:motivation} and the bound of Section~\ref{sec:theory} make falsifiable predictions about the gap and about each gate. The experiments are organised around four questions. Each is evaluated first on rotated MNIST with a small multilayer perceptron, where the gap can be probed step by step across many conditions and seeds, and then, for the fourth question, on a deeper backbone and a stronger task shift.
+The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the gap and each gate. The experiments are organised around four questions, each evaluated first on rotated MNIST with a small MLP, where the gap can be probed step by step across many conditions and seeds, and then, for the fourth, on a deeper backbone and a stronger task shift.
 
-\paragraph{RQ1 --- The account.} Does the stability gap separate into a deterministic arc of the descent path and overshoot of the followed path? The account predicts that the two levels respond to different interventions and are jointly responsible for the gap. Removing the overshoot drivers by construction (balanced gradients, exact replay gradients) should flatten the drop and leave the arc. Placing the optimiser on the reference path (the curriculum) should remove the arc and leave the overshoot. Applying both should remove the gap, while the permanent stability--plasticity cost remains visible elsewhere, as reduced plasticity.
+\paragraph{RQ1 --- The account.} Does the gap separate into a deterministic arc of the descent path and overshoot of the followed path, such that removing the overshoot drivers leaves the arc, placing the optimiser on the reference path leaves the overshoot, and doing both removes the gap while the permanent stability--plasticity cost stays visible as reduced plasticity?
 
 \paragraph{RQ2 --- The scalar feedback gate.} Does the $\lambda$-curriculum reduce the gap by timing the new-task push, and how do its ingredients divide the work? Four sub-questions probe the design:
 \begin{description}
     \item[RQ2a (linear ramp).] Does gap depth fall as the ramp length $N$ grows, consistent with the $O(1/N)$ bound?
     \item[RQ2b (adaptive schedule).] Does the gradient-norm feedback signal match the best fixed ramp while removing the knob $N$?
     \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early plasticity at a modest depth cost?
-    \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged? The account predicts this composition because the curriculum attenuates the push at source, leaving momentum a clean signal to average and accelerate.
+    \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged?
 \end{description}
 
-\paragraph{RQ3 --- The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, and where does a feedforward gate fail? The account predicts that depth and arc shrink monotonically as $\delta \to 0$ at little plasticity cost, and it predicts two failure modes: damage that passes through directions the sampled Fisher rates as flat, and a partial undoing of the per-step protection under momentum, because accumulation rebuilds the push the filter removes at each step.
+\paragraph{RQ3 --- The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, and where does a feedforward gate fail?
 
-\paragraph{RQ4 --- Frontier and generalisation.} How do the two gates compare on the stability--plasticity frontier, and do the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption)? This includes the momentum predictions of RQ2d and RQ3 as a cross of momentum settings on the deeper backbone.
+\paragraph{RQ4 --- The regime flip and generalisation.} At a matched memory budget, does the better of the two gates flip with momentum rather than trading along a fixed frontier? The account predicts that with momentum off the directional gate is strictly better (it pays no plasticity), while momentum re-inflates its per-step filter and hands the advantage to the scalar gate, which composes with momentum at source. RQ4 also asks whether the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption), including the momentum predictions of RQ2d and RQ3 as a cross of momentum settings on that backbone.

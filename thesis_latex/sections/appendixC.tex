@@ -84,6 +84,43 @@ threshold for the whole window (no recovery event to time).
     \label{tab:app_curr}
 \end{table}
 
+\paragraph{Full-buffer momentum diagnostic (C8).}
+Table~\ref{tab:res_c8} crosses the shipping curriculum with the full $60$k buffer
+at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}).
+Source variance reduction alone (C8, full buffer, $\mu{=}0$) already closes the
+gap to $0.2$ pp, so the residual the curriculum leaves at $\mu{=}0$ is estimator
+variance, not structure; momentum's gap-closing role is interchangeable with the
+full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$
+reaches $0.955$, the highest in the benchmark, while re-introducing only a $2.0$
+pp transient. C8$_M$'s tail (area $0.38$) exceeds C7$_M$'s ($0.03$) because C7$_M$'s
+residual is a permanent step to a lower plateau that the end-referenced area
+excludes (Section~\ref{subsec:metrics}), whereas C8$_M$ recovers to the highest
+accuracy in the benchmark, so its dip is a genuine transient the area counts in
+full. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
+premise, and the practical scalar-gate configuration remains C7$_M$
+($3.7$ pp / $0.03$ / $0.931$) at $1/60$th the memory.
+
+\begin{table}[H]
+    \centering
+    \small
+    \resizebox{\columnwidth}{!}{%
+        \begin{tabular}{l cccc}
+            \hline
+                                     & C7              & C7$_M$            & C8                & C8$_M$              \\
+                                     & (1k, $\mu{=}0$) & (1k, $\mu{=}0.9$) & (full, $\mu{=}0$) & (full, $\mu{=}0.9$) \\
+            \hline
+            \texttt{gap\_depth} (pp) & $13.9$          & $3.7$             & $\mathbf{0.2}$    & $2.0$               \\
+            \texttt{gap\_area\_end}  & $2.7$           & $0.03$            & $\mathbf{0.05}$   & $0.38$              \\
+            ACC                      & $0.837$         & $0.931$           & $0.818$           & $\mathbf{0.955}$    \\
+            \hline
+        \end{tabular}}
+    \caption{Curriculum $\times$ full buffer $\times$ momentum on rot-MNIST,
+        isolating momentum's two roles. Source variance reduction alone (C8) closes
+        the gap; acceleration alone (the $\mu$ column) restores accuracy. The residual
+        at C7 ($\mu{=}0$) is variance, not structure.}
+    \label{tab:res_c8}
+\end{table}
+
 \subsection{rot-MNIST: Buffer-Fidelity Diagnostics}
 \label{app:grad_full}
 
@@ -114,6 +151,58 @@ $1{,}000$-sample reservoir incurs against $g_{\text{true}}$.
         $\cos(g_{\text{replay}}, g_{\text{true}})$ over the window; $\bar{\rho}$ is the
         mean of $\|g_{\text{replay}}\|/\|g_{\text{true}}\|$.}
     \label{tab:app_grad}
+\end{table}
+
+\subsection{rot-MNIST: Symmetric vs.\ Asymmetric Preconditioning}
+\label{app:per_sym}
+
+Leaving the restoring gradient $g_{\text{rep}}$ at full strength is the directional
+gate's defining choice (Section~\ref{subsec:res_directional}). The alternative is to
+precondition the summed update, $d = \delta(F_{\text{rep}}+\delta I)^{-1}(g_{\text{cur}}+g_{\text{rep}})$,
+the symmetric variant that passes both gradients through the same metric. Because
+$g_{\text{rep}}$ is the gradient of the replay loss, it lies in the top eigenspace of that
+loss's own Fisher $F_{\text{rep}}$, so the symmetric filter shrinks the restoring
+gradient \emph{harder} than the harmful push it is meant to brake and cannot
+preferentially protect the past task. Table~\ref{tab:res_per_sym} sweeps the same
+$\delta$ on both variants, and they are mirror images. As the filter strengthens
+($\delta \to 0$) the asymmetric gate's forgetting falls ($2.7 \to 1.2$ pp) and its
+accuracy rises, while the symmetric gate's forgetting \emph{climbs} ($3.0 \to 6.6$ pp)
+and its accuracy falls; every one of these four trends holds across all five seeds.
+Symmetric depth barely moves across the sweep ($5.7 \to 6.7$ pp) and at $\delta{=}1.0$
+even sits below the asymmetric gate's ($5.7$ vs.\ $9.0$ pp), because filtering the whole
+update also damps the per-step \emph{expression} of the dip. This is the area caveat of
+Section~\ref{subsec:metrics} made concrete: the symmetric gate's end-referenced area
+collapses toward zero ($2.7 \to 0.01$) not because the dip recovers but because it stops
+recovering, settling into a permanent accommodation that the area excludes and the
+forgetting metric records. Read on depth or transient area the symmetric gate looks
+competitive; read on forgetting and final accuracy it degrades monotonically as its
+filter strengthens. Asymmetry is what turns the filter from a reshuffling of the damage
+into a net removal of it.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l ccc c ccc}
+        \hline
+                 & \multicolumn{3}{c}{Asymmetric ($g_{\text{rep}}$ free)} &  & \multicolumn{3}{c}{Symmetric (joint)}          \\
+        \cline{2-4}\cline{6-8}
+        $\delta$ & depth (pp) & FORG (pp) & ACC     &  & depth (pp) & FORG (pp) & ACC     \\
+        \hline
+        $1.0$    & $9.0$      & $2.7$     & $0.869$ &  & $5.7$      & $3.0$     & $0.872$ \\
+        $0.3$    & $7.4$      & $2.3$     & $0.873$ &  & $5.9$      & $4.2$     & $0.867$ \\
+        $0.1$    & $5.9$      & $1.8$     & $0.876$ &  & $6.2$      & $5.7$     & $0.861$ \\
+        $0.03$   & $4.8$      & $1.2$     & $0.880$ &  & $6.7$      & $6.6$     & $0.857$ \\
+        \hline
+    \end{tabular}
+    \caption{Asymmetric versus symmetric preconditioning on the standard $1$k buffer at
+        momentum $0$, five seeds, sweeping the shared damping $\delta$. Both variants filter
+        through the replay Fisher $F_{\text{rep}}$; they differ only in whether the metric is
+        applied to the new-task push alone (asymmetric, $g_{\text{rep}}$ left free) or to the
+        summed update (symmetric). As $\delta \to 0$ the asymmetric gate improves on every
+        axis while the symmetric gate degrades on every axis; symmetric depth stays flat
+        because the filter suppresses the per-step expression of the dip even as the
+        underlying forgetting grows (Section~\ref{subsec:metrics}).}
+    \label{tab:res_per_sym}
 \end{table}
 
 \subsection{CIFAR-10: Headline Block}
@@ -182,6 +271,87 @@ indicated normalisation, over three seeds.
     \label{tab:app_cifar_gen}
 \end{table}
 
+\subsection{CIFAR-10: Momentum Cross and Compute Cost}
+\label{app:cifar_extra}
+
+This subsection collects the three deep-backbone checks summarised in
+Section~\ref{subsec:res_cifar}: the momentum cross (Table~\ref{tab:res_cifar_mom}),
+the generalisation block (Table~\ref{tab:app_cifar_gen} above), and the compute cost
+(Table~\ref{tab:res_cost}).
+
+\paragraph{Momentum cross.}
+The cross repeats the composability test of Section~\ref{subsec:momentum} on the
+ResNet, pairing momentum-$0$ runs at group norm against the momentum-$0.9$ rows.
+Two of the three predicted signatures reproduce: momentum leaves vanilla ER's depth
+essentially unchanged ($40.5 \rightarrow 41.2$ pp, the deterministic-first-step null),
+and it composes with the curriculum, taking depth from $28.6$ to $5.2$ pp (source
+attenuation). The third, momentum re-inflating the directional gate, does not appear:
+momentum takes asymmetric PER from $22.6$ to $5.6$ pp instead. We read this as a
+convergence confound rather than a failure of the account: at momentum $0$ the ResNet
+under-converges the past task in ten epochs (vanilla min-ACC $0.11$, ACC $0.65$), so the
+momentum-$0$ depths sit on a degraded baseline and the directional-gate contrast is
+dominated by the general convergence gain rather than the per-step-attenuation effect
+the full-buffer MLP isolates cleanly (Section~\ref{subsec:res_directional}). On this
+backbone we confirm the mechanism only for the two gates whose momentum contrast is not
+swamped by convergence.
+
+\begin{table}[H]
+    \centering
+    \small
+    \resizebox{\columnwidth}{!}{%
+        \begin{tabular}{l cc}
+            \hline
+            Method (GroupNorm)                   & depth, $\mu{=}0$ & depth, $\mu{=}0.9$ \\
+            \hline
+            Vanilla ER                           & $40.5 \pm 4.0$   & $41.2 \pm 13.5$    \\
+            Curriculum ($\lambda_{\min}{=}0.20$) & $28.6 \pm 8.8$   & $5.2 \pm 2.1$      \\
+            Asym.\ PER ($\delta{=}0.1$)          & $22.6 \pm 9.7$   & $5.6 \pm 1.1$      \\
+            \hline
+        \end{tabular}}
+    \caption{CIFAR-10 momentum cross (group norm, buffer $5{,}000$, five seeds), gap
+        depth in pp. The vanilla null and the curriculum composition reproduce; the
+        directional-gate re-inflation does not, confounded by momentum-$0$
+        under-convergence of the ResNet.}
+    \label{tab:res_cifar_mom}
+\end{table}
+
+\paragraph{Compute cost.}
+The scalar gate is a single changing scalar --- one gradient-norm ratio per step, no
+stored curvature --- so its wall-clock is indistinguishable from vanilla ER: on the
+ResNet-18 the gate-active task ($T_1$) takes $2{,}833$\,s under the curriculum against
+$2{,}836$\,s under vanilla at batch norm, and $4{,}749$ vs.\ $4{,}624$\,s at group norm.
+The directional gate runs $25$ conjugate-gradient Fisher-vector products per step, each on
+the order of a backward pass, so the same task takes $11{,}712$\,s (batch norm) and
+$10{,}057$\,s (group norm), a $4.1\times$ and $2.1\times$ multiple of the curriculum. As a
+machine-independent ratio --- the slowdown of the gate-active task relative to the un-gated
+first task --- vanilla and the curriculum both sit at ${\approx}5\times$ while asymmetric PER
+sits at $24$--$29\times$. On the MLP the same overhead is only ${\approx}8\%$ (curriculum
+$231$\,s, PER $250$\,s), because the cheap backward pass and per-step evaluation dominate the
+wall clock and mask the solve; the gap widens with backbone depth.
+
+\begin{table}[H]
+    \centering
+    \small
+    \resizebox{\columnwidth}{!}{%
+        \begin{tabular}{l ccc}
+            \hline
+            Gate (task $T_1$, gate active) & rot-MNIST MLP & ResNet-18 BN  & ResNet-18 GN  \\
+            \hline
+            Vanilla ER                     & ---           & $2{,}836$\,s  & $4{,}624$\,s  \\
+            Curriculum (scalar)            & $231$\,s      & $2{,}833$\,s  & $4{,}749$\,s  \\
+            Asym.\ PER ($\delta{=}0.1$)    & $250$\,s      & $11{,}712$\,s & $10{,}057$\,s \\
+            \hline
+        \end{tabular}}
+    \caption{Wall-clock of the gate-active task ($T_1$), mean over five seeds. The scalar
+        gate's cost is indistinguishable from vanilla ER; the directional gate's per-step
+        conjugate-gradient solve multiplies it up to $4\times$ on the ResNet-18, and the
+        multiple grows with backbone depth. The MLP vanilla cell is omitted because its
+        driver-block run additionally carries the per-step gradient-fidelity diagnostic;
+        the curriculum and PER MLP runs carry no such diagnostic and are directly
+        comparable.}
+    \label{tab:res_cost}
+\end{table}
+
 \subsection{Long-Sequence rot-MNIST (L-series)}
 \label{app:longseq_full}
 
@@ -224,10 +394,32 @@ indicated normalisation, over three seeds.
 \subsection{Supplementary Figures}
 \label{app:supp_figures}
 
-This subsection collects supplementary per-step curves: the five-task
-rot-MNIST sequence (the multi-transition check reported in Table~\ref{tab:app_longseq})
-and the three-task group-norm generalisation outlier discussed in
-Section~\ref{subsec:res_cifar}.
+This subsection collects supplementary figures: the accuracy--depth scatter of
+every rot-MNIST gate condition (Figure~\ref{fig:frontier}), the five-task
+rot-MNIST sequence (the multi-transition check reported in
+Table~\ref{tab:app_longseq}), and the three-task group-norm generalisation outlier
+discussed in Section~\ref{subsec:res_cifar}.
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/F/frontier.png}
+    \caption{Accuracy--depth scatter of every rot-MNIST gate condition: final accuracy
+        (right is better) against gap depth (up is better, axis inverted). The $\lambda$-path
+        (blue) is the curriculum, adaptive$+\lambda_{\min}$ as filled circles and linear ramps
+        as open circles; the $\delta$-path (aqua) is asymmetric PER, the $1$k buffer as filled
+        squares and the full buffer as open diamonds, each sweeping $\delta = 1.0 \rightarrow 0.03$;
+        grey stars are the anchors (no-gate D1, driver floor D4, full-buffer floor C8).
+        \textbf{(a) Momentum $0$:} at a matched $1$k buffer the $\delta$-path dominates the
+        $\lambda$-path, lower depth \emph{and} higher accuracy, reaching the D4 floor. \textbf{(b)
+        Momentum $0.9$:} the apparent trade in this panel is a buffer mismatch --- the
+        directional gate's high-accuracy points ($\approx 0.965$) are its full $60$k-buffer
+        (open-diamond) legs, set against the curriculum's practical $1$k buffer. Held at a common
+        buffer the panel collapses to the regime flip of Section~\ref{subsec:res_regimeflip}:
+        momentum re-inflates the directional gate and the scalar gate becomes the lower-gap
+        method. This figure is retained as the underlying scatter; the frontier reading it once
+        suggested is superseded.}
+    \label{fig:frontier}
+\end{figure*}
 
 \begin{figure*}[htbp]
     \centering
