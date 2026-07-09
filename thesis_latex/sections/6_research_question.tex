@@ -1,7 +1,7 @@
 \section{Research Questions}
 \label{sec:proposed_approach}
 
-The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the gap and each gate. The experiments are organised around four questions, each evaluated first on rotated MNIST with a small MLP, where the gap can be probed step by step across many conditions and seeds, and then, for the fourth, on a deeper backbone and a stronger task shift.
+The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the gap and each gate. The experiments are organised around four questions. The first three are answered on rotated MNIST with a small MLP, where the gap can be probed step by step across many conditions and seeds; the fourth asks whether those answers survive a deeper backbone and a stronger task shift.
 
 \paragraph{RQ1 --- The account.} Does the gap separate into a deterministic arc of the descent path and overshoot of the followed path, such that removing the overshoot drivers leaves the arc, placing the optimiser on the reference path leaves the overshoot, and doing both removes the gap while the permanent stability--plasticity cost stays visible as reduced plasticity?
 
@@ -13,6 +13,6 @@ The two-level account and tracking bound of Section~\ref{sec:motivation} make fa
     \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged?
 \end{description}
 
-\paragraph{RQ3 --- The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, and where does a feedforward gate fail?
+\paragraph{RQ3 --- The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, at what plasticity cost, and where does a feedforward gate fail? The account predicts two failure axes: blind spots of the sampled curvature metric, and momentum, whose accumulated velocity rebuilds the push the filter shrinks one step at a time.
 
-\paragraph{RQ4 --- The regime flip and generalisation.} At a matched memory budget, does the better of the two gates flip with momentum rather than trading along a fixed frontier? The account predicts that with momentum off the directional gate is strictly better (it pays no plasticity), while momentum re-inflates its per-step filter and hands the advantage to the scalar gate, which composes with momentum at source. RQ4 also asks whether the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption), including the momentum predictions of RQ2d and RQ3 as a cross of momentum settings on that backbone.
+\paragraph{RQ4 --- Generalisation.} Do the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption): does each gate still cut the gap at matched final accuracy, and do the momentum signatures of RQ2d and RQ3 reproduce there as a cross of momentum settings?
