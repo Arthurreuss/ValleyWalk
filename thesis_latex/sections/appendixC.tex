@@ -394,11 +394,19 @@ wall clock and mask the solve; the gap widens with backbone depth.
 \subsection{Supplementary Figures}
 \label{app:supp_figures}
 
-This subsection collects supplementary figures: the accuracy--depth scatter of
+This subsection collects supplementary figures: the full driver ladder
+(Figure~\ref{fig:g_curves}), the accuracy--depth scatter of
 every rot-MNIST gate condition (Figure~\ref{fig:frontier}), the five-task
 rot-MNIST sequence (the multi-transition check reported in
 Table~\ref{tab:app_longseq}), and the three-task group-norm generalisation outlier
 discussed in Section~\ref{subsec:res_cifar}.
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/results/D/drivers_t0.png}
+    \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. \emph{Depth} of the boundary spike falls when balancing switches off the imbalance driver (deep for the unbalanced D1, D2; shallow for the balanced D3, D4), while \emph{jitter} vanishes when the exact replay gradient switches off the variance driver (the full-data D2, D4 are smooth, the finite-buffer D1, D3 noisy). What no removal touches is the smooth dip-and-recover \emph{bend} beneath the spike, cleanest in the exact-gradient D4 where no jitter can hide it: that bend is the deterministic arc, and it responds to no optimiser hygiene, only to a change of path.}
+    \label{fig:g_curves}
+\end{figure*}
 
 \begin{figure*}[htbp]
     \centering
@@ -411,13 +419,12 @@ discussed in Section~\ref{subsec:res_cifar}.
         grey stars are the anchors (no-gate D1, driver floor D4, full-buffer floor C8).
         \textbf{(a) Momentum $0$:} at a matched $1$k buffer the $\delta$-path dominates the
         $\lambda$-path, lower depth \emph{and} higher accuracy, reaching the D4 floor. \textbf{(b)
-        Momentum $0.9$:} the apparent trade in this panel is a buffer mismatch --- the
+        Momentum $0.9$:} the apparent trade in this panel is a buffer mismatch: the
         directional gate's high-accuracy points ($\approx 0.965$) are its full $60$k-buffer
         (open-diamond) legs, set against the curriculum's practical $1$k buffer. Held at a common
         buffer the panel collapses to the regime dependence of Section~\ref{subsec:res_regimeflip}:
         momentum re-inflates the directional gate and the scalar gate becomes the lower-gap
-        method. This figure is retained as the underlying scatter; the frontier reading it once
-        suggested is superseded.}
+        method.}
     \label{fig:frontier}
 \end{figure*}
 
