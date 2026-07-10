@@ -1,8 +1,9 @@
 \section{Complete Results}
 \label{app:full_results}
 
-This appendix gives the full metric set for every condition, as recorded by the
-aggregation pipeline of Section~\ref{subsec:metrics}. Each row is the mean over
+This appendix gives the full metric set for every condition of the main
+experimental blocks, as recorded by the aggregation pipeline of
+Section~\ref{subsec:metrics}. Each row is the mean over
 five seeds (three for the CIFAR generalisation block) with the seed standard
 deviation. Accuracy-type metrics (ACC, FORG, min-ACC, $\mathrm{WF}_{100}$,
 $\mathrm{WP}_{100}$, WC-ACC) are fractions; \texttt{gap\_depth} is in percentage
@@ -30,14 +31,12 @@ threshold for the whole window (no recovery event to time).
             D2 fulldata          & 0.890\,$\pm$\,0.009 & -0.016\,$\pm$\,0.009 & 0.719\,$\pm$\,0.039 & 0.126\,$\pm$\,0.020 & 0.736\,$\pm$\,0.018 & 0.801\,$\pm$\,0.022 & 18.3\,$\pm$\,2.5 & 8.1\,$\pm$\,0.7 & 3.0\,$\pm$\,1.2  \\
             D3 balanced          & 0.849\,$\pm$\,0.005 & 0.031\,$\pm$\,0.018  & 0.824\,$\pm$\,0.006 & 0.045\,$\pm$\,0.002 & 0.721\,$\pm$\,0.004 & 0.836\,$\pm$\,0.004 & 5.7\,$\pm$\,1.9  & 1.4\,$\pm$\,0.4 & ---              \\
             D4 fulldata balanced & 0.869\,$\pm$\,0.002 & -0.014\,$\pm$\,0.013 & 0.862\,$\pm$\,0.002 & 0.030\,$\pm$\,0.007 & 0.710\,$\pm$\,0.003 & 0.852\,$\pm$\,0.002 & 1.9\,$\pm$\,1.3  & 3.2\,$\pm$\,0.5 & ---              \\
-            D7 NCL reference     & 0.770\,$\pm$\,0.012 & 0.057\,$\pm$\,0.013  & 0.809\,$\pm$\,0.022 & 0.109\,$\pm$\,0.023 & 0.639\,$\pm$\,0.012 & 0.762\,$\pm$\,0.011 & 7.2\,$\pm$\,1.0  & 0.3\,$\pm$\,0.1 & 125.0            \\
             \hline
             \multicolumn{10}{l}{\emph{Momentum $0.9$}}                                                                                                                                                                        \\
             D1 vanilla           & 0.928\,$\pm$\,0.003 & 0.058\,$\pm$\,0.007  & 0.797\,$\pm$\,0.028 & 0.092\,$\pm$\,0.016 & 0.808\,$\pm$\,0.012 & 0.878\,$\pm$\,0.014 & 15.9\,$\pm$\,2.6 & 1.0\,$\pm$\,0.2 & 12.6\,$\pm$\,1.7 \\
             D2 fulldata          & 0.964\,$\pm$\,0.002 & -0.010\,$\pm$\,0.003 & 0.807\,$\pm$\,0.009 & 0.082\,$\pm$\,0.004 & 0.808\,$\pm$\,0.012 & 0.885\,$\pm$\,0.004 & 14.9\,$\pm$\,0.9 & 3.1\,$\pm$\,0.2 & 10.6\,$\pm$\,1.1 \\
             D3 balanced          & 0.932\,$\pm$\,0.005 & 0.038\,$\pm$\,0.003  & 0.897\,$\pm$\,0.006 & 0.040\,$\pm$\,0.003 & 0.822\,$\pm$\,0.011 & 0.922\,$\pm$\,0.003 & 5.9\,$\pm$\,0.6  & 0.4\,$\pm$\,0.2 & ---              \\
             D4 fulldata balanced & 0.967\,$\pm$\,0.001 & -0.022\,$\pm$\,0.003 & 0.942\,$\pm$\,0.005 & 0.016\,$\pm$\,0.004 & 0.834\,$\pm$\,0.010 & 0.950\,$\pm$\,0.002 & 1.3\,$\pm$\,0.4  & 0.2\,$\pm$\,0.1 & ---              \\
-            D7 NCL reference     & 0.810\,$\pm$\,0.019 & 0.021\,$\pm$\,0.004  & 0.871\,$\pm$\,0.012 & 0.218\,$\pm$\,0.014 & 0.686\,$\pm$\,0.012 & 0.778\,$\pm$\,0.022 & 8.5\,$\pm$\,1.1  & 0.6\,$\pm$\,0.1 & 5.0              \\
             \hline
         \end{tabular}%
     }
@@ -85,17 +84,17 @@ threshold for the whole window (no recovery event to time).
 \end{table}
 
 \paragraph{Full-buffer momentum diagnostic (C8).}
-Table~\ref{tab:res_c8} crosses the shipping curriculum with the full $60$k buffer
+Table~\ref{tab:res_c8} crosses the practical curriculum with the full $60$k buffer
 at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}).
 Source variance reduction alone (C8, full buffer, $\mu{=}0$) already closes the
 gap to $0.2$ pp, so the residual the curriculum leaves at $\mu{=}0$ is estimator
 variance, not structure; momentum's gap-closing role is interchangeable with the
 full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$
-reaches $0.955$, the highest in the benchmark, while re-introducing only a $2.0$
+reaches $0.955$, the highest of any gate condition, while re-introducing only a $2.0$
 pp transient. C8$_M$'s tail (area $0.38$) exceeds C7$_M$'s ($0.03$) because C7$_M$'s
 residual is a permanent step to a lower plateau that the end-referenced area
-excludes (Section~\ref{subsec:metrics}), whereas C8$_M$ recovers to the highest
-accuracy in the benchmark, so its dip is a genuine transient the area counts in
+excludes (Section~\ref{subsec:metrics}), whereas C8$_M$ recovers to a higher level,
+so its dip is a genuine transient the area counts in
 full. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
 premise, and the practical scalar-gate configuration remains C7$_M$
 ($3.7$ pp / $0.03$ / $0.931$) at $1/60$th the memory.
@@ -151,6 +150,57 @@ $1{,}000$-sample reservoir incurs against $g_{\text{true}}$.
         $\cos(g_{\text{replay}}, g_{\text{true}})$ over the window; $\bar{\rho}$ is the
         mean of $\|g_{\text{replay}}\|/\|g_{\text{true}}\|$.}
     \label{tab:app_grad}
+\end{table}
+
+\subsection{rot-MNIST: Asymmetric PER (P-series)}
+\label{app:per_full}
+
+Table~\ref{tab:app_per_full} gives the full metric set for the asymmetric-PER
+$\delta$ sweep on both buffer legs and at both momentum settings; the momentum-$0$
+depth/area/ACC columns match Table~\ref{tab:res_per} in the main text, and the
+momentum-$0.9$ rows are the source of the re-inflation numbers of
+Section~\ref{subsec:res_directional}. Momentum-$0.9$ runs cover the three
+strongest filters on the standard leg and $\delta \in \{0.3, 0.1\}$ on the
+full-buffer leg.
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \setlength{\tabcolsep}{4pt}
+    \resizebox{\textwidth}{!}{%
+        \begin{tabular}{l ccc cc c cc}
+            \hline
+            Condition                        & ACC                 & FORG                 & min-ACC             & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC              & Depth            & Area end          \\
+            \hline
+            \multicolumn{9}{l}{\emph{Standard ($1$k) buffer, momentum $0.0$}}                                                                                                                                                 \\
+            $\delta{=}1.0$                   & 0.869\,$\pm$\,0.005 & 0.027\,$\pm$\,0.018  & 0.792\,$\pm$\,0.012 & 0.081\,$\pm$\,0.009 & 0.733\,$\pm$\,0.009 & 0.838\,$\pm$\,0.006 & 9.0\,$\pm$\,0.6  & 3.29\,$\pm$\,0.65 \\
+            $\delta{=}0.3$                   & 0.873\,$\pm$\,0.004 & 0.023\,$\pm$\,0.017  & 0.807\,$\pm$\,0.012 & 0.068\,$\pm$\,0.009 & 0.736\,$\pm$\,0.008 & 0.847\,$\pm$\,0.005 & 7.4\,$\pm$\,1.1  & 2.32\,$\pm$\,0.59 \\
+            $\delta{=}0.1$                   & 0.876\,$\pm$\,0.004 & 0.018\,$\pm$\,0.016  & 0.822\,$\pm$\,0.012 & 0.056\,$\pm$\,0.009 & 0.739\,$\pm$\,0.008 & 0.856\,$\pm$\,0.005 & 5.9\,$\pm$\,1.5  & 1.56\,$\pm$\,0.65 \\
+            $\delta{=}0.03$                  & 0.880\,$\pm$\,0.005 & 0.012\,$\pm$\,0.015  & 0.834\,$\pm$\,0.012 & 0.048\,$\pm$\,0.005 & 0.741\,$\pm$\,0.007 & 0.862\,$\pm$\,0.005 & 4.8\,$\pm$\,1.9  & 1.04\,$\pm$\,0.58 \\
+            \multicolumn{9}{l}{\emph{Standard ($1$k) buffer, momentum $0.9$}}                                                                                                                                                 \\
+            $\delta{=}0.3$                   & 0.929\,$\pm$\,0.002 & 0.061\,$\pm$\,0.004  & 0.851\,$\pm$\,0.008 & 0.065\,$\pm$\,0.004 & 0.813\,$\pm$\,0.009 & 0.907\,$\pm$\,0.005 & 10.4\,$\pm$\,0.5 & 0.50\,$\pm$\,0.17 \\
+            $\delta{=}0.1$                   & 0.928\,$\pm$\,0.002 & 0.061\,$\pm$\,0.006  & 0.861\,$\pm$\,0.008 & 0.060\,$\pm$\,0.005 & 0.815\,$\pm$\,0.009 & 0.911\,$\pm$\,0.005 & 9.4\,$\pm$\,0.5  & 0.38\,$\pm$\,0.19 \\
+            $\delta{=}0.03$                  & 0.929\,$\pm$\,0.003 & 0.060\,$\pm$\,0.009  & 0.871\,$\pm$\,0.008 & 0.053\,$\pm$\,0.007 & 0.816\,$\pm$\,0.010 & 0.917\,$\pm$\,0.005 & 8.5\,$\pm$\,0.6  & 0.23\,$\pm$\,0.12 \\
+            \hline
+            \multicolumn{9}{l}{\emph{Full ($60$k) buffer, momentum $0.0$}}                                                                                                                                                    \\
+            $\delta{=}1.0$                   & 0.898\,$\pm$\,0.002 & -0.025\,$\pm$\,0.012 & 0.841\,$\pm$\,0.011 & 0.037\,$\pm$\,0.011 & 0.734\,$\pm$\,0.006 & 0.865\,$\pm$\,0.006 & 4.0\,$\pm$\,1.0  & 2.32\,$\pm$\,1.38 \\
+            $\delta{=}0.3$                   & 0.900\,$\pm$\,0.002 & -0.029\,$\pm$\,0.012 & 0.867\,$\pm$\,0.002 & 0.026\,$\pm$\,0.007 & 0.739\,$\pm$\,0.005 & 0.878\,$\pm$\,0.002 & 1.5\,$\pm$\,1.1  & 1.01\,$\pm$\,0.91 \\
+            $\delta{=}0.1$                   & 0.901\,$\pm$\,0.002 & -0.032\,$\pm$\,0.013 & 0.860\,$\pm$\,0.026 & 0.040\,$\pm$\,0.028 & 0.741\,$\pm$\,0.004 & 0.875\,$\pm$\,0.013 & 2.2\,$\pm$\,1.6  & 0.44\,$\pm$\,0.38 \\
+            $\delta{=}0.03$                  & 0.903\,$\pm$\,0.002 & -0.035\,$\pm$\,0.012 & 0.787\,$\pm$\,0.094 & 0.118\,$\pm$\,0.102 & 0.742\,$\pm$\,0.004 & 0.838\,$\pm$\,0.048 & 9.5\,$\pm$\,8.2  & 0.43\,$\pm$\,0.25 \\
+            $\delta{=}0.03$ (CG $60$)        & 0.903\,$\pm$\,0.002 & -0.035\,$\pm$\,0.012 & 0.766\,$\pm$\,0.113 & 0.126\,$\pm$\,0.109 & 0.742\,$\pm$\,0.004 & 0.828\,$\pm$\,0.057 & 11.5\,$\pm$\,10.1 & 0.47\,$\pm$\,0.28 \\
+            \multicolumn{9}{l}{\emph{Full ($60$k) buffer, momentum $0.9$}}                                                                                                                                                    \\
+            $\delta{=}0.3$                   & 0.964\,$\pm$\,0.001 & -0.012\,$\pm$\,0.002 & 0.864\,$\pm$\,0.009 & 0.052\,$\pm$\,0.005 & 0.813\,$\pm$\,0.008 & 0.913\,$\pm$\,0.005 & 9.1\,$\pm$\,0.8  & 1.91\,$\pm$\,0.26 \\
+            $\delta{=}0.1$                   & 0.965\,$\pm$\,0.001 & -0.012\,$\pm$\,0.003 & 0.880\,$\pm$\,0.008 & 0.044\,$\pm$\,0.004 & 0.814\,$\pm$\,0.008 & 0.921\,$\pm$\,0.005 & 7.6\,$\pm$\,0.7  & 1.57\,$\pm$\,0.25 \\
+            \hline
+        \end{tabular}%
+    }
+    \caption{rot-MNIST asymmetric-PER $\delta$ sweep, full metrics: both buffer
+        legs at both momentum settings, plus the solver control (CG $60$). The
+        momentum-$0.9$ rows show the re-inflation of
+        Section~\ref{subsec:res_directional}: depth climbs on every leg relative to
+        its momentum-$0$ counterpart, while the full-buffer accuracies
+        (${\approx}0.965$) are the diagnostic values referenced in the main text.}
+    \label{tab:app_per_full}
 \end{table}
 
 \subsection{rot-MNIST: Symmetric vs.\ Asymmetric Preconditioning}
@@ -218,24 +268,24 @@ into a net removal of it.
             Condition      & ACC                 & FORG                 & min-ACC             & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC              & Depth             & Area end          \\
             \hline
             G1 vanilla BN  & 0.723\,$\pm$\,0.008 & 0.010\,$\pm$\,0.019  & 0.644\,$\pm$\,0.023 & 0.127\,$\pm$\,0.015 & 0.484\,$\pm$\,0.020 & 0.667\,$\pm$\,0.016 & 11.8\,$\pm$\,2.5  & 17.5\,$\pm$\,4.6  \\
-            G2 NCL BN      & 0.710\,$\pm$\,0.005 & 0.064\,$\pm$\,0.026  & 0.504\,$\pm$\,0.045 & 0.167\,$\pm$\,0.031 & 0.513\,$\pm$\,0.018 & 0.611\,$\pm$\,0.020 & 25.8\,$\pm$\,5.2  & 55.1\,$\pm$\,11.2 \\
-            G3 adaptive BN & 0.722\,$\pm$\,0.011 & 0.006\,$\pm$\,0.016  & 0.713\,$\pm$\,0.017 & 0.070\,$\pm$\,0.010 & 0.469\,$\pm$\,0.016 & 0.698\,$\pm$\,0.013 & 4.8\,$\pm$\,0.7   & 3.6\,$\pm$\,2.2   \\
+            G2 adaptive BN & 0.722\,$\pm$\,0.011 & 0.006\,$\pm$\,0.016  & 0.713\,$\pm$\,0.017 & 0.070\,$\pm$\,0.010 & 0.469\,$\pm$\,0.016 & 0.698\,$\pm$\,0.013 & 4.8\,$\pm$\,0.7   & 3.6\,$\pm$\,2.2   \\
+            G3 asym.\ PER BN & 0.715\,$\pm$\,0.011 & -0.008\,$\pm$\,0.018 & 0.698\,$\pm$\,0.023 & 0.124\,$\pm$\,0.022 & 0.460\,$\pm$\,0.025 & 0.682\,$\pm$\,0.023 & 5.9\,$\pm$\,4.3   & 3.3\,$\pm$\,3.0   \\
             G4 vanilla GN  & 0.730\,$\pm$\,0.011 & -0.023\,$\pm$\,0.030 & 0.309\,$\pm$\,0.111 & 0.294\,$\pm$\,0.097 & 0.415\,$\pm$\,0.058 & 0.507\,$\pm$\,0.054 & 41.2\,$\pm$\,13.5 & 34.9\,$\pm$\,23.7 \\
-            G5 NCL GN      & 0.711\,$\pm$\,0.017 & 0.012\,$\pm$\,0.028  & 0.423\,$\pm$\,0.083 & 0.200\,$\pm$\,0.062 & 0.391\,$\pm$\,0.055 & 0.563\,$\pm$\,0.038 & 29.7\,$\pm$\,10.0 & 52.6\,$\pm$\,13.3 \\
-            G6 adaptive GN & 0.731\,$\pm$\,0.020 & -0.026\,$\pm$\,0.026 & 0.670\,$\pm$\,0.055 & 0.095\,$\pm$\,0.033 & 0.340\,$\pm$\,0.052 & 0.687\,$\pm$\,0.037 & 5.2\,$\pm$\,2.1   & 1.7\,$\pm$\,0.9   \\
+            G5 adaptive GN & 0.731\,$\pm$\,0.020 & -0.026\,$\pm$\,0.026 & 0.670\,$\pm$\,0.055 & 0.095\,$\pm$\,0.033 & 0.340\,$\pm$\,0.052 & 0.687\,$\pm$\,0.037 & 5.2\,$\pm$\,2.1   & 1.7\,$\pm$\,0.9   \\
+            G6 asym.\ PER GN & 0.741\,$\pm$\,0.009 & -0.035\,$\pm$\,0.018 & 0.673\,$\pm$\,0.023 & 0.080\,$\pm$\,0.009 & 0.330\,$\pm$\,0.024 & 0.696\,$\pm$\,0.015 & 5.6\,$\pm$\,1.1   & 4.8\,$\pm$\,3.8   \\
             \hline
         \end{tabular}%
     }
     \caption{CIFAR-10 headline block, full metrics (ResNet-18, momentum $0.9$,
-        buffer $5{,}000$, five seeds). ``adaptive'' is the shipped curriculum with
-        $\lambda_{\min} = 0.20$.}
+        buffer $5{,}000$, five seeds). ``adaptive'' is the practical curriculum with
+        $\lambda_{\min} = 0.20$; ``asym.\ PER'' runs at $\delta = 0.1$.}
     \label{tab:app_cifar_headline}
 \end{table}
 
 \subsection{CIFAR-10: Generalisation Block}
 \label{app:cifar_gen_full}
 
-Each shift pairs the shipped curriculum (``ship'': adaptive $\lambda_{\min} =
+Each shift pairs the practical curriculum (``curric.'': adaptive $\lambda_{\min} =
     0.20$, buffer $5{,}000$) against a vanilla-ER control on the same shift, at the
 indicated normalisation, over three seeds.
 
@@ -249,19 +299,19 @@ indicated normalisation, over three seeds.
         \hline
         \multicolumn{7}{l}{\emph{BatchNorm}}                                                                                                                    \\
         shot noise --- vanilla & 0.724\,$\pm$\,0.011 & 0.017\,$\pm$\,0.010  & 0.633\,$\pm$\,0.017 & 0.663\,$\pm$\,0.014 & 13.1\,$\pm$\,3.0  & 21.2\,$\pm$\,3.9  \\
-        shot noise --- ship    & 0.723\,$\pm$\,0.014 & 0.010\,$\pm$\,0.010  & 0.708\,$\pm$\,0.032 & 0.697\,$\pm$\,0.016 & 5.6\,$\pm$\,1.0   & 5.8\,$\pm$\,1.5   \\
+        shot noise --- curric.  & 0.723\,$\pm$\,0.014 & 0.010\,$\pm$\,0.010  & 0.708\,$\pm$\,0.032 & 0.697\,$\pm$\,0.016 & 5.6\,$\pm$\,1.0   & 5.8\,$\pm$\,1.5   \\
         contrast --- vanilla   & 0.671\,$\pm$\,0.026 & -0.008\,$\pm$\,0.006 & 0.610\,$\pm$\,0.063 & 0.586\,$\pm$\,0.048 & 15.4\,$\pm$\,3.9  & 33.4\,$\pm$\,4.5  \\
-        contrast --- ship      & 0.671\,$\pm$\,0.044 & -0.012\,$\pm$\,0.007 & 0.727\,$\pm$\,0.034 & 0.643\,$\pm$\,0.048 & 3.7\,$\pm$\,1.1   & 2.2\,$\pm$\,0.9   \\
+        contrast --- curric.    & 0.671\,$\pm$\,0.044 & -0.012\,$\pm$\,0.007 & 0.727\,$\pm$\,0.034 & 0.643\,$\pm$\,0.048 & 3.7\,$\pm$\,1.1   & 2.2\,$\pm$\,0.9   \\
         3-task --- vanilla     & 0.740\,$\pm$\,0.006 & -0.011\,$\pm$\,0.013 & 0.670\,$\pm$\,0.015 & 0.691\,$\pm$\,0.010 & 3.3\,$\pm$\,0.4   & 12.0\,$\pm$\,2.4  \\
-        3-task --- ship        & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7   & 4.1\,$\pm$\,1.1   \\
+        3-task --- curric.      & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7   & 4.1\,$\pm$\,1.1   \\
         \hline
         \multicolumn{7}{l}{\emph{GroupNorm}}                                                                                                                    \\
         shot noise --- vanilla & 0.718\,$\pm$\,0.021 & -0.036\,$\pm$\,0.036 & 0.244\,$\pm$\,0.075 & 0.469\,$\pm$\,0.032 & 46.3\,$\pm$\,12.0 & 54.4\,$\pm$\,40.8 \\
-        shot noise --- ship    & 0.705\,$\pm$\,0.061 & -0.028\,$\pm$\,0.012 & 0.638\,$\pm$\,0.108 & 0.656\,$\pm$\,0.087 & 7.3\,$\pm$\,5.9   & 2.4\,$\pm$\,1.1   \\
+        shot noise --- curric.  & 0.705\,$\pm$\,0.061 & -0.028\,$\pm$\,0.012 & 0.638\,$\pm$\,0.108 & 0.656\,$\pm$\,0.087 & 7.3\,$\pm$\,5.9   & 2.4\,$\pm$\,1.1   \\
         contrast --- vanilla   & 0.777\,$\pm$\,0.022 & -0.067\,$\pm$\,0.021 & 0.641\,$\pm$\,0.061 & 0.710\,$\pm$\,0.040 & 8.4\,$\pm$\,4.4   & 3.3\,$\pm$\,0.6   \\
-        contrast --- ship      & 0.778\,$\pm$\,0.032 & -0.070\,$\pm$\,0.013 & 0.668\,$\pm$\,0.077 & 0.724\,$\pm$\,0.054 & 3.9\,$\pm$\,3.1   & 1.2\,$\pm$\,0.8   \\
+        contrast --- curric.    & 0.778\,$\pm$\,0.032 & -0.070\,$\pm$\,0.013 & 0.668\,$\pm$\,0.077 & 0.724\,$\pm$\,0.054 & 3.9\,$\pm$\,3.1   & 1.2\,$\pm$\,0.8   \\
         3-task --- vanilla     & 0.722\,$\pm$\,0.020 & -0.023\,$\pm$\,0.015 & 0.468\,$\pm$\,0.043 & 0.550\,$\pm$\,0.023 & 4.4\,$\pm$\,0.4   & 24.8\,$\pm$\,11.8 \\
-        3-task --- ship        & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 16.9\,$\pm$\,10.2 \\
+        3-task --- curric.      & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 16.9\,$\pm$\,10.2 \\
         \hline
     \end{tabular}
     \caption{CIFAR-10 generalisation block, full metrics. The two-task novel
@@ -327,7 +377,7 @@ machine-independent ratio --- the slowdown of the gate-active task relative to t
 first task --- vanilla and the curriculum both sit at ${\approx}5\times$ while asymmetric PER
 sits at $24$--$29\times$. On the MLP the same overhead is only ${\approx}8\%$ (curriculum
 $231$\,s, PER $250$\,s), because the cheap backward pass and per-step evaluation dominate the
-wall clock and mask the solve; the gap widens with backbone depth.
+wall clock and mask the solve; the overhead is far larger on the deeper backbone.
 
 \begin{table}[H]
     \centering
@@ -345,7 +395,7 @@ wall clock and mask the solve; the gap widens with backbone depth.
     \caption{Wall-clock of the gate-active task ($T_1$), mean over five seeds. The scalar
         gate's cost is indistinguishable from vanilla ER; the directional gate's per-step
         conjugate-gradient solve multiplies it up to $4\times$ on the ResNet-18, and the
-        multiple grows with backbone depth. The MLP vanilla cell is omitted because its
+        multiple is far larger than on the MLP. The MLP vanilla cell is omitted because its
         driver-block run additionally carries the per-step gradient-fidelity diagnostic;
         the curriculum and PER MLP runs carry no such diagnostic and are directly
         comparable.}
@@ -377,8 +427,8 @@ wall clock and mask the solve; the gap widens with backbone depth.
         \end{tabular}%
     }
     \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
-        consecutive transitions, five seeds), the refactored L-series: the two
-        shipping gates against vanilla ER, at both momentum settings. Depth is the
+        consecutive transitions, five seeds), the L-series: both gates in their
+        practical configurations against vanilla ER, at both momentum settings. Depth is the
         worst single-boundary drop (\texttt{gap\_depth}) and area the end-referenced
         transient (\texttt{gap\_area\_end}), aggregated as in the two-task blocks so
         the numbers are directly comparable. At momentum $0$ both gates cut the depth
@@ -432,9 +482,9 @@ discussed in Section~\ref{subsec:res_cifar}.
     \centering
     \includegraphics[width=\linewidth]{img/results/L/longseq.png}
     \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
-        consecutive switches, five seeds with $\pm$std bands), the refactored
+        consecutive switches, five seeds with $\pm$std bands), the
         L-series: first-task $T_0$ accuracy across the whole sequence for vanilla ER
-        (red), the shipping curriculum $\lambda_{\min}{=}0.20$ (blue) and asymmetric
+        (red), the practical curriculum $\lambda_{\min}{=}0.20$ (blue) and asymmetric
         PER $\delta{=}0.1$ (aqua); dashed lines mark the four switches, and the two
         panels are the two momentum settings. \textbf{(a) Momentum $0$:} both gates
         hold $T_0$ almost flat through every boundary --- asymmetric PER the smoothest
@@ -456,7 +506,7 @@ discussed in Section~\ref{subsec:res_cifar}.
     \includegraphics[width=\linewidth]{img/results/T/cifar_3task_failure.png}
     \caption{Per-step past-task accuracy across the three-task CIFAR-10
         generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot,
-        ResNet-18, shipping curriculum, three seeds with $\pm$std bands), comparing
+        ResNet-18, practical curriculum, three seeds with $\pm$std bands), comparing
         the group-norm run (orange) against its batch-norm counterpart (blue). The
         two switches (dashed) fall at ${\sim}2$k and ${\sim}4$k steps. The first
         boundary (none $\rightarrow$ Gaussian) barely perturbs the past tasks in
