@@ -302,16 +302,16 @@ indicated normalisation, over three seeds.
         shot noise --- curric.  & 0.723\,$\pm$\,0.014 & 0.010\,$\pm$\,0.010  & 0.708\,$\pm$\,0.032 & 0.697\,$\pm$\,0.016 & 5.6\,$\pm$\,1.0   & 5.8\,$\pm$\,1.5   \\
         contrast --- vanilla   & 0.671\,$\pm$\,0.026 & -0.008\,$\pm$\,0.006 & 0.610\,$\pm$\,0.063 & 0.586\,$\pm$\,0.048 & 15.4\,$\pm$\,3.9  & 33.4\,$\pm$\,4.5  \\
         contrast --- curric.    & 0.671\,$\pm$\,0.044 & -0.012\,$\pm$\,0.007 & 0.727\,$\pm$\,0.034 & 0.643\,$\pm$\,0.048 & 3.7\,$\pm$\,1.1   & 2.2\,$\pm$\,0.9   \\
-        3-task --- vanilla     & 0.740\,$\pm$\,0.006 & -0.011\,$\pm$\,0.013 & 0.670\,$\pm$\,0.015 & 0.691\,$\pm$\,0.010 & 3.3\,$\pm$\,0.4   & 12.0\,$\pm$\,2.4  \\
-        3-task --- curric.      & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7   & 4.1\,$\pm$\,1.1   \\
+        3-task --- vanilla     & 0.740\,$\pm$\,0.006 & -0.011\,$\pm$\,0.013 & 0.670\,$\pm$\,0.015 & 0.691\,$\pm$\,0.010 & 3.3\,$\pm$\,0.4   & 6.0\,$\pm$\,0.7   \\
+        3-task --- curric.      & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7   & 3.9\,$\pm$\,0.1   \\
         \hline
         \multicolumn{7}{l}{\emph{GroupNorm}}                                                                                                                    \\
         shot noise --- vanilla & 0.718\,$\pm$\,0.021 & -0.036\,$\pm$\,0.036 & 0.244\,$\pm$\,0.075 & 0.469\,$\pm$\,0.032 & 46.3\,$\pm$\,12.0 & 54.4\,$\pm$\,40.8 \\
         shot noise --- curric.  & 0.705\,$\pm$\,0.061 & -0.028\,$\pm$\,0.012 & 0.638\,$\pm$\,0.108 & 0.656\,$\pm$\,0.087 & 7.3\,$\pm$\,5.9   & 2.4\,$\pm$\,1.1   \\
         contrast --- vanilla   & 0.777\,$\pm$\,0.022 & -0.067\,$\pm$\,0.021 & 0.641\,$\pm$\,0.061 & 0.710\,$\pm$\,0.040 & 8.4\,$\pm$\,4.4   & 3.3\,$\pm$\,0.6   \\
         contrast --- curric.    & 0.778\,$\pm$\,0.032 & -0.070\,$\pm$\,0.013 & 0.668\,$\pm$\,0.077 & 0.724\,$\pm$\,0.054 & 3.9\,$\pm$\,3.1   & 1.2\,$\pm$\,0.8   \\
-        3-task --- vanilla     & 0.722\,$\pm$\,0.020 & -0.023\,$\pm$\,0.015 & 0.468\,$\pm$\,0.043 & 0.550\,$\pm$\,0.023 & 4.4\,$\pm$\,0.4   & 24.8\,$\pm$\,11.8 \\
-        3-task --- curric.      & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 16.9\,$\pm$\,10.2 \\
+        3-task --- vanilla     & 0.722\,$\pm$\,0.020 & -0.023\,$\pm$\,0.015 & 0.468\,$\pm$\,0.043 & 0.550\,$\pm$\,0.023 & 4.4\,$\pm$\,0.4   & 10.3\,$\pm$\,3.6  \\
+        3-task --- curric.      & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 32.0\,$\pm$\,19.5 \\
         \hline
     \end{tabular}
     \caption{CIFAR-10 generalisation block, full metrics. The two-task novel
@@ -392,7 +392,7 @@ wall clock and mask the solve; the overhead is far larger on the deeper backbone
             Asym.\ PER ($\delta{=}0.1$)    & $250$\,s      & $11{,}712$\,s & $10{,}057$\,s \\
             \hline
         \end{tabular}}
-    \caption{Wall-clock of the gate-active task ($T_1$), mean over five seeds. The scalar
+    \caption{Training wall-clock of the gate-active task ($T_1$), mean over five seeds (evaluation time excluded). The scalar
         gate's cost is indistinguishable from vanilla ER; the directional gate's per-step
         conjugate-gradient solve multiplies it up to $4\times$ on the ResNet-18, and the
         multiple is far larger than on the MLP. The MLP vanilla cell is omitted because its
@@ -436,8 +436,8 @@ wall clock and mask the solve; the overhead is far larger on the deeper backbone
         are already smaller, the curriculum stays ahead on cumulative retention
         (lowest FORG, highest ACC and WC-ACC) while asymmetric PER holds the smallest
         per-boundary area but, its per-step filter re-inflated by momentum
-        (Section~\ref{subsec:res_directional}), gives up its retention edge and
-        tracks vanilla on FORG.}
+        (Section~\ref{subsec:res_directional}), gives up its retention edge, falling
+        slightly behind vanilla on FORG ($0.104$ vs.\ $0.096$, all five seeds).}
     \label{tab:app_longseq}
 \end{table}
 
@@ -445,10 +445,9 @@ wall clock and mask the solve; the overhead is far larger on the deeper backbone
 \label{app:supp_figures}
 
 This subsection collects supplementary figures: the full driver ladder
-(Figure~\ref{fig:g_curves}), the accuracy--depth scatter of
-every rot-MNIST gate condition (Figure~\ref{fig:frontier}), the five-task
-rot-MNIST sequence (the multi-transition check reported in
-Table~\ref{tab:app_longseq}), and the three-task group-norm generalisation outlier
+(Figure~\ref{fig:g_curves}), the five-task rot-MNIST sequence
+(Figure~\ref{fig:longseq}, reported in Table~\ref{tab:app_longseq}), and the
+three-task group-norm generalisation outlier (Figure~\ref{fig:failure_curves})
 discussed in Section~\ref{subsec:res_cifar}.
 
 \begin{figure*}[htbp]
@@ -456,26 +455,6 @@ discussed in Section~\ref{subsec:res_cifar}.
     \includegraphics[width=0.8\linewidth]{img/results/D/drivers_t0.png}
     \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. \emph{Depth} of the boundary spike falls when balancing switches off the imbalance driver (deep for the unbalanced D1, D2; shallow for the balanced D3, D4), while \emph{jitter} vanishes when the exact replay gradient switches off the variance driver (the full-data D2, D4 are smooth, the finite-buffer D1, D3 noisy). What no removal touches is the smooth dip-and-recover \emph{bend} beneath the spike, cleanest in the exact-gradient D4 where no jitter can hide it: that bend is the deterministic arc, and it responds to no optimiser hygiene, only to a change of path.}
     \label{fig:g_curves}
-\end{figure*}
-
-\begin{figure*}[htbp]
-    \centering
-    \includegraphics[width=\linewidth]{img/results/F/frontier.png}
-    \caption{Accuracy--depth scatter of every rot-MNIST gate condition: final accuracy
-        (right is better) against gap depth (up is better, axis inverted). The $\lambda$-path
-        (blue) is the curriculum, adaptive$+\lambda_{\min}$ as filled circles and linear ramps
-        as open circles; the $\delta$-path (aqua) is asymmetric PER, the $1$k buffer as filled
-        squares and the full buffer as open diamonds, each sweeping $\delta = 1.0 \rightarrow 0.03$;
-        grey stars are the anchors (no-gate D1, driver floor D4, full-buffer floor C8).
-        \textbf{(a) Momentum $0$:} at a matched $1$k buffer the $\delta$-path dominates the
-        $\lambda$-path, lower depth \emph{and} higher accuracy, reaching the D4 floor. \textbf{(b)
-        Momentum $0.9$:} the apparent trade in this panel is a buffer mismatch: the
-        directional gate's high-accuracy points ($\approx 0.965$) are its full $60$k-buffer
-        (open-diamond) legs, set against the curriculum's practical $1$k buffer. Held at a common
-        buffer the panel collapses to the regime dependence of Section~\ref{subsec:res_regimeflip}:
-        momentum re-inflates the directional gate and the scalar gate becomes the lower-gap
-        method.}
-    \label{fig:frontier}
 \end{figure*}
 
 \begin{figure*}[htbp]
@@ -494,7 +473,7 @@ discussed in Section~\ref{subsec:res_cifar}.
         two-task sweep also finds at momentum $0$. \textbf{(b) Momentum $0.9$:}
         momentum re-inflates PER's per-step filter, exactly as on the two-task
         benchmark (Section~\ref{subsec:res_directional}), so its boundary transients
-        return and it tracks vanilla on cumulative retention; the curriculum keeps the
+        return and its cumulative forgetting falls slightly behind vanilla's; the curriculum keeps the
         boundaries smoothest and holds the highest plateau, the least cumulative
         forgetting on the long horizon. The single-transition reading thus carries
         past one boundary, and the momentum roles carry with it.}

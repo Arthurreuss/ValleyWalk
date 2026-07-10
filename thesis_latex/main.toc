@@ -79,12 +79,12 @@
 \contentsline {subsection}{\numberline {C.9}Long-Sequence rot-MNIST (L-series)}{29}{subsection.1.C.9}%
 \contentsline {subsection}{\numberline {C.10}Supplementary Figures}{29}{subsection.1.C.10}%
 \contentsline {section}{\numberline {D}Detailed Step-by-Step Derivation of the Trajectory Bound}{33}{appendix.1.D}%
-\contentsline {paragraph}{1. The Combined Loss.}{33}{section*.68}%
-\contentsline {paragraph}{2. Defining the Hessians ($\nabla ^2$).}{33}{section*.69}%
-\contentsline {paragraph}{3. Assumption: Local-Minimum along the Interpolation Branch.}{33}{section*.70}%
-\contentsline {paragraph}{Step 1: The First-Order Condition.}{33}{section*.72}%
-\contentsline {paragraph}{Step 2: Implicit Differentiation to Find Path Movement.}{33}{section*.73}%
-\contentsline {paragraph}{Step 3: Calculating the Change in the Replay Loss.}{34}{section*.74}%
-\contentsline {paragraph}{Step 1: Differentiating the Error.}{34}{section*.76}%
-\contentsline {paragraph}{Step 2: Taylor Expansion of the Actual Gradient.}{35}{section*.77}%
-\contentsline {paragraph}{Step 3: The Final Steady State.}{35}{section*.78}%
+\contentsline {paragraph}{1. The Combined Loss.}{33}{section*.67}%
+\contentsline {paragraph}{2. Defining the Hessians ($\nabla ^2$).}{33}{section*.68}%
+\contentsline {paragraph}{3. Assumption: Local-Minimum along the Interpolation Branch.}{33}{section*.69}%
+\contentsline {paragraph}{Step 1: The First-Order Condition.}{33}{section*.71}%
+\contentsline {paragraph}{Step 2: Implicit Differentiation to Find Path Movement.}{33}{section*.72}%
+\contentsline {paragraph}{Step 3: Calculating the Change in the Replay Loss.}{34}{section*.73}%
+\contentsline {paragraph}{Step 1: Differentiating the Error.}{34}{section*.75}%
+\contentsline {paragraph}{Step 2: Taylor Expansion of the Actual Gradient.}{35}{section*.76}%
+\contentsline {paragraph}{Step 3: The Final Steady State.}{35}{section*.77}%
