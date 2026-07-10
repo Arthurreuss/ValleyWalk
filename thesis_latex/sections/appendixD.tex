@@ -2,7 +2,7 @@
 \section{Detailed Step-by-Step Derivation of the Trajectory Bound}
 \label{app:detailed_proof}
 
-\subsection*{The Mathematical Setup \& Definitions}
+\subsection*{Setup and Definitions}
 
 \paragraph{1. The Combined Loss.}
 The total loss function at any point $\lambda \in [0,1]$ in the curriculum is defined as:
@@ -11,7 +11,7 @@ The total loss function at any point $\lambda \in [0,1]$ in the curriculum is de
 \end{equation}
 
 \paragraph{2. Defining the Hessians ($\nabla^2$).}
-When we take the derivative of a gradient ($\nabla$), we obtain the second derivative matrix, called the Hessian ($H$).
+Differentiating the gradient once more gives the second-derivative matrix, the Hessian ($H$).
 \begin{itemize}
     \item $H_{\text{replay}} = \nabla^2 L_{\text{replay}}(\theta)$ (The curvature of the old task)
     \item $H_{\text{current}} = \nabla^2 L_{\text{current}}(\theta)$ (The curvature of the new task)
@@ -28,18 +28,18 @@ We assume that the loss functions $L_{\text{replay}}$ and $L_{\text{current}}$ a
 
 This assumption ensures that the iterate tracks a continuous family of strict local minima rather than relying on global convexity. Near $\lambda = 0$, this condition is naturally satisfied. Because the initial state $\theta_0^*$ is a non-degenerate local minimum of $L_{\text{replay}}$, it follows that $H_0 = H_{\text{replay}}(\theta_0^*) \succ 0$. Consequently, the implicit function theorem guarantees a unique smooth branch in the immediate neighbourhood of $\lambda = 0$.
 
-The persistence of this positive-definite branch as $\lambda$ increases is bounded by Weyl's inequality applied to $H_\lambda = H_{\text{replay}} + \lambda H_{\text{current}}$:
+The persistence of this positive-definite branch as $\lambda$ increases is bounded by Weyl's inequality applied to $H_\lambda = H_{\text{replay}} + \lambda H_{\text{current}}$; writing $\mu_{\min}(\cdot)$ for the smallest eigenvalue,
 \begin{equation*}
-    \lambda_{\min}(H_\lambda) \;\ge\; \lambda_{\min}(H_{\text{replay}}) + \lambda\, \lambda_{\min}(H_{\text{current}}).
+    \mu_{\min}(H_\lambda) \;\ge\; \mu_{\min}(H_{\text{replay}}) + \lambda\, \mu_{\min}(H_{\text{current}}).
 \end{equation*}
 If the new task is locally convex at these points ($H_{\text{current}} \succeq 0$), positive-definiteness holds for all $\lambda \ge 0$ without requiring a global convexity assumption.
 
-\subsection*{Part A: The Perfect Path Never Spikes}
+\subsection*{Part A: The Replay Loss Is Monotone Along the Reference Path}
 
-Let $\Theta^*(\lambda)$ be the ``Optimum Path'', the exact parameter state that perfectly minimises $L_\lambda(\theta)$ for any given $\lambda$.
+Let $\Theta^*(\lambda)$ be the reference path, the exact parameter state that minimises $L_\lambda(\theta)$ for any given $\lambda$.
 
 \paragraph{Step 1: The First-Order Condition.}
-Because $\Theta^*(\lambda)$ is the perfect minimum, the gradient (slope) of the total loss evaluated at that exact point must be zero. We define this as our starting equilibrium:
+Because $\Theta^*(\lambda)$ is a minimum, the gradient of the total loss evaluated at that exact point must be zero:
 \begin{align*}
     \nabla \left[ L_\lambda(\Theta^*(\lambda)) \right]                                                               & = 0 \\
     \nabla \left[ L_{\text{replay}}(\Theta^*(\lambda)) + \lambda \cdot L_{\text{current}}(\Theta^*(\lambda)) \right] & = 0
@@ -51,7 +51,7 @@ Distributing the gradient operator to both terms gives us the fundamental First-
 \end{equation}
 
 \paragraph{Step 2: Implicit Differentiation to Find Path Movement.}
-We want to know how the optimal path $\Theta^*$ moves as $\lambda$ changes. We apply the derivative operator $\frac{d}{d\lambda}$ to the entire First-Order Condition:
+We want to know how the reference path $\Theta^*$ moves as $\lambda$ changes. We apply the derivative operator $\frac{d}{d\lambda}$ to the entire First-Order Condition:
 \begin{equation*}
     \frac{d}{d\lambda} \left[ \nabla L_{\text{replay}}(\Theta^*(\lambda)) + \lambda \cdot \nabla L_{\text{current}}(\Theta^*(\lambda)) \right] = \frac{d}{d\lambda} [0]
 \end{equation*}
@@ -85,8 +85,8 @@ Solving algebraically for the path movement $\frac{d\Theta^*}{d\lambda}$:
     \label{eq:path_movement}
 \end{equation}
 
-\paragraph{Step 3: Calculating the Change in Task 0 Loss.}
-How does the Replay loss specifically change as $\lambda$ increases along this perfect path? We apply the derivative operator:
+\paragraph{Step 3: Calculating the Change in the Replay Loss.}
+How does the replay loss change as $\lambda$ increases along this path? We apply the derivative operator:
 \begin{equation*}
     \frac{d}{d\lambda} \left[ L_{\text{replay}}(\Theta^*(\lambda)) \right] = \nabla L_{\text{replay}}(\Theta^*(\lambda))^\top \cdot \frac{d\Theta^*(\lambda)}{d\lambda}
 \end{equation*}
@@ -99,61 +99,61 @@ Because $H_\lambda$ is strictly positive-definite along the followed branch of l
 \begin{equation*}
     \frac{d}{d\lambda} L_{\text{replay}}(\Theta^*(\lambda)) \ge 0
 \end{equation*}
-\emph{Conclusion for Part A:} The Replay loss mathematically never decreases along the perfect path, meaning it can never overshoot its final joint-optimum value.
+\emph{Conclusion for Part A:} The replay loss never decreases along the reference path, so it can never overshoot its final joint-optimum value.
 
-\subsection*{Part B: The Clumsy Network Tracks the Perfect Path}
+\subsection*{Part B: The Iterate Tracks the Reference Path with $O(1/N)$ Lag}
 
-Let $\theta(t)$ be the actual position of the model parameters at time $t$. We define the tracking error $\delta(t)$:
+Let $\theta(t)$ be the actual position of the model parameters at time $t$. We define the tracking error $e(t)$ (written $e$ to avoid a clash with the damping $\delta$ of asymmetric PER):
 \begin{equation*}
-    \delta(t) = \theta(t) - \Theta^*(\lambda(t))
+    e(t) = \theta(t) - \Theta^*(\lambda(t))
 \end{equation*}
 
 \paragraph{Step 1: Differentiating the Error.}
 We apply the time derivative operator $\frac{d}{dt}$ to our error definition:
 \begin{equation*}
-    \frac{d}{dt} \left[ \delta(t) \right] = \frac{d}{dt} \left[ \theta(t) \right] - \frac{d}{dt} \left[ \Theta^*(\lambda(t)) \right]
+    \frac{d}{dt} \left[ e(t) \right] = \frac{d}{dt} \left[ \theta(t) \right] - \frac{d}{dt} \left[ \Theta^*(\lambda(t)) \right]
 \end{equation*}
-The model moves via gradient descent, so $\frac{d\theta}{dt} = -\nabla L_{\lambda(t)}(\theta(t))$. The perfect path moves via the chain rule $\frac{d\Theta^*}{dt} = \frac{d\Theta^*}{d\lambda} \cdot \frac{d\lambda}{dt}$. Because the curriculum has a constant velocity over $N$ steps, $\frac{d\lambda}{dt} = \frac{1}{N}$.
+The model moves via gradient descent, so $\frac{d\theta}{dt} = -\nabla L_{\lambda(t)}(\theta(t))$. The reference path moves via the chain rule $\frac{d\Theta^*}{dt} = \frac{d\Theta^*}{d\lambda} \cdot \frac{d\lambda}{dt}$. Because the curriculum has a constant velocity over $N$ steps, $\frac{d\lambda}{dt} = \frac{1}{N}$.
 \begin{equation*}
-    \frac{d\delta}{dt} = -\nabla L_{\lambda(t)}(\theta(t)) - \left( \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \right)
+    \frac{de}{dt} = -\nabla L_{\lambda(t)}(\theta(t)) - \left( \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \right)
 \end{equation*}
 
 \paragraph{Step 2: Taylor Expansion of the Actual Gradient.}
-We approximate the gradient at the actual position $\theta(t)$ by Taylor-expanding it around the perfect position $\Theta^*$:
+We approximate the gradient at the actual position $\theta(t)$ by Taylor-expanding it around the reference position $\Theta^*$:
 \begin{equation*}
     \nabla L_\lambda(\theta) \approx \nabla L_\lambda(\Theta^*) + \nabla \left[ \nabla L_\lambda(\Theta^*) \right] \cdot (\theta - \Theta^*)
 \end{equation*}
-Since the gradient at the perfect minimum is zero ($\nabla L_\lambda(\Theta^*) = 0$) and the derivative of the gradient is the Hessian ($\nabla^2 L_\lambda = H_\lambda$), this collapses to:
+Since the gradient at the minimum is zero ($\nabla L_\lambda(\Theta^*) = 0$) and the derivative of the gradient is the Hessian ($\nabla^2 L_\lambda = H_\lambda$), this collapses to:
 \begin{equation*}
-    \nabla L_\lambda(\theta) \approx H_\lambda \cdot \delta
+    \nabla L_\lambda(\theta) \approx H_\lambda \cdot e
 \end{equation*}
 
 \paragraph{Step 3: The Final Steady State.}
 Substitute this expanded gradient back into our differential equation:
 \begin{equation*}
-    \frac{d\delta}{dt} \approx -H_\lambda \cdot \delta - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
+    \frac{de}{dt} \approx -H_\lambda \cdot e - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
 \end{equation*}
-Assuming the lag reaches a steady state, the error stops growing ($\frac{d\delta}{dt} \approx 0$). This is a first-order, gradient-flow approximation: it linearises the gradient around $\Theta^*$ and treats the dynamics as continuous, so it captures the scaling of the lag with $N$ rather than an exact discrete-time bound.
+Assuming the lag reaches a steady state, the error stops growing ($\frac{de}{dt} \approx 0$). This is a first-order, gradient-flow approximation: it linearises the gradient around $\Theta^*$ and treats the dynamics as continuous, so it captures the scaling of the lag with $N$ rather than an exact discrete-time bound.
 \begin{align*}
-    0                      & \approx -H_\lambda \cdot \delta - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \\
-    H_\lambda \cdot \delta & \approx -\frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}                          \\
-    \delta                 & \approx -H_\lambda^{-1} \cdot \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
+    0                & \approx -H_\lambda \cdot e - \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N} \\
+    H_\lambda \cdot e & \approx -\frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}                          \\
+    e                & \approx -H_\lambda^{-1} \cdot \frac{d\Theta^*}{d\lambda} \cdot \frac{1}{N}
 \end{align*}
-Taking the norm, we see the lag distance is mathematically bounded by the curriculum length $N$:
+Taking the norm, we see the lag distance is bounded by the curriculum length $N$:
 \begin{equation}
-    \|\delta\| = O\left(\frac{1}{N}\right)
+    \|e\| = O\left(\frac{1}{N}\right)
 \end{equation}
 
 \subsection*{Combining Part A and B: Expanding the Actual Loss}
 
-To find the maximum Replay loss the model will actually experience, we Taylor expand the loss of the actual trajectory around the perfect position:
+To find the maximum replay loss the model will actually experience, we Taylor expand the loss of the actual trajectory around the reference position:
 \begin{align*}
     L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot (\theta - \Theta^*) \\
-    L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot \delta
+    L_{\text{replay}}(\theta) & \approx L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top \cdot e
 \end{align*}
-From Part A, $L_{\text{replay}}(\Theta^*)$ cannot exceed the final joint optimum loss $L_{\text{replay}}(\theta_{\text{joint}}^*)$. From Part B, the lag $\delta$ is $O(1/N)$. Substituting these limits yields the final bound:
+From Part A, $L_{\text{replay}}(\Theta^*)$ cannot exceed the final joint optimum loss $L_{\text{replay}}(\theta_{\text{joint}}^*)$. From Part B, the lag $e$ is $O(1/N)$. Substituting these limits yields the final bound:
 \begin{equation}
     \max_t L_{\text{replay}}(\theta(t)) \le L_{\text{replay}}(\theta_{\text{joint}}^*) + O\left(\frac{1}{N}\right)
 \end{equation}
-\emph{Conclusion:} The transient stability gap is entirely contained within the $O(1/N)$ term, meaning a sufficiently slow continuous curriculum eliminates the discrete-time overshoot.
+\emph{Conclusion:} The transient stability gap is entirely contained within the $O(1/N)$ term, so a sufficiently slow curriculum makes the tracking lag's contribution to the transient arbitrarily small.
 

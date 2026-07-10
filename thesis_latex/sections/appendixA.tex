@@ -3,8 +3,8 @@
 
 This appendix records the implementation specifics that the methods of
 Section~\ref{sec:methods} depend on but that would interrupt the argument in the
-main text: the experience-replay variants, and the NCL realisation together with
-the hyperparameters fixed by the rot-MNIST tuning sweep.
+main text: the datasets, the backbones and training protocol, the
+experience-replay variants, and the asymmetric-PER solver.
 
 \subsection{Datasets}
 \label{app:impl_data}
@@ -123,70 +123,3 @@ an under-converged solve. On the full-buffer leg the replay gradient is exact
 over all $60$k past samples while the Fisher stays estimated on a sampled batch,
 since a full-buffer Fisher-vector product per CG iteration would dominate the
 runtime.
-
-\subsection{Natural Continual Learning}
-\label{app:impl_ncl}
-
-NCL follows \citet{kao2021naturalcontinuallearningsuccess} (their Eq.~8 and
-Algorithm~1). The update preconditions the new-task gradient by the prior
-covariance $\Lambda_{k-1}^{-1}$ and adds the Bayesian restoring term,
-\begin{equation*}
-    \theta \leftarrow \theta - \eta \left[ \Lambda_{k-1}^{-1} \nabla L_k(\theta) + (\theta - \mu_{k-1}) \right],
-\end{equation*}
-with $\Lambda_{k-1}$ summarised by a K-FAC factorisation $F \approx A \otimes G$
-per linear layer and an identity prior $p_w = \alpha\, I$. The trust radius of the
-paper's Eq.~7 is absorbed into the learning rate; we log a \texttt{tr\_scale}
-diagnostic but do not clip the step.
-
-\paragraph{Tuned hyperparameters.} The values used in every NCL condition are
-those that won the rot-MNIST tuning sweep below (Table~\ref{tab:ncl_hparams}). The
-paper-literal prior $\alpha = 1.0$ over-regularises on rot-MNIST and the damping
-$\varepsilon$ is a numerical safeguard only: the identity prior, not the
-damping, is what bounds $\Lambda^{-1}$. These values were tuned on the two-task rot-MNIST/MLP setting and reused unchanged on the CIFAR-10 ResNet-18, as we did not run a separate NCL sweep on the deeper backbone. NCL's CIFAR results should therefore be read as those of a method tuned on the smaller benchmark rather than re-optimised for CIFAR, a caveat we revisit in Section~\ref{subsec:disc_limits}.
-
-\begin{table}[H]
-    \centering
-    \small
-    \begin{tabular}{@{}l l l@{}}
-        \hline
-        Hyperparameter            & Symbol                           & Value             \\
-        \hline
-        Prior precision           & $\alpha$ (\texttt{prior\_init})  & $0.1$             \\
-        Damping                   & $\varepsilon$ (\texttt{damping}) & $1\mathrm{e}{-3}$ \\
-        Fisher samples (K-FAC)    & \texttt{fisher\_samples}         & $1{,}000$         \\
-        Trust radius (diagnostic) & $r$ (\texttt{trust\_radius})     & $1.0$             \\
-        Learning rate             & $\eta$                           & $0.1$             \\
-        Momentum                  & $\mu$                            & $0.9$             \\
-        \hline
-    \end{tabular}
-    \caption{NCL hyperparameters fixed for all conditions, from the rot-MNIST
-        tuning sweep of Table~\ref{tab:ncl_sweep}.}
-    \label{tab:ncl_hparams}
-\end{table}
-
-\paragraph{Tuning sweep.} The prior precision $\alpha$ was tuned on the two-task
-rot-MNIST/MLP setting (Table~\ref{tab:ncl_sweep}), holding damping at
-$1\mathrm{e}{-3}$ and \texttt{fisher\_samples} at $1{,}000$. Smaller $\alpha$
-improves over the paper-literal $\alpha = 1.0$, but the gain saturates: $\alpha =
-    0.1$ gives the best stability--accuracy trade-off, while $\alpha \leq 0.03$ becomes
-unstable at $\eta = 0.1$ (the natural gradient amplifies the raw gradient by up to
-$1/\alpha$ in any direction), and halving the learning rate does not recover it.
-
-\begin{table}[H]
-    \centering
-    \small
-    \begin{tabular}{@{}l l l l@{}}
-        \hline
-        Config                       & $\alpha$ & $\eta$ & Momentum \\
-        \hline
-        \textbf{alpha\_0.1} (chosen) & $0.1$    & $0.1$  & $0.9$    \\
-        alpha\_0.03                  & $0.03$   & $0.1$  & $0.9$    \\
-        alpha\_0.01                  & $0.01$   & $0.1$  & $0.9$    \\
-        alpha\_0.003                 & $0.003$  & $0.1$  & $0.9$    \\
-        alpha\_0.03\_lowlr           & $0.03$   & $0.05$ & $0.9$    \\
-        \hline
-    \end{tabular}
-    \caption{NCL prior-precision tuning sweep on two-task rot-MNIST. Damping
-        ($1\mathrm{e}{-3}$) and \texttt{fisher\_samples} ($1{,}000$) held fixed.}
-    \label{tab:ncl_sweep}
-\end{table}
