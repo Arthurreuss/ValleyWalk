@@ -69,7 +69,7 @@
 # identical hardware.
 #SBATCH --job-name=vw_cost
 #SBATCH --partition=gpu
-#SBATCH --gpus-per-node=v100v2:1
+#SBATCH --gpus-per-node=v100:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
