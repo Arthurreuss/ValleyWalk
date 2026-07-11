@@ -7,7 +7,8 @@
 # One SLURM array task == one (dataset, family, seed) == one train.py run on
 # one GPU, wrapped in resource measurement:
 #
-#   - wall-clock time, user/sys CPU time, peak host RAM   (GNU time -v)
+#   - wall-clock time, user/sys CPU time, peak host RAM   (getrusage of the
+#     train.py child; no GNU time dependency)
 #   - peak GPU memory, mean GPU utilisation, mean power,
 #     estimated GPU energy                                 (nvidia-smi sampler)
 #
@@ -259,17 +260,28 @@ cleanup() { [ -n "$SAMPLER_PID" ] && kill "$SAMPLER_PID" 2>/dev/null || true; }
 trap cleanup EXIT
 
 # ─── Measured run ─────────────────────────────────────────────────────────
+# Portable timing: a tiny Python launcher runs train.py as a child and reads
+# wall / CPU / peak-RSS from resource.getrusage(RUSAGE_CHILDREN).  This does
+# NOT depend on GNU /usr/bin/time, which is absent on Habrok compute nodes and
+# previously left wall/CPU/RSS blank.  TIME_LOG is written even when the child
+# crashes, so failed runs still get timing.
 echo "  + train.py ${OVERRIDES[*]}"
 set +e
-if [ -x /usr/bin/time ]; then
-    /usr/bin/time -v -o "$TIME_LOG" "$PYTHON" scripts/train.py "${OVERRIDES[@]}"
-    RC=$?
-else
-    echo "WARNING: /usr/bin/time not found — wall/CPU/RSS fields will be empty" >&2
-    : > "$TIME_LOG"
-    "$PYTHON" scripts/train.py "${OVERRIDES[@]}"
-    RC=$?
-fi
+TIME_LOG="$TIME_LOG" "$PYTHON" - "$PYTHON" scripts/train.py "${OVERRIDES[@]}" <<'PY'
+import os, sys, time, resource, subprocess
+argv = sys.argv[1:]                       # [python, scripts/train.py, override...]
+t0 = time.monotonic()
+rc = subprocess.call(argv)
+wall = time.monotonic() - t0
+ru = resource.getrusage(resource.RUSAGE_CHILDREN)
+with open(os.environ["TIME_LOG"], "w") as f:
+    f.write(f"wall_s={wall:.1f}\n")
+    f.write(f"user_s={ru.ru_utime:.1f}\n")
+    f.write(f"sys_s={ru.ru_stime:.1f}\n")
+    f.write(f"max_rss_mb={ru.ru_maxrss / 1024:.0f}\n")  # Linux ru_maxrss is KiB
+sys.exit(rc)
+PY
+RC=$?
 set -e
 cleanup; SAMPLER_PID=""
 
@@ -294,24 +306,19 @@ row = {
     "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
 }
 
-# GNU time -v
-wall = user = sys_ = rss_kb = None
+# child-process timing (key=value written by the launcher above, via
+# resource.getrusage(RUSAGE_CHILDREN) — no GNU time dependency)
+vals = {}
 for line in open(env["TIME_LOG"]):
-    line = line.strip()
-    if line.startswith("Elapsed (wall clock)"):
-        p = line.split()[-1].split(":")
-        wall = float(p[-1]) + 60 * int(p[-2]) + (3600 * int(p[0]) if len(p) == 3 else 0)
-    elif line.startswith("User time (seconds):"):
-        user = float(line.split()[-1])
-    elif line.startswith("System time (seconds):"):
-        sys_ = float(line.split()[-1])
-    elif line.startswith("Maximum resident set size"):
-        rss_kb = float(line.split()[-1])
-row["wall_s"] = f"{wall:.1f}" if wall is not None else ""
-row["cpu_user_s"] = f"{user:.1f}" if user is not None else ""
-row["cpu_sys_s"] = f"{sys_:.1f}" if sys_ is not None else ""
-row["cpu_total_s"] = f"{user + sys_:.1f}" if None not in (user, sys_) else ""
-row["max_rss_mb"] = f"{rss_kb / 1024:.0f}" if rss_kb is not None else ""
+    if "=" in line:
+        k, v = line.strip().split("=", 1)
+        vals[k] = v
+user, sys_ = vals.get("user_s"), vals.get("sys_s")
+row["wall_s"] = vals.get("wall_s", "")
+row["cpu_user_s"] = user or ""
+row["cpu_sys_s"] = sys_ or ""
+row["cpu_total_s"] = f"{float(user) + float(sys_):.1f}" if user and sys_ else ""
+row["max_rss_mb"] = vals.get("max_rss_mb", "")
 
 # nvidia-smi sampler: util %, mem MiB, power W
 util, mem, pwr = [], [], []
