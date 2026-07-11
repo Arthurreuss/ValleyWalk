@@ -123,6 +123,15 @@
             padding: 10px 0;
             font-weight: bold;
             font-size: 16px;
+            line-height: 22px;
+            height: 22px;
+        }
+
+        /* Keep sub/superscripts from stretching the line box, so titles
+           with formulas stay the same height as plain ones. */
+        sub,
+        sup {
+            line-height: 0;
         }
 
         canvas {
@@ -143,6 +152,9 @@
             text-align: left;
             width: 380px;
             box-sizing: border-box;
+            /* Equal height in both gate panels so the canvases align. */
+            height: 112px;
+            overflow: hidden;
         }
 
         .gate-strip .slider-row {
@@ -263,10 +275,9 @@
                     <span id="val_delta" class="val-display">1.00</span>
                 </div>
                 <p class="hint">
-                    Directional feedforward gate on the joint loss. Gain δ/(ρ+δ) along past-task curvature ρ:
-                    flat directions pass whole, steep ones are damped; δ → ∞ recovers plain joint descent.
-                    The orange path halts where g<sub>A</sub> balances the filtered push (○) — short of
-                    A ∩ B for small δ: the gate's plasticity cost.
+                    Directional feedforward gate on the joint loss: gain δ/(ρ+δ) along past-task curvature ρ,
+                    so flat directions pass and steep ones are damped; δ → ∞ gives plain joint descent.
+                    The orange path halts where g<sub>A</sub> balances the filtered push (○): the plasticity cost.
                 </p>
             </div>
             <canvas id="canvasPer" width="380" height="380"></canvas>

@@ -46,7 +46,7 @@ Figure~\ref{fig:lambda_evolution} shows this: as $\lambda$ grows, the loss conto
         {\scriptsize $\lambda = 1$}
     \end{minipage}
 
-    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$. As $\lambda$ increases, the contours morph continuously from the old-task basin around $A$ to the joint basin around $A{+}B$. The current minimiser (\emph{Curr}) slides along the moving valley floor, forming the reference path $\Theta^*(\lambda)$. At the minimiser the replay (red) and current-task (blue) contributions cancel by the first-order condition $\nabla L_{\text{replay}} + \lambda\,\nabla L_{\text{current}} = 0$; their resultant (golden) vanishes there and, away from the minimiser, points down the valley, so a tracking model rides the moving floor instead of teleporting across the landscape.}
+    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$. As $\lambda$ increases, the contours morph continuously from the old-task basin around $A$ to the joint basin around $A{+}B$. The current minimiser (\emph{Curr}) slides along the moving valley floor, forming the reference path $\Theta^*(\lambda)$. At the minimiser the replay (red) and current-task (blue) contributions cancel by the first-order condition $\nabla L_{\text{replay}} + \lambda\,\nabla L_{\text{current}} = 0$; their resultant (golden) vanishes there and, away from the minimiser, points down the valley, so a tracking model rides the moving floor instead of teleporting across the landscape. Frames captured from the interactive visualisation of Figure~\ref{fig:loss_landscape_visualization}.}
     \label{fig:lambda_evolution}
 \end{figure}
 
