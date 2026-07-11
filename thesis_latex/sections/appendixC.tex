@@ -401,38 +401,48 @@ swamped by convergence.
 \end{table}
 
 \paragraph{Compute cost.}
-The scalar gate is a single changing scalar --- one gradient-norm ratio per step, no
-stored curvature --- so its wall-clock is indistinguishable from vanilla ER: on the
-ResNet-18 the gate-active task ($T_1$) takes $2{,}833$\,s under the curriculum against
-$2{,}836$\,s under vanilla at batch norm, and $4{,}749$ vs.\ $4{,}624$\,s at group norm.
-The directional gate runs $25$ conjugate-gradient Fisher-vector products per step, each on
-the order of a backward pass, so the same task takes $11{,}712$\,s (batch norm) and
-$10{,}057$\,s (group norm), a $4.1\times$ and $2.1\times$ multiple of the curriculum. As a
-machine-independent ratio --- the slowdown of the gate-active task relative to the un-gated
-first task --- vanilla and the curriculum both sit at ${\approx}5\times$ while asymmetric PER
-sits at $24$--$29\times$. On the MLP the same overhead is only ${\approx}8\%$ (curriculum
-$231$\,s, PER $250$\,s), because the cheap backward pass and per-step evaluation dominate the
-wall clock and mask the solve; the overhead is far larger on the deeper backbone.
+Cost is measured with a dedicated benchmark: one full two-task run per gate in its
+headline configuration (curriculum: adaptive schedule, $\lambda_{\min}{=}0.20$;
+asymmetric PER: $\delta{=}0.1$, $25$ warm-started CG iterations; momentum $0.9$,
+group norm and buffer $5{,}000$ on CIFAR), five seeds each on a single NVIDIA RTX
+PRO~6000, with per-step stability evaluation disabled so the numbers reflect method
+compute alone. Wall-clock and CPU time come from \texttt{getrusage}; GPU utilisation,
+power, and memory are sampled at $1$\,Hz with \texttt{nvidia-smi}, and energy is the
+integrated power. On the ResNet-18 the split is stark (Table~\ref{tab:res_cost}). The
+scalar gate adds one gradient-norm ratio and an EMA update to a standard ER step, and
+its run is not even compute-bound: the GPU sits half-idle at $49\%$ utilisation and
+$259$\,W. The directional gate's $25$ conjugate-gradient Fisher-vector products per
+step, each on the order of a backward pass, saturate the same card ($96\%$, $367$\,W)
+for $16\times$ as long, and since energy is power times time the two factors compound
+to a $24\times$ energy gap ($13$ vs.\ $320$\,Wh per run). Memory is not the price:
+peak GPU memory differs by $11\%$. On the rot-MNIST MLP both gates finish in under
+half a minute at near-idle utilisation --- the wall-clock is fixed startup, not method
+compute --- so no meaningful ratio exists there and the cost question is decided
+entirely on the deep backbone. The ratios are the transferable claim; the absolute
+numbers are specific to this card, and because ${\sim}15$--$30$\,s of each run is
+startup, the training-only ratio is if anything slightly above $16\times$.
 
 \begin{table}[H]
     \centering
     \small
-    \begin{tabular}{l ccc}
+    \begin{tabular}{ll ccccc}
         \hline
-        Gate (task $T_1$, gate active) & rot-MNIST MLP & ResNet-18 BN  & ResNet-18 GN  \\
+        Dataset & Gate & wall [s] & util [\%] & power [W] & energy [Wh] & mem [MB] \\
         \hline
-        Vanilla ER                     & ---           & $2{,}836$\,s  & $4{,}624$\,s  \\
-        Curriculum (scalar)            & $231$\,s      & $2{,}833$\,s  & $4{,}749$\,s  \\
-        Asym.\ PER ($\delta{=}0.1$)    & $250$\,s      & $11{,}712$\,s & $10{,}057$\,s \\
+        CIFAR-10 & Curriculum (scalar)         & $198 \pm 7$      & $49$    & $259$ & $13$  & $4{,}203$ \\
+        (ResNet-18) & Asym.\ PER ($\delta{=}0.1$) & $3{,}157 \pm 11$ & $96$    & $367$ & $320$ & $4{,}679$ \\
+        \hline
+        rot-MNIST & Curriculum (scalar)         & $25 \pm 1$       & $<\!1$  & ---   & $0.4$ & $749$     \\
+        (MLP) & Asym.\ PER ($\delta{=}0.1$) & $29 \pm 1$       & $8$     & ---   & $0.5$ & $769$     \\
         \hline
     \end{tabular}
-    \caption{Training wall-clock of the gate-active task ($T_1$), mean over five seeds (evaluation time excluded). The scalar
-        gate's cost is indistinguishable from vanilla ER; the directional gate's per-step
-        conjugate-gradient solve multiplies it up to $4\times$ on the ResNet-18, and the
-        multiple is far larger than on the MLP. The MLP vanilla cell is omitted because its
-        driver-block run additionally carries the per-step gradient-fidelity diagnostic;
-        the curriculum and PER MLP runs carry no such diagnostic and are directly
-        comparable.}
+    \caption{Compute cost of one full two-task run (mean over five seeds, $\pm$ sd on
+        wall-clock; single RTX PRO 6000; per-step evaluation disabled): wall-clock, mean
+        GPU utilisation and power, integrated GPU energy, and peak GPU memory. On the
+        ResNet-18 the directional gate costs ${\sim}16\times$ the wall-clock and
+        ${\sim}24\times$ the energy of the scalar gate at similar peak memory. The MLP
+        rows are dominated by fixed startup on a near-idle GPU, so their power draw is
+        idle draw (omitted) and no ratio is meaningful.}
     \label{tab:res_cost}
 \end{table}
 
