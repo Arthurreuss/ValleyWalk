@@ -1,0 +1,68 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Official template for the Bachelor's Thesis of the Bachelor AI      %%
+%% program of the University of Groningen (NL).                        %%
+%%                                                                     %%
+%% Current version: March 2026                                         %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage{bachelorproject}
+
+% Allow the three methods condition tables to stack at the top of one page
+% with text continuing beneath them.
+\setcounter{dbltopnumber}{3}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\textfraction}{0.05}
+\title{\textbf{\textsc{The Stability Gap as a Trajectory Problem: A Bent Descent Path, Its Overshoot, and a Single Gate}} \\
+    \vspace{1ex} 
+    \normalsize Bachelor's Thesis\vspace{-2ex}
+}
+
+\author{
+    \normalsize Arthur Ernst Henrik Reuss, s5582253, a.e.h.reuss@student.rug.nl, \\ 
+    \normalsize Supervisors: Gido van de Ven
+}
+
+\date{\vspace{-5ex}}
+
+
+\begin{document}
+
+\onecolumn
+\maketitle
+\thispagestyle{firststyle}
+\input{./sections/1_abstract}
+
+\vspace{2ex}
+\setcounter{tocdepth}{2} % sections and subsections
+\tableofcontents
+
+\twocolumn
+
+\input{sections/2_introduction}
+\input{sections/3_literature}
+\input{sections/4_motivation}
+\input{sections/6_research_question}
+\input{sections/7_methods}
+\input{sections/8_results}
+\input{sections/9_discussion}
+\input{sections/10_ai_statement}
+
+
+
+\bibliographystyle{plainnat}
+\bibliography{ref}
+
+\clearpage
+\onecolumn
+
+\begin{appendices}
+    \input{sections/appendixA.tex} % Implementation Details
+    \input{sections/appendixB.tex} % Metric Definitions
+    \input{sections/appendixC.tex} % Complete Results
+    \input{sections/appendixD.tex} % Proof of the Trajectory Bound
+    % \newpage
+
+\end{appendices}
+
+\end{document}

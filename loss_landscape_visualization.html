@@ -206,6 +206,7 @@
             <label><input type="checkbox" id="showStraightLine" checked> Show Dotted Interpolation</label>
             <label><input type="checkbox" id="showGDLine" checked> Show GD Trajectory</label>
             <label><input type="checkbox" id="showGradMag"> Show Gradient Magnitudes (√-scaled)</label>
+            <label><input type="checkbox" id="showRawMag"> Show Raw Magnitudes (linear, unclamped)</label>
         </div>
     </div>
 
@@ -366,7 +367,8 @@
             lambdaSlider: document.getElementById('lambdaSlider'),
             showStraightLine: document.getElementById('showStraightLine'),
             showGDLine: document.getElementById('showGDLine'),
-            showGradMag: document.getElementById('showGradMag')
+            showGradMag: document.getElementById('showGradMag'),
+            showRawMag: document.getElementById('showRawMag')
         };
 
         let isRendering = false;
@@ -481,6 +483,20 @@
             });
             // Calculate descent curve based on the Joint Landscape (Purple)
             gd_trajectory = computeTrajectory(ls.g_joint, pt_A);
+            distributeEvalPoints();
+        }
+
+        // Space the sample points evenly along the dotted interpolation line,
+        // with Task A (pt_A) as the start and the Joint basin (pt_AnB) as the end.
+        function distributeEvalPoints() {
+            let n = eval_points.length;
+            for (let i = 0; i < n; i++) {
+                let t = (n === 1) ? 0 : i / (n - 1);
+                eval_points[i] = {
+                    x: pt_A.x + (pt_AnB.x - pt_A.x) * t,
+                    y: pt_A.y + (pt_AnB.y - pt_A.y) * t
+                };
+            }
         }
 
         function updateCurrLandmark() {
@@ -591,14 +607,22 @@
         function drawArrow(ctx, p, raw_grad, color, lineWidth = 3, useMag = true) {
             let mag = Math.hypot(raw_grad.x, raw_grad.y);
             let desc = norm({ x: -raw_grad.x, y: -raw_grad.y });
+            let rawMode = useMag && controls.showRawMag && controls.showRawMag.checked;
             let len = arrow_scale;
-            if (useMag && controls.showGradMag && controls.showGradMag.checked) {
+            if (rawMode) {
+                // Linear & unclamped: length is directly proportional to |g| (|g|=4 → arrow_scale)
+                len = arrow_scale * mag / 4;
+            } else if (useMag && controls.showGradMag && controls.showGradMag.checked) {
                 // √-scaled: |g|=4 → arrow_scale, clamped so heads never dominate or escape panel
                 len = Math.max(arrow_scale * 0.15, Math.min(arrow_scale * 2.0, arrow_scale * Math.sqrt(mag) / 2));
             }
-            let headSize = Math.min(10, Math.max(5, len * (width / 6) * 0.25));
+            let scalePx = width / 6;
+            // Shaft length in pixels. In raw mode it stays truly proportional (no min floor);
+            // otherwise clamp so tiny gradients stay visible with a head.
+            let lenPx = rawMode ? len * scalePx : Math.max(14, len * scalePx);
             let px1 = mathToPx(p.x), py1 = mathToPy(p.y);
-            let px2 = mathToPx(p.x + desc.x * len), py2 = mathToPy(p.y + desc.y * len);
+            let px2 = px1 + desc.x * lenPx, py2 = py1 - desc.y * lenPx;
+            let headSize = Math.min(10, Math.max(7, lenPx * 0.4));
             let angle = Math.atan2(py2 - py1, px2 - px1);
             ctx.beginPath(); ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
             ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.stroke();

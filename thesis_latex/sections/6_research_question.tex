@@ -1,0 +1,18 @@
+\section{Research Questions}
+\label{sec:proposed_approach}
+
+The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the gap and each gate. The experiments are organised around four questions. The first three are answered on rotated MNIST with a small MLP, where the gap can be probed step by step across many conditions and seeds; the fourth asks whether those answers survive a deeper backbone and a stronger task shift.
+
+\paragraph{RQ1 --- The account.} Does the gap separate into a deterministic arc of the descent path and overshoot of the followed path, such that removing the overshoot drivers leaves the arc, placing the optimiser on the reference path leaves the overshoot, and doing both removes the gap while the permanent stability--plasticity cost stays visible as reduced plasticity?
+
+\paragraph{RQ2 --- The scalar feedback gate.} Does the $\lambda$-curriculum reduce the gap by timing the new-task push, and how do its ingredients divide the work? Four sub-questions probe the design:
+\begin{description}
+    \item[RQ2a (linear ramp).] Does gap depth fall as the ramp length $N$ grows, consistent with the $O(1/N)$ bound?
+    \item[RQ2b (adaptive schedule).] Does the gradient-norm feedback signal match the best fixed ramp while removing the knob $N$?
+    \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early plasticity at a modest depth cost?
+    \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged?
+\end{description}
+
+\paragraph{RQ3 --- The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, at what plasticity cost, and where does a feedforward gate fail? The account predicts one failure axis, momentum, whose accumulated velocity rebuilds the push the filter shrinks one step at a time.
+
+\paragraph{RQ4 --- Generalisation.} Do the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption): does each gate still cut the gap at matched final accuracy, and do the momentum signatures of RQ2d and RQ3 reproduce there in a momentum cross?

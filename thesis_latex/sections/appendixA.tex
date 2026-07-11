@@ -1,0 +1,125 @@
+\section{Implementation Details}
+\label{app:implementation}
+
+This appendix records the implementation specifics that the methods of
+Section~\ref{sec:methods} depend on but that would interrupt the argument in the
+main text: the datasets, the backbones and training protocol, the
+experience-replay variants, and the asymmetric-PER solver.
+
+\subsection{Datasets}
+\label{app:impl_data}
+
+rot-MNIST rotates each $28\times28$ image by the per-task angle and feeds the
+flattened greyscale vector to the MLP. The CIFAR-10 domain shifts are generated
+with the \texttt{imagecorruptions} package, which implements the standard
+common-corruptions benchmark of \citet{hendrycks2019robustness}; the Gaussian
+noise, shot noise, and contrast shifts are applied at severity $3$ on the
+benchmark's $1$--$5$ scale, per sample at load time, followed by the standard
+CIFAR-10 channel normalisation. The clean task (``none'') applies the
+normalisation only.
+
+\subsection{Models and Training}
+\label{app:impl_models}
+
+Tables~\ref{tab:mlp} and~\ref{tab:resnet} give the two backbones, and
+Table~\ref{tab:training} the training protocol shared across both benchmarks.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{@{}l p{0.55\columnwidth}@{}}
+        \hline
+        Component        & Value                                    \\
+        \hline
+        Input            & $784$ (flattened $28\times28$ greyscale) \\
+        Hidden layers    & $2 \times 400$ (fully connected, ReLU)   \\
+        Output           & $10$-class logits                        \\
+        Regularisation   & none                                     \\
+        Total parameters & $478{,}410$                              \\
+        \hline
+    \end{tabular}
+    \caption{MLP backbone used for the rot-MNIST sweeps.}
+    \label{tab:mlp}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{@{}l p{0.55\columnwidth}@{}}
+        \hline
+        Component        & Value                                                                                               \\
+        \hline
+        Input            & $3\times32\times32$ RGB                                                                             \\
+        Stem             & $3\times3$ conv, stride $1$, no max-pool (CIFAR adaptation)                                         \\
+        Stages           & $4$ residual stages, BasicBlocks $[2,2,2,2]$, widths $[64,128,256,512]$                             \\
+        Normalisation    & BatchNorm (default); GroupNorm ($\min(32, C)$ groups) variant crossed in Section~\ref{subsec:cifar} \\
+        Head             & global average pool $+$ linear, $10$-class logits                                                   \\
+        Total parameters & ${\approx}11.2$M                                                                                    \\
+        \hline
+    \end{tabular}
+    \caption{CIFAR-adapted ResNet-18 backbone used for the CIFAR-10 block. The $3\times3$ stride-$1$ stem and removed max-pool keep the feature map at $32\times32$; all other details follow the ResNet-18.}
+    \label{tab:resnet}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{@{}l p{0.27\columnwidth} p{0.27\columnwidth}@{}}
+        \hline
+        Hyperparameter  & rot-MNIST (MLP)         & CIFAR-10 (ResNet-18)   \\
+        \hline
+        Epochs per task & $1$ (online)            & $10$                   \\
+        Batch size      & $256$                   & $256$                  \\
+        Optimiser       & SGD                     & SGD                    \\
+        Learning rate   & $0.1$                   & $0.1$                  \\
+        Momentum        & $0.0$ or $0.9$          & $0.9$ ($0.0$ in cross) \\
+        Weight decay    & $0.0$                   & $0.0$                  \\
+        Replay buffer   & $1{,}000$ or $60{,}000$ & $5{,}000$              \\
+        Seeds           & $5$                     & $5$ or $3$             \\
+        \hline
+    \end{tabular}
+    \caption{Training protocol for both benchmarks.}
+    \label{tab:training}
+\end{table}
+
+\subsection{Experience replay}
+\label{app:impl_er}
+
+The replay buffer uses reservoir sampling \citep{vitter1985random}, so the stored
+set is a uniform sample of the past stream at any budget. Three modes appear in
+the experiments:
+
+\begin{itemize}
+    \item \emph{Standard ER} (the D1 and all C-series conditions): each step takes
+          one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
+          with half the mini-batch drawn from the current task and half sampled
+          with replacement from the buffer.
+    \item \emph{Balanced ER} (D3): two separate backward passes whose gradients are
+          individually unit-normalised before being combined $50/50$, removing the
+          magnitude asymmetry between $g_{\text{new}}$ and $g_{\text{replay}}$.
+    \item \emph{Full-data replay} (D2, D4): the replay gradient is computed on
+          \emph{every} stored sample exactly once per step (no sub-sampling). Paired
+          with a buffer equal to the full past-task training set ($60{,}000$ for
+          rot-MNIST $T_0$), this yields the deterministic empirical past-task
+          gradient at the current parameters, removing estimator variance.
+\end{itemize}
+
+The $\lambda$-curriculum re-weights only the current-task term, minimising
+$L_\lambda = L_{\text{replay}} + \lambda(t)\, L_{\text{current}}$; the adaptive
+schedule reads $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ through an exponential
+moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$.
+
+\subsection{Asymmetric PER}
+\label{app:impl_per}
+
+The filtered push $\delta\,(F_{\text{rep}}+\delta I)^{-1} g_{\text{cur}}$ of
+Equation~\eqref{eq:asym_per} is computed each step by warm-started conjugate
+gradients over Fisher-vector products ($25$ iterations), so the metric is never
+formed as a matrix; warm-starting from the previous step's solution keeps the
+per-step solve cheap across the run. The solver control of
+Section~\ref{subsec:per_asym} reruns the strongest filter ($\delta = 0.03$, full
+buffer) at $60$ iterations to separate properties of the gate from artefacts of
+an under-converged solve. On the full-buffer leg the replay gradient is exact
+over all $60$k past samples while the Fisher stays estimated on a sampled batch,
+since a full-buffer Fisher-vector product per CG iteration would dominate the
+runtime.
