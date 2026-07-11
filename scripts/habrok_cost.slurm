@@ -26,6 +26,12 @@
 #   per         — asymmetric PER, δ=0.1, CG 25 iters, warm start
 #   vanilla     — plain ER, no gate (opt-in via FAMILIES, off by default)
 #
+# ONE deliberate deviation from the real scripts: continual evaluation is
+# disabled (no stability-gap tracker, no periodic eval), so wall/CPU/GPU
+# numbers measure the methods' training compute only.  Safe: the adaptive
+# λ reads a train-step gradient-norm EMA (src/methods/er.py), never the
+# eval loop, so disabling eval changes neither method's trajectory.
+#
 # Benchmark runs are tagged +ablation_key=cost and use tracking.backend=
 # csv_only, so they never touch W&B and never mix with real aggregates.
 #
@@ -58,22 +64,12 @@
 #        sacct -j <jobid> --format=JobID,JobName%20,Elapsed,TotalCPU,MaxRSS,State
 #
 # NOTE: for a fair curriculum-vs-PER comparison keep all tasks on the same
-# partition/GPU type (defaults below match habrok.slurm: one A100).  The
-# rot-MNIST MLP badly under-utilises an A100 — that is fine, the point is
-# relative cost on identical hardware.
-#
-# ─── SBATCH DIRECTIVES ─────────────────────────────────────────────────────
-# Sized from observed usage (jobinfo of a real CIFAR run: 1:08 wall, 4.31G
-# RAM, ~1 CPU core busy — num_workers=0 — 3.74G VRAM), trimmed for backfill.
-# Reservation size does not affect the measurements; only the GPU type does,
-# so the a100 pin STAYS — mixed GPU types would make the curriculum-vs-PER
-# rows incomparable.  --time is 4h, not 2h: the 1:08 reference was not a
-# CG-heavy PER run, and a timeout kills the task before its CSV row is
-# written.  Once a PER probe confirms its runtime, tighten at submit time
-# (no script edit needed):  sbatch --time=02:00:00 --array=... .
+# partition/GPU type (pinned below: one v100v2).  The rot-MNIST MLP badly
+# under-utilises even a V100 — that is fine, the point is relative cost on
+# identical hardware.
 #SBATCH --job-name=vw_cost
 #SBATCH --partition=gpu
-#SBATCH --gpus-per-node=a100:1
+#SBATCH --gpus-per-node=v100v2:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
@@ -143,6 +139,7 @@ fi
 # ─── Environment ──────────────────────────────────────────────────────────
 module purge
 export PYTHON="$SLURM_SUBMIT_DIR/.venv/bin/python"
+export PYTHONPATH="$SLURM_SUBMIT_DIR${PYTHONPATH:+:${PYTHONPATH}}"
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs data "$COST_DIR/raw"
 
@@ -175,8 +172,6 @@ case "$DS" in
             dataset.num_tasks=2
             'dataset.rotations_deg=[0,90]'
             training.momentum=0.0
-            eval.stability_gap.eval_freq_steps=1
-            eval.stability_gap.window_steps=250
         ) ;;
     cifar)     # run_G.sh headline protocol, GN legs
                # (CIFAR_BASE + TWO_TASK_GAUSSIAN + GN_OVERRIDES → G6/G8)
@@ -190,9 +185,6 @@ case "$DS" in
             model.norm_groups=32
             memory.total_budget=5000
             training.momentum=0.9
-            eval.stability_gap.eval_freq_steps=1
-            eval.stability_gap.window_steps=250
-            eval.eval_every_n_steps=10
         ) ;;
     *) echo "ERROR: unknown dataset '$DS' (expected rotmnist|cifar)" >&2; exit 1 ;;
 esac
@@ -221,7 +213,14 @@ case "$FAM" in
     *) echo "ERROR: unknown family '$FAM' (expected vanilla|curriculum|per)" >&2; exit 1 ;;
 esac
 
+# Continual evaluation OFF — the real runs' dense per-step eval is the same
+# additive load for both methods, but it dilutes the measured method
+# overhead, so cost runs strip it: no stability-gap tracker, and the
+# periodic-eval interval pushed past any run length (a literal 0 would
+# crash — train.py takes `global_step % eval_every_n_steps` every step).
 OVERRIDES+=(
+    eval.stability_gap.enabled=false
+    eval.eval_every_n_steps=1000000000
     "seed=${SEED}"
     +ablation_key=cost
     "+ablation_value=cost_${DS}_${FAM}"
