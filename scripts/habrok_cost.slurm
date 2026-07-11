@@ -64,15 +64,17 @@
 #        sacct -j <jobid> --format=JobID,JobName%20,Elapsed,TotalCPU,MaxRSS,State
 #
 # NOTE: for a fair curriculum-vs-PER comparison keep all tasks on the same
-# partition/GPU type (pinned below: one rtx6000).  The rot-MNIST MLP badly
-# under-utilises even an RTX 6000 — that is fine, the point is relative cost on
-# identical hardware.  RTX 6000 is compute capability 7.5, which the installed
-# torch build supports, and is far less contended than the A100s; the V100 (CC
-# 7.0) does NOT work — the default cu128 wheel has no sm_70 kernels, so conv2d
-# fails with "GET was unable to find an engine".
+# partition/GPU type (pinned below: one rtx_pro_6000).  The rot-MNIST MLP badly
+# under-utilises even an RTX PRO 6000 — that is fine, the point is relative cost
+# on identical hardware.  The RTX PRO 6000 (Blackwell) is compute capability
+# 12.0, which the installed torch build supports, and is far less contended than
+# the A100s.  These nodes live in gpushort/gpumedium/gpulong (NOT the plain gpu
+# partition), so the partition is set to gpushort below.  The V100 (CC 7.0) does
+# NOT work — the default cu128 wheel has no sm_70 kernels, so conv2d fails with
+# "GET was unable to find an engine".
 #SBATCH --job-name=vw_cost
-#SBATCH --partition=gpu
-#SBATCH --gpus-per-node=rtx6000:1
+#SBATCH --partition=gpushort
+#SBATCH --gpus-per-node=rtx_pro_6000:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
