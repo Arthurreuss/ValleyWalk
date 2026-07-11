@@ -64,12 +64,14 @@
 #        sacct -j <jobid> --format=JobID,JobName%20,Elapsed,TotalCPU,MaxRSS,State
 #
 # NOTE: for a fair curriculum-vs-PER comparison keep all tasks on the same
-# partition/GPU type (pinned below: one v100v2).  The rot-MNIST MLP badly
-# under-utilises even a V100 — that is fine, the point is relative cost on
-# identical hardware.
+# partition/GPU type (pinned below: one a100).  The rot-MNIST MLP badly
+# under-utilises even an A100 — that is fine, the point is relative cost on
+# identical hardware.  (A100 is compute capability 8.0, which the installed
+# torch build supports; the V100 is CC 7.0 and the default cu128 wheel has no
+# sm_70 kernels, so conv2d fails with "GET was unable to find an engine".)
 #SBATCH --job-name=vw_cost
 #SBATCH --partition=gpu
-#SBATCH --gpus-per-node=v100:1
+#SBATCH --gpus-per-node=a100:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
