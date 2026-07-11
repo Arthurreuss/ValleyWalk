@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Multi-Task Gradient Sandbox</title>
+    <title>2D Loss Landscape at a Task Transition</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -73,6 +73,13 @@
             color: #aaa;
         }
 
+        .hint {
+            font-size: 11px;
+            color: #888;
+            margin-top: 0;
+            line-height: 1.4;
+        }
+
         input[type="checkbox"] {
             margin-right: 10px;
             width: 16px;
@@ -116,6 +123,15 @@
             padding: 10px 0;
             font-weight: bold;
             font-size: 16px;
+            line-height: 22px;
+            height: 22px;
+        }
+
+        /* Keep sub/superscripts from stretching the line box, so titles
+           with formulas stay the same height as plain ones. */
+        sub,
+        sup {
+            line-height: 0;
         }
 
         canvas {
@@ -125,6 +141,33 @@
 
         canvas:active {
             cursor: grabbing;
+        }
+
+        .gate-strip {
+            background: #f5f5f5;
+            color: #333;
+            padding: 6px 12px 2px;
+            font-size: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            width: 380px;
+            box-sizing: border-box;
+            /* Equal height in both gate panels so the canvases align. */
+            height: 112px;
+            overflow: hidden;
+        }
+
+        .gate-strip .slider-row {
+            margin-bottom: 2px;
+        }
+
+        .gate-strip .val-display {
+            color: #555;
+        }
+
+        .gate-strip .hint {
+            color: #777;
+            margin: 2px 0 6px;
         }
     </style>
 </head>
@@ -142,27 +185,14 @@
                 <option value="rosenbrock">5. Rosenbrock Valleys</option>
                 <option value="asymmetric">6. Asymmetric (Bowl + Rosenbrock)</option>
             </select>
-
-            <h2 style="margin-top: 15px;">Algorithm Config</h2>
-            <label><input type="checkbox" id="useGem" checked> Use GEM Projection</label>
-            <select id="gemTarget" style="margin-bottom: 10px;">
-                <option value="blue">Target: Task B (Blue)</option>
-                <option value="joint">Target: Joint (Purple)</option>
-            </select>
-
-            <label><input type="checkbox" id="useBalancedJoint"> Balanced Joint Grad (Norm First)</label>
-
-            <label style="margin-top: 10px;"><input type="checkbox" id="useHessian" checked> Use Hessian
-                Trust-Algo</label>
-            <div class="slider-row">
-                <span>Wedge Angle:</span>
-                <input type="range" id="wedgeAngle" min="10" max="180" value="45">
-                <span id="val_wedgeAngle" class="val-display">45°</span>
-            </div>
+            <p class="hint" style="margin-top: 10px;">
+                Task A is the past (replay) task, Task B the current one. The stability gap is the transient
+                excursion of the Task-A loss above its final joint level while descending the joint loss from A.
+            </p>
         </div>
 
         <div class="dashboard-section" style="min-width: 260px;">
-            <h2>Dynamic Task Centers</h2>
+            <h2>Task Minima</h2>
             <div class="slider-row">
                 <span style="color: #ff6b6b; font-weight: bold;">Task A (X)</span>
                 <input type="range" id="cx_A" min="-2.5" max="2.5" step="0.1" value="-1.5">
@@ -187,45 +217,70 @@
         </div>
 
         <div class="dashboard-section" style="min-width: 260px;">
-            <h2>Curriculum Control</h2>
-            <div class="slider-row">
-                <span style="color: #ffcc00; font-weight: bold;">Lambda (λ)</span>
-                <input type="range" id="lambdaSlider" min="0" max="1000" step="1" value="793">
-                <span id="val_lambda" class="val-display">0.500</span>
-            </div>
-            <p style="font-size: 11px; color: #888; margin-top: 0; line-height: 1.4;">
-                <strong>Log Scale enabled:</strong> Sliding left gives extreme precision for very low λ values (0.001 -
-                0.1). Watch how the minimum dynamically traces the trajectory without teleporting.
-            </p>
+            <h2>Visibility Options</h2>
+            <label><input type="checkbox" id="showGradRed" checked> Grad A / g<sub>rep</sub> (red)</label>
+            <label><input type="checkbox" id="showGradBlue" checked> Grad B / g<sub>cur</sub> (blue)</label>
+            <label><input type="checkbox" id="showGradJoint" checked> Joint gradient (purple)</label>
+            <label><input type="checkbox" id="showStraightLine" checked> Reference chord (dashed black)</label>
+            <label><input type="checkbox" id="showGDLine" checked> Steepest-descent trajectory (green)</label>
+            <label><input type="checkbox" id="showRefPath" checked> Reference path Θ*(λ) (gold)</label>
+            <label><input type="checkbox" id="showPerTraj" checked> Gated trajectory (orange)</label>
 
-            <h2 style="margin-top: 15px;">Visibility Options</h2>
-            <label><input type="checkbox" id="showGradRed" checked> Show Grad A (Red)</label>
-            <label><input type="checkbox" id="showGradBlue" checked> Show Grad B (Blue)</label>
-            <label><input type="checkbox" id="showGradJoint" checked> Show Grad Joint (Purple)</label>
-            <label><input type="checkbox" id="showHessianDirs"> Hessian Crosshairs</label>
-            <label><input type="checkbox" id="showStraightLine" checked> Show Dotted Interpolation</label>
-            <label><input type="checkbox" id="showGDLine" checked> Show GD Trajectory</label>
-            <label><input type="checkbox" id="showGradMag"> Show Gradient Magnitudes (√-scaled)</label>
-            <label><input type="checkbox" id="showRawMag"> Show Raw Magnitudes (linear, unclamped)</label>
+            <h2 style="margin-top: 15px;">Arrow Length</h2>
+            <select id="arrowScale">
+                <option value="unit">Unit length (direction only)</option>
+                <option value="sqrt">√-scaled magnitude (clamped)</option>
+                <option value="raw">Raw magnitude (linear, unclamped)</option>
+            </select>
         </div>
     </div>
 
-    <div class="canvas-container">
+    <div class="canvas-container" style="margin-bottom: 15px;">
         <div class="panel">
-            <div class="panel-title">Task A loss (Reference)</div>
+            <div class="panel-title">Task A loss (past / replay)</div>
             <canvas id="canvasA" width="380" height="380"></canvas>
         </div>
         <div class="panel">
-            <div class="panel-title">Task B loss (Current)</div>
+            <div class="panel-title">Task B loss (current)</div>
             <canvas id="canvasB" width="380" height="380"></canvas>
         </div>
         <div class="panel">
             <div class="panel-title">Joint loss: A + B</div>
             <canvas id="canvasJoint" width="380" height="380"></canvas>
         </div>
+    </div>
+
+    <div class="canvas-container">
         <div class="panel" style="border: 2px solid #ffcc00;">
             <div class="panel-title" style="color: #b38f00;">Curriculum: A + λB</div>
+            <div class="gate-strip">
+                <div class="slider-row">
+                    <span style="color: #b38f00; font-weight: bold;">λ</span>
+                    <input type="range" id="lambdaSlider" min="0" max="1000" step="1" value="793">
+                    <span id="val_lambda" class="val-display">0.500</span>
+                </div>
+                <p class="hint">
+                    Scalar feedback gate: L<sub>λ</sub> = L<sub>A</sub> + λ·L<sub>B</sub>. As λ ramps 0 → 1,
+                    the minimiser <em>Curr</em> slides along Θ*(λ) instead of teleporting (log-scaled slider).
+                </p>
+            </div>
             <canvas id="canvasCurr" width="380" height="380"></canvas>
+        </div>
+        <div class="panel" style="border: 2px solid #e76f51;">
+            <div class="panel-title" style="color: #b04a2f;">Asym. PER: g<sub>A</sub> + δ(H<sub>A</sub>+δI)<sup>−1</sup>g<sub>B</sub></div>
+            <div class="gate-strip">
+                <div class="slider-row">
+                    <span style="color: #b04a2f; font-weight: bold;">δ</span>
+                    <input type="range" id="deltaSlider" min="0" max="1000" step="1" value="500">
+                    <span id="val_delta" class="val-display">1.00</span>
+                </div>
+                <p class="hint">
+                    Directional feedforward gate on the joint loss: gain δ/(ρ+δ) along past-task curvature ρ,
+                    so flat directions pass and steep ones are damped; δ → ∞ gives plain joint descent.
+                    The orange path halts where g<sub>A</sub> balances the filtered push (○): the plasticity cost.
+                </p>
+            </div>
+            <canvas id="canvasPer" width="380" height="380"></canvas>
         </div>
     </div>
 
@@ -241,7 +296,10 @@
         let pt_AnB = { x: 0, y: 0 };
         let pt_Curr = { x: 0, y: 0 };
         let lambdaVal = 0.5;
+        let deltaVal = 1.0;
         let gd_trajectory = [];
+        let per_trajectory = [];
+        let ref_path = [];
 
         let eval_points = [
             { x: -0.9, y: 0.3 }, { x: -1.50, y: 1.5 }, { x: -1.0, y: 1.20 },
@@ -253,7 +311,6 @@
             let mag = Math.sqrt(v.x * v.x + v.y * v.y) + 1e-8;
             return { x: v.x / mag, y: v.y / mag };
         }
-        function dot(v1, v2) { return v1.x * v2.x + v1.y * v2.y; }
 
         function getBendMath(u) {
             let k = 4.0;
@@ -267,48 +324,42 @@
                 L_B: (dx, dy) => Math.pow(2 * dx - dy, 2) + 0.1 * (dx * dx + dy * dy),
                 g_A: (dx, dy) => ({ x: 4 * (2 * dx + dy) + 0.2 * dx, y: 2 * (2 * dx + dy) + 0.2 * dy }),
                 g_B: (dx, dy) => ({ x: 4 * (2 * dx - dy) + 0.2 * dx, y: -2 * (2 * dx - dy) + 0.2 * dy }),
-                h_A: (dx, dy) => [[8.2, 4.0], [4.0, 2.2]],
-                h_B: (dx, dy) => [[8.2, -4.0], [-4.0, 2.2]]
+                h_A: (dx, dy) => [[8.2, 4.0], [4.0, 2.2]]
             },
             piecewise: {
                 L_A: (dx, dy) => getBendMath(2 * dx + dy).val + 0.1 * (dx * dx + dy * dy),
                 L_B: (dx, dy) => getBendMath(2 * dx - dy).val + 0.1 * (dx * dx + dy * dy),
                 g_A: (dx, dy) => { let m = getBendMath(2 * dx + dy); return { x: m.dU * 2 + 0.2 * dx, y: m.dU * 1 + 0.2 * dy }; },
                 g_B: (dx, dy) => { let m = getBendMath(2 * dx - dy); return { x: m.dU * 2 + 0.2 * dx, y: m.dU * (-1) + 0.2 * dy }; },
-                h_A: (dx, dy) => { let m = getBendMath(2 * dx + dy); return [[m.ddU * 4 + 0.2, m.ddU * 2], [m.ddU * 2, m.ddU * 1 + 0.2]]; },
-                h_B: (dx, dy) => { let m = getBendMath(2 * dx - dy); return [[m.ddU * 4 + 0.2, m.ddU * -2], [m.ddU * -2, m.ddU * 1 + 0.2]]; }
+                h_A: (dx, dy) => { let m = getBendMath(2 * dx + dy); return [[m.ddU * 4 + 0.2, m.ddU * 2], [m.ddU * 2, m.ddU * 1 + 0.2]]; }
             },
             rippled: {
                 L_A: (dx, dy) => 0.8 * dx * dx + 0.8 * dy * dy - 0.4 * Math.cos(3 * dx) - 0.4 * Math.cos(3 * dy) + 0.8,
                 L_B: (dx, dy) => 0.8 * dx * dx + 0.8 * dy * dy - 0.4 * Math.cos(3 * dx) - 0.4 * Math.cos(3 * dy) + 0.8,
                 g_A: (dx, dy) => ({ x: 1.6 * dx + 1.2 * Math.sin(3 * dx), y: 1.6 * dy + 1.2 * Math.sin(3 * dy) }),
                 g_B: (dx, dy) => ({ x: 1.6 * dx + 1.2 * Math.sin(3 * dx), y: 1.6 * dy + 1.2 * Math.sin(3 * dy) }),
-                h_A: (dx, dy) => [[1.6 + 3.6 * Math.cos(3 * dx), 0], [0, 1.6 + 3.6 * Math.cos(3 * dy)]],
-                h_B: (dx, dy) => [[1.6 + 3.6 * Math.cos(3 * dx), 0], [0, 1.6 + 3.6 * Math.cos(3 * dy)]]
+                h_A: (dx, dy) => [[1.6 + 3.6 * Math.cos(3 * dx), 0], [0, 1.6 + 3.6 * Math.cos(3 * dy)]]
             },
             ravines: {
                 L_A: (dx, dy) => 5.0 * dx * dx + 0.2 * dy * dy,
                 L_B: (dx, dy) => 0.2 * dx * dx + 5.0 * dy * dy,
                 g_A: (dx, dy) => ({ x: 10.0 * dx, y: 0.4 * dy }),
                 g_B: (dx, dy) => ({ x: 0.4 * dx, y: 10.0 * dy }),
-                h_A: (dx, dy) => [[10.0, 0.0], [0.0, 0.4]],
-                h_B: (dx, dy) => [[0.4, 0.0], [0.0, 10.0]]
+                h_A: (dx, dy) => [[10.0, 0.0], [0.0, 0.4]]
             },
             rosenbrock: {
                 L_A: (dx, dy) => dx * dx + 4.0 * Math.pow(dy - dx * dx, 2),
                 L_B: (dx, dy) => dx * dx + 4.0 * Math.pow(dy + dx * dx, 2),
                 g_A: (dx, dy) => ({ x: 2 * dx - 16 * dx * (dy - dx * dx), y: 8 * (dy - dx * dx) }),
                 g_B: (dx, dy) => ({ x: 2 * dx + 16 * dx * (dy + dx * dx), y: 8 * (dy + dx * dx) }),
-                h_A: (dx, dy) => [[2 - 16 * dy + 48 * dx * dx, -16 * dx], [-16 * dx, 8]],
-                h_B: (dx, dy) => [[2 + 16 * dy + 48 * dx * dx, 16 * dx], [16 * dx, 8]]
+                h_A: (dx, dy) => [[2 - 16 * dy + 48 * dx * dx, -16 * dx], [-16 * dx, 8]]
             },
             asymmetric: {
                 L_A: (dx, dy) => 2.0 * dx * dx + 2.0 * dy * dy,
                 L_B: (dx, dy) => dx * dx + 4.0 * Math.pow(dy - dx * dx, 2),
                 g_A: (dx, dy) => ({ x: 4.0 * dx, y: 4.0 * dy }),
                 g_B: (dx, dy) => ({ x: 2 * dx - 16 * dx * (dy - dx * dx), y: 8 * (dy - dx * dx) }),
-                h_A: (dx, dy) => [[4.0, 0.0], [0.0, 4.0]],
-                h_B: (dx, dy) => [[2 - 16 * dy + 48 * dx * dx, -16 * dx], [-16 * dx, 8]]
+                h_A: (dx, dy) => [[4.0, 0.0], [0.0, 4.0]]
             }
         };
 
@@ -325,50 +376,67 @@
                 g_joint: (p) => {
                     let a = base.g_A(p.x - centers.cx_A, p.y - centers.cy_A);
                     let b = base.g_B(p.x - centers.cx_B, p.y - centers.cy_B);
-                    const useBal = document.getElementById('useBalancedJoint');
-                    if (useBal && useBal.checked) {
-                        a = norm(a); b = norm(b);
-                    }
                     return { x: a.x + b.x, y: a.y + b.y };
                 },
-                g_curr: (p) => {
+                g_lambda: (p, lam) => {
                     let a = base.g_A(p.x - centers.cx_A, p.y - centers.cy_A);
                     let b = base.g_B(p.x - centers.cx_B, p.y - centers.cy_B);
-                    return { x: a.x + lambdaVal * b.x, y: a.y + lambdaVal * b.y };
+                    return { x: a.x + lam * b.x, y: a.y + lam * b.y };
                 },
+                g_curr: (p) => landscapes[key].g_lambda(p, lambdaVal),
 
-                h_red: (p) => base.h_A(p.x - centers.cx_A, p.y - centers.cy_A),
-                h_blue: (p) => base.h_B(p.x - centers.cx_B, p.y - centers.cy_B),
-                h_joint: (p) => {
-                    let a = base.h_A(p.x - centers.cx_A, p.y - centers.cy_A);
-                    let b = base.h_B(p.x - centers.cx_B, p.y - centers.cy_B);
-                    return [[a[0][0] + b[0][0], a[0][1] + b[0][1]], [a[1][0] + b[1][0], a[1][1] + b[1][1]]];
-                },
-                h_curr: (p) => {
-                    let a = base.h_A(p.x - centers.cx_A, p.y - centers.cy_A);
-                    let b = base.h_B(p.x - centers.cx_B, p.y - centers.cy_B);
-                    return [[a[0][0] + lambdaVal * b[0][0], a[0][1] + lambdaVal * b[0][1]], [a[1][0] + lambdaVal * b[1][0], a[1][1] + lambdaVal * b[1][1]]];
-                }
+                // 2D analog of the replay Fisher F_rep: the past-task Hessian at p.
+                h_red: (p) => base.h_A(p.x - centers.cx_A, p.y - centers.cy_A)
             };
+        }
+
+        // The Fisher is PSD by construction; clamp negative curvature of the toy
+        // Hessian analog so the gate stays well-defined on non-convex landscapes.
+        function psdClamp(H) {
+            const a = H[0][0], b = H[0][1], c = H[1][1];
+            const tr = a + c, det = a * c - b * b;
+            const disc = Math.sqrt(Math.max(0, tr * tr / 4 - det));
+            const l1 = tr / 2 + disc, l2 = tr / 2 - disc;
+            if (l2 >= 0) return H;
+            let v1 = (Math.abs(b) > 1e-8) ? norm({ x: l1 - c, y: b }) : (a >= c ? { x: 1, y: 0 } : { x: 0, y: 1 });
+            let v2 = { x: -v1.y, y: v1.x };
+            const k1 = Math.max(0, l1), k2 = Math.max(0, l2);
+            return [
+                [k1 * v1.x * v1.x + k2 * v2.x * v2.x, k1 * v1.x * v1.y + k2 * v2.x * v2.y],
+                [k1 * v1.x * v1.y + k2 * v2.x * v2.y, k1 * v1.y * v1.y + k2 * v2.y * v2.y]
+            ];
+        }
+
+        // Asymmetric PER gate: G g = δ (H_A + δI)^{-1} g, applied to the new-task gradient only.
+        function gateApply(H, delta, g) {
+            const a = H[0][0] + delta, b = H[0][1], c = H[1][0], d = H[1][1] + delta;
+            const det = a * d - b * c;
+            return {
+                x: delta * (d * g.x - b * g.y) / det,
+                y: delta * (-c * g.x + a * g.y) / det
+            };
+        }
+
+        function g_gated(ls, p) {
+            let ga = ls.g_red(p);
+            let gb = ls.g_blue(p);
+            let Gg = gateApply(psdClamp(ls.h_red(p)), deltaVal, gb);
+            return { x: ga.x + Gg.x, y: ga.y + Gg.y };
         }
 
         // --- UI Initialization & Listeners ---
         const controls = {
             landscapeSelect: document.getElementById('landscapeSelect'),
-            useGem: document.getElementById('useGem'),
-            gemTarget: document.getElementById('gemTarget'),
-            useBalancedJoint: document.getElementById('useBalancedJoint'),
-            useHessian: document.getElementById('useHessian'),
-            wedgeAngle: document.getElementById('wedgeAngle'),
+            lambdaSlider: document.getElementById('lambdaSlider'),
+            deltaSlider: document.getElementById('deltaSlider'),
             showGradRed: document.getElementById('showGradRed'),
             showGradBlue: document.getElementById('showGradBlue'),
             showGradJoint: document.getElementById('showGradJoint'),
-            showHessianDirs: document.getElementById('showHessianDirs'),
-            lambdaSlider: document.getElementById('lambdaSlider'),
             showStraightLine: document.getElementById('showStraightLine'),
             showGDLine: document.getElementById('showGDLine'),
-            showGradMag: document.getElementById('showGradMag'),
-            showRawMag: document.getElementById('showRawMag')
+            showRefPath: document.getElementById('showRefPath'),
+            showPerTraj: document.getElementById('showPerTraj'),
+            arrowScale: document.getElementById('arrowScale')
         };
 
         let isRendering = false;
@@ -402,6 +470,16 @@
             triggerRender();
         });
 
+        // Log scale over [0.01, 100], centred on δ = 1.
+        controls.deltaSlider.addEventListener('input', (e) => {
+            let t = parseFloat(e.target.value) / 1000;
+            deltaVal = Math.pow(10, -2 + 4 * t);
+            document.getElementById('val_delta').textContent =
+                deltaVal < 0.1 ? deltaVal.toFixed(3) : deltaVal.toFixed(2);
+            updatePerTrajectory();
+            triggerRender();
+        });
+
         controls.landscapeSelect.addEventListener('change', () => {
             updateLandmarks();
             updateCurrLandmark();
@@ -410,18 +488,8 @@
             triggerRender();
         });
 
-        controls.wedgeAngle.addEventListener('input', (e) => {
-            document.getElementById('val_wedgeAngle').textContent = e.target.value + "°";
-            triggerRender();
-        });
-
-        controls.useBalancedJoint.addEventListener('change', () => {
-            updateLandmarks();
-            triggerRender();
-        });
-
         Object.values(controls).forEach(el => {
-            if (el !== controls.landscapeSelect && el !== controls.wedgeAngle && el !== controls.lambdaSlider && el !== controls.useBalancedJoint) {
+            if (el !== controls.landscapeSelect && el !== controls.lambdaSlider && el !== controls.deltaSlider) {
                 el.addEventListener('change', triggerRender);
             }
         });
@@ -431,24 +499,39 @@
         const canvasB = document.getElementById('canvasB');
         const canvasJ = document.getElementById('canvasJoint');
         const canvasC = document.getElementById('canvasCurr');
+        const canvasP = document.getElementById('canvasPer');
         const ctxA = canvasA.getContext('2d');
         const ctxB = canvasB.getContext('2d');
         const ctxJ = canvasJ.getContext('2d');
         const ctxC = canvasC.getContext('2d');
+        const ctxP = canvasP.getContext('2d');
         const width = 380, height = 380;
         const arrow_scale = 0.5;
 
-        function findMinimum(gradFunc, start_p) {
-            let p = { x: start_p.x, y: start_p.y };
-            let lr = 0.01;
-            for (let i = 0; i < 2000; i++) {
+        // Gradient descent with step-norm capping (keeps high-curvature landscapes
+        // like Rosenbrock from diverging) and a tolerance-based stop.
+        function descend(gradFunc, p, lr, maxIters, tol) {
+            const cap = 0.05;
+            for (let i = 0; i < maxIters; i++) {
                 let g = gradFunc(p);
-                p.x -= lr * g.x; p.y -= lr * g.y;
+                let mag = Math.hypot(g.x, g.y);
+                if (mag < tol) break;
+                let s = Math.min(lr, cap / mag);
+                p.x -= s * g.x; p.y -= s * g.y;
             }
             return p;
         }
 
-        // Updated for Gradient Flow: traces exactly the steepest descent path smoothly
+        // Coarse capped pass to reach the basin, fine pass to converge, so the
+        // chord endpoint and the reference-path endpoint agree to ~1e-7.
+        function findMinimum(gradFunc, start_p) {
+            let p = { x: start_p.x, y: start_p.y };
+            descend(gradFunc, p, 0.01, 5000, 1e-7);
+            descend(gradFunc, p, 0.001, 20000, 1e-7);
+            return p;
+        }
+
+        // Gradient flow: traces the steepest-descent path of gradFunc smoothly.
         function computeTrajectory(gradFunc, start_p) {
             let p = { x: start_p.x, y: start_p.y };
             let path = [{ x: p.x, y: p.y }];
@@ -458,18 +541,37 @@
                 let g = gradFunc(p);
                 let mag = Math.hypot(g.x, g.y);
 
-                // Stop calculating if we've basically reached the minimum
+                // Stop calculating if we've basically reached a stationary point
                 if (mag < 1e-4) break;
 
-                // Normalize gradient so it acts purely as a directional vector (Gradient flow)
+                // Normalize so the field acts purely as a direction (gradient flow)
                 p.x -= step_size * (g.x / mag);
                 p.y -= step_size * (g.y / mag);
 
-                // Only sample every 10 steps to keep the path array manageable, 
-                // but fine enough for drawing perfectly smooth
+                // Sample every 10 steps to keep the path array manageable
                 if (i % 10 === 0) path.push({ x: p.x, y: p.y });
             }
+            // The fixed-length flow jitters within one step of the stationary point;
+            // finish with proper descent so the drawn endpoint is exact.
+            descend(gradFunc, p, 0.005, 5000, 1e-6);
+            descend(gradFunc, p, 0.001, 10000, 1e-6);
             path.push({ x: p.x, y: p.y });
+            return path;
+        }
+
+        // Reference path Θ*(λ): the minimiser of L_A + λ L_B tracked as λ ramps 0 → 1.
+        // Cubic λ spacing mirrors the slider, giving resolution where the path moves fastest.
+        function computeRefPath(ls) {
+            let p = { x: pt_A.x, y: pt_A.y };
+            let path = [{ x: p.x, y: p.y }];
+            const K = 100;
+            for (let i = 1; i <= K; i++) {
+                const lam = Math.pow(i / K, 3);
+                const g_lam = (q) => ls.g_lambda(q, lam);
+                descend(g_lam, p, 0.01, 200, 1e-6);
+                descend(g_lam, p, 0.001, 800, 1e-6);
+                path.push({ x: p.x, y: p.y });
+            }
             return path;
         }
 
@@ -481,13 +583,20 @@
                 x: (centers.cx_A + centers.cx_B) / 2 + 0.01,
                 y: (centers.cy_A + centers.cy_B) / 2 + 0.01
             });
-            // Calculate descent curve based on the Joint Landscape (Purple)
+            // Steepest descent on the abruptly assembled joint loss: the Level-One bow.
             gd_trajectory = computeTrajectory(ls.g_joint, pt_A);
+            ref_path = computeRefPath(ls);
+            updatePerTrajectory();
             distributeEvalPoints();
         }
 
-        // Space the sample points evenly along the dotted interpolation line,
-        // with Task A (pt_A) as the start and the Joint basin (pt_AnB) as the end.
+        function updatePerTrajectory() {
+            let ls = landscapes[controls.landscapeSelect.value];
+            per_trajectory = computeTrajectory((p) => g_gated(ls, p), pt_A);
+        }
+
+        // Space the sample points evenly along the dashed reference chord,
+        // with Task A (pt_A) as the start and the joint basin (pt_AnB) as the end.
         function distributeEvalPoints() {
             let n = eval_points.length;
             for (let i = 0; i < n; i++) {
@@ -508,33 +617,6 @@
         function mathToPy(y) { return (height / 2) - y * (height / 6); }
         function pxToMathX(px) { return (px - width / 2) / (width / 6); }
         function pxToMathY(py) { return (height / 2 - py) / (height / 6); }
-
-        function getEigen(H) {
-            let A = H[0][0], B = H[0][1], C = H[1][1];
-            let T = A + C; let D = A * C - B * B;
-            let L1 = T / 2 + Math.sqrt(T * T / 4 - D);
-            let L2 = T / 2 - Math.sqrt(T * T / 4 - D);
-            let v1, v2;
-            if (Math.abs(B) > 1e-8) {
-                v1 = norm({ x: L1 - C, y: B }); v2 = norm({ x: L2 - C, y: B });
-            } else {
-                v1 = { x: 1, y: 0 }; v2 = { x: 0, y: 1 };
-            }
-            return L1 > L2 ? { steep: v1, shallow: v2 } : { steep: v2, shallow: v1 };
-        }
-
-        function applyGEM(g_ref, g_target) {
-            let d = dot(g_ref, g_target);
-            if (d < 0) {
-                let ref_norm_sq = dot(g_ref, g_ref) + 1e-8;
-                let proj_scale = d / ref_norm_sq;
-                return {
-                    v: { x: g_target.x - (proj_scale * g_ref.x), y: g_target.y - (proj_scale * g_ref.y) },
-                    applied: true
-                };
-            }
-            return { v: g_target, applied: false };
-        }
 
         let draggingPointIndex = null;
         function attachDragListeners(canvas) {
@@ -558,7 +640,7 @@
                 }
             });
         }
-        attachDragListeners(canvasA); attachDragListeners(canvasB); attachDragListeners(canvasJ); attachDragListeners(canvasC);
+        [canvasA, canvasB, canvasJ, canvasC, canvasP].forEach(attachDragListeners);
         window.addEventListener('mouseup', () => { draggingPointIndex = null; });
 
         let bgA, bgB, bgJoint, bgCurr;
@@ -596,6 +678,7 @@
             let ls = landscapes[controls.landscapeSelect.value];
             bgA = generateHeatmap(ls.z_red, 180, 0, 0);
             bgB = generateHeatmap(ls.z_blue, 0, 100, 200);
+            // The PER panel reuses this heatmap: the gate changes the update, not the objective.
             bgJoint = generateHeatmap(ls.z_joint, 100, 0, 150);
         }
 
@@ -604,15 +687,16 @@
             bgCurr = generateHeatmap(ls.z_curr, 180 - (80 * lambdaVal), 0, 150 * lambdaVal);
         }
 
-        function drawArrow(ctx, p, raw_grad, color, lineWidth = 3, useMag = true) {
+        function drawArrow(ctx, p, raw_grad, color, lineWidth = 3) {
             let mag = Math.hypot(raw_grad.x, raw_grad.y);
             let desc = norm({ x: -raw_grad.x, y: -raw_grad.y });
-            let rawMode = useMag && controls.showRawMag && controls.showRawMag.checked;
+            const mode = controls.arrowScale.value; // 'unit' | 'sqrt' | 'raw'
+            const rawMode = mode === 'raw';
             let len = arrow_scale;
             if (rawMode) {
                 // Linear & unclamped: length is directly proportional to |g| (|g|=4 → arrow_scale)
                 len = arrow_scale * mag / 4;
-            } else if (useMag && controls.showGradMag && controls.showGradMag.checked) {
+            } else if (mode === 'sqrt') {
                 // √-scaled: |g|=4 → arrow_scale, clamped so heads never dominate or escape panel
                 len = Math.max(arrow_scale * 0.15, Math.min(arrow_scale * 2.0, arrow_scale * Math.sqrt(mag) / 2));
             }
@@ -633,70 +717,59 @@
             ctx.fillStyle = color; ctx.fill();
         }
 
-        function drawWedge(ctx, p, raw_grad, color, angleDeg) {
-            let desc = norm({ x: -raw_grad.x, y: -raw_grad.y });
-            let canvas_angle = Math.atan2(-desc.y, desc.x);
-            let spread = (angleDeg * Math.PI) / 180;
-            ctx.beginPath(); ctx.moveTo(mathToPx(p.x), mathToPy(p.y));
-            ctx.arc(mathToPx(p.x), mathToPy(p.y), arrow_scale * (width / 6), canvas_angle - spread, canvas_angle + spread);
-            ctx.closePath(); ctx.fillStyle = color; ctx.fill();
-        }
-
-        function drawHessianCross(ctx, p, H, color) {
-            let eigen = getEigen(H);
-            let px = mathToPx(p.x), py = mathToPy(p.y);
-            let scale = 0.2 * (width / 6);
+        function drawPath(ctx, path, color, lineWidth, dash) {
+            if (!path || path.length < 2) return;
             ctx.beginPath();
-            ctx.moveTo(px - eigen.steep.x * scale, py + eigen.steep.y * scale);
-            ctx.lineTo(px + eigen.steep.x * scale, py - eigen.steep.y * scale);
-            ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(px - eigen.shallow.x * scale, py + eigen.shallow.y * scale);
-            ctx.lineTo(px + eigen.shallow.x * scale, py - eigen.shallow.y * scale);
-            ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.stroke();
+            ctx.moveTo(mathToPx(path[0].x), mathToPy(path[0].y));
+            for (let i = 1; i < path.length; i++) {
+                ctx.lineTo(mathToPx(path[i].x), mathToPy(path[i].y));
+            }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            if (dash) ctx.setLineDash(dash);
+            ctx.stroke();
             ctx.setLineDash([]);
         }
 
+        // Panel indices: 0 = Task A, 1 = Task B, 2 = Joint, 3 = Curriculum, 4 = Asym. PER
         function renderPanel(ctx, bgImg, panelIndex) {
             ctx.clearRect(0, 0, width, height);
             ctx.drawImage(bgImg, 0, 0);
 
-            // --- Draw Interpolation & GD Paths ---
-            if (panelIndex !== 3) {
-                if (controls.showStraightLine && controls.showStraightLine.checked) {
-                    let px1 = mathToPx(pt_A.x), py1 = mathToPy(pt_A.y);
-                    let px2 = mathToPx(pt_AnB.x), py2 = mathToPy(pt_AnB.y);
+            // All four path objects are drawn on every panel so the trajectories can be
+            // compared against each task's landscape, not just their home objective.
 
-                    // Only the black dotted line
-                    ctx.beginPath();
-                    ctx.moveTo(px1, py1);
-                    ctx.lineTo(px2, py2);
-                    ctx.strokeStyle = '#000'; // Pure black
-                    ctx.lineWidth = 3;
-                    ctx.setLineDash([8, 6]);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
+            // --- Reference chord (dashed black): the monotone reference path, sketched ---
+            if (controls.showStraightLine.checked) {
+                drawPath(ctx, [pt_A, pt_AnB], '#000', 3, [8, 6]);
+            }
 
-                if (controls.showGDLine && controls.showGDLine.checked && gd_trajectory.length > 0) {
-                    ctx.beginPath();
-                    ctx.moveTo(mathToPx(gd_trajectory[0].x), mathToPy(gd_trajectory[0].y));
-                    for (let i = 1; i < gd_trajectory.length; i++) {
-                        ctx.lineTo(mathToPx(gd_trajectory[i].x), mathToPy(gd_trajectory[i].y));
-                    }
-                    ctx.strokeStyle = '#52b788'; // Clean green
-                    ctx.lineWidth = 4;
-                    // Keep line rendering round and perfectly smooth
-                    ctx.lineJoin = 'round';
-                    ctx.lineCap = 'round';
-                    ctx.stroke();
-                }
+            // --- Reference path Θ*(λ) (gold): the curriculum minimiser as λ ramps 0 → 1 ---
+            if (controls.showRefPath.checked) {
+                drawPath(ctx, ref_path, '#ffcc00', 3);
+            }
+
+            // --- Steepest-descent trajectory (green): the Level-One bow ---
+            if (controls.showGDLine.checked) {
+                drawPath(ctx, gd_trajectory, '#52b788', 4);
+            }
+
+            // --- Gated trajectory (orange): descent along g_A + δ(H_A+δI)^{-1} g_B ---
+            if (controls.showPerTraj.checked) {
+                drawPath(ctx, per_trajectory, '#e76f51', 4);
+                // Mark the gated fixed point (g_A = -G g_B); it reaches A ∩ B only as δ → ∞.
+                let end = per_trajectory[per_trajectory.length - 1];
+                ctx.beginPath(); ctx.arc(mathToPx(end.x), mathToPy(end.y), 5, 0, Math.PI * 2);
+                ctx.fillStyle = 'white'; ctx.fill();
+                ctx.strokeStyle = '#e76f51'; ctx.lineWidth = 3; ctx.stroke();
             }
 
             const landmarks = [
                 { pt: pt_A, color: 'red', border: 'darkred', label: 'A', oy: -15, ox: -15 },
                 { pt: pt_B, color: 'blue', border: 'darkblue', label: 'B', oy: -15, ox: 15 },
-                { pt: pt_AnB, color: 'purple', border: 'indigo', label: 'A + B', oy: 25, ox: 0 },
+                { pt: pt_AnB, color: 'purple', border: 'indigo', label: 'A ∩ B', oy: 25, ox: 0 },
                 { pt: pt_Curr, color: '#ffcc00', border: '#b38f00', label: 'Curr', oy: 20, ox: 20 }
             ];
 
@@ -707,14 +780,14 @@
                 ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
                 ctx.fillStyle = lm.color; ctx.fill();
                 ctx.strokeStyle = lm.border; ctx.lineWidth = 2; ctx.stroke();
-                ctx.fillStyle = (idx === 3) ? '#000' : 'black';
+                ctx.fillStyle = 'black';
                 ctx.font = 'bold italic 14px Arial';
                 ctx.textAlign = 'center'; ctx.fillText(lm.label, cx + lm.ox, cy + lm.oy);
             });
 
-            let wAngle = parseFloat(controls.wedgeAngle.value);
             let ls = landscapes[controls.landscapeSelect.value];
 
+            // Curriculum panel: at Curr, the replay pull and the λ-scaled new-task pull cancel.
             if (panelIndex === 3) {
                 let ga = ls.g_red(pt_Curr);
                 let gb = ls.g_blue(pt_Curr);
@@ -730,50 +803,17 @@
             eval_points.forEach(p => {
                 let g_red = ls.g_red(p), g_blue = ls.g_blue(p);
                 let g_joint = ls.g_joint(p), g_curr = ls.g_curr(p);
-                let current_h_red = ls.h_red(p), current_h_blue = ls.h_blue(p);
-                let current_h_joint = ls.h_joint(p), current_h_curr = ls.h_curr(p);
 
-                let g_blue_proj = g_blue, g_joint_proj = g_joint;
-                let was_proj_blue = false, was_proj_joint = false;
-
-                if (controls.useGem.checked) {
-                    if (controls.gemTarget.value === 'blue') {
-                        let res = applyGEM(g_red, g_blue);
-                        g_blue_proj = res.v; was_proj_blue = res.applied;
-                    } else {
-                        let res = applyGEM(g_red, g_joint);
-                        g_joint_proj = res.v; was_proj_joint = res.applied;
-                    }
-                }
-
-                if (controls.showGradRed.checked && panelIndex !== 3) drawArrow(ctx, p, g_red, 'darkred');
-                if (controls.showGradBlue.checked && panelIndex !== 3) drawArrow(ctx, p, g_blue, 'blue');
-                if (controls.showGradJoint.checked && panelIndex === 2) drawArrow(ctx, p, g_joint, 'indigo');
-                if (panelIndex === 3) {
+                if (panelIndex <= 2) {
+                    if (controls.showGradRed.checked) drawArrow(ctx, p, g_red, 'darkred');
+                    if (controls.showGradBlue.checked) drawArrow(ctx, p, g_blue, 'blue');
+                    if (controls.showGradJoint.checked && panelIndex === 2) drawArrow(ctx, p, g_joint, 'indigo');
+                } else if (panelIndex === 3) {
                     drawArrow(ctx, p, g_curr, '#b38f00');
-                }
-
-                if (was_proj_blue && controls.showGradBlue.checked && panelIndex === 1) drawArrow(ctx, p, g_blue_proj, 'cyan', 4);
-                if (was_proj_joint && controls.showGradJoint.checked && panelIndex === 2) drawArrow(ctx, p, g_joint_proj, 'cyan', 4);
-
-                if (controls.useHessian.checked && panelIndex !== 3) {
-                    let desc_joint = norm({ x: -g_joint.x, y: -g_joint.y });
-                    let base_angle = Math.atan2(desc_joint.y, desc_joint.x);
-                    let best_v = null, min_change = Infinity;
-                    let wAngleRad = (wAngle * Math.PI) / 180;
-                    for (let step = 0; step <= 50; step++) {
-                        let th = base_angle - wAngleRad + step * (2 * wAngleRad) / 50;
-                        let v = { x: Math.cos(th), y: Math.sin(th) };
-                        let pred = 0.5 * arrow_scale * arrow_scale * (v.x * (current_h_red[0][0] * v.x + current_h_red[0][1] * v.y) + v.y * (current_h_red[1][0] * v.x + current_h_red[1][1] * v.y));
-                        if (pred < min_change) { min_change = pred; best_v = v; }
-                    }
-                    drawWedge(ctx, p, { x: -desc_joint.x, y: -desc_joint.y }, 'rgba(255, 255, 0, 0.3)', wAngle);
-                    drawArrow(ctx, p, { x: -best_v.x, y: -best_v.y }, 'gold', 3, false);
-                }
-
-                if (controls.showHessianDirs.checked) {
-                    let H = (panelIndex === 0) ? current_h_red : (panelIndex === 1) ? current_h_blue : (panelIndex === 2) ? current_h_joint : current_h_curr;
-                    drawHessianCross(ctx, p, H, 'white');
+                } else if (panelIndex === 4) {
+                    // Ungated joint gradient (for contrast) and the gated update.
+                    if (controls.showGradJoint.checked) drawArrow(ctx, p, g_joint, 'rgba(75, 0, 130, 0.45)');
+                    drawArrow(ctx, p, g_gated(ls, p), '#e76f51', 4);
                 }
 
                 ctx.beginPath(); ctx.arc(mathToPx(p.x), mathToPy(p.y), 4, 0, Math.PI * 2);
@@ -787,6 +827,7 @@
             renderPanel(ctxB, bgB, 1);
             renderPanel(ctxJ, bgJoint, 2);
             renderPanel(ctxC, bgCurr, 3);
+            renderPanel(ctxP, bgJoint, 4);
         }
 
         updateLandmarks();
