@@ -63,14 +63,22 @@
 # relative cost on identical hardware.
 #
 # ─── SBATCH DIRECTIVES ─────────────────────────────────────────────────────
+# Sized from observed usage (jobinfo of a real CIFAR run: 1:08 wall, 4.31G
+# RAM, ~1 CPU core busy — num_workers=0 — 3.74G VRAM), trimmed for backfill.
+# Reservation size does not affect the measurements; only the GPU type does,
+# so the a100 pin STAYS — mixed GPU types would make the curriculum-vs-PER
+# rows incomparable.  --time is 4h, not 2h: the 1:08 reference was not a
+# CG-heavy PER run, and a timeout kills the task before its CSV row is
+# written.  Once a PER probe confirms its runtime, tighten at submit time
+# (no script edit needed):  sbatch --time=02:00:00 --array=... .
 #SBATCH --job-name=vw_cost
 #SBATCH --partition=gpu
 #SBATCH --gpus-per-node=a100:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=6
-#SBATCH --mem=32G
-#SBATCH --time=1-00:00:00
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=12G
+#SBATCH --time=04:00:00
 #SBATCH --output=logs/cost_%A_%a.out
 #SBATCH --error=logs/cost_%A_%a.err
 
