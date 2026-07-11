@@ -80,11 +80,9 @@ gap to $0.2$ pp, so the residual the curriculum leaves at $\mu{=}0$ is estimator
 variance, not structure; momentum's gap-closing role is interchangeable with the
 full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$
 reaches $0.955$, approaching the full-data ceiling (D2$_M$: $0.964$), while re-introducing only a $2.0$
-pp transient. C8$_M$'s tail (area $0.38$) exceeds C7$_M$'s ($0.03$) because C7$_M$'s
-residual is a permanent step to a lower plateau that the end-referenced area
-excludes (Section~\ref{subsec:metrics}), whereas C8$_M$ recovers to a higher level,
-so its dip is a genuine transient the area counts in
-full. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
+pp transient. C8$_M$'s larger tail area ($0.38$ vs.\ C7$_M$'s $0.03$) is the
+end-referencing convention of Section~\ref{subsec:metrics} at work: C8$_M$ recovers
+to a higher level, so its dip counts in full. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
 premise, and the practical scalar-gate configuration remains C7$_M$
 ($3.7$ pp / $0.03$ / $0.931$) at $1/60$th the memory.
 
@@ -203,8 +201,8 @@ loss's own Fisher $F_{\text{rep}}$, so the symmetric filter shrinks the restorin
 gradient \emph{harder} than the harmful push it is meant to brake and cannot
 preferentially protect the past task. Table~\ref{tab:res_per_sym} sweeps the same
 $\delta$ on both variants, and they are mirror images. As the filter strengthens
-($\delta \to 0$) the asymmetric gate's forgetting falls ($2.7 \to 1.2$ pp) and its
-accuracy rises, while the symmetric gate's forgetting \emph{climbs} ($3.0 \to 6.6$ pp)
+($\delta \to 0$) the asymmetric gate's forgetting falls (FORG $0.027 \to 0.012$) and its
+accuracy rises, while the symmetric gate's forgetting \emph{climbs} ($0.030 \to 0.066$)
 and its accuracy falls; every one of these four trends holds across all five seeds.
 Symmetric depth barely moves across the sweep ($5.7 \to 6.7$ pp) and at $\delta{=}1.0$
 even sits below the asymmetric gate's ($5.7$ vs.\ $9.0$ pp), because filtering the whole
@@ -224,12 +222,12 @@ into a net removal of it.
         \hline
                  & \multicolumn{3}{c}{Asymmetric ($g_{\text{rep}}$ free)} &           & \multicolumn{3}{c}{Symmetric (joint)}                                       \\
         \cline{2-4}\cline{6-8}
-        $\delta$ & depth (pp)                                             & FORG (pp) & ACC                                   &  & depth (pp) & FORG (pp) & ACC     \\
+        $\delta$ & depth (pp)                                             & FORG      & ACC                                   &  & depth (pp) & FORG      & ACC     \\
         \hline
-        $1.0$    & $9.0$                                                  & $2.7$     & $0.869$                               &  & $5.7$      & $3.0$     & $0.872$ \\
-        $0.3$    & $7.4$                                                  & $2.3$     & $0.873$                               &  & $5.9$      & $4.2$     & $0.867$ \\
-        $0.1$    & $5.9$                                                  & $1.8$     & $0.876$                               &  & $6.2$      & $5.7$     & $0.861$ \\
-        $0.03$   & $4.8$                                                  & $1.2$     & $0.880$                               &  & $6.7$      & $6.6$     & $0.857$ \\
+        $1.0$    & $9.0$                                                  & $0.027$   & $0.869$                               &  & $5.7$      & $0.030$   & $0.872$ \\
+        $0.3$    & $7.4$                                                  & $0.023$   & $0.873$                               &  & $5.9$      & $0.042$   & $0.867$ \\
+        $0.1$    & $5.9$                                                  & $0.018$   & $0.876$                               &  & $6.2$      & $0.057$   & $0.861$ \\
+        $0.03$   & $4.8$                                                  & $0.012$   & $0.880$                               &  & $6.7$      & $0.066$   & $0.857$ \\
         \hline
     \end{tabular}
     \caption{Asymmetric versus symmetric preconditioning on the standard $1$k buffer at
@@ -286,20 +284,20 @@ indicated normalisation, over three seeds.
         Condition              & ACC                 & FORG                 & min-ACC             & WC-ACC              & Depth             & Area end          \\
         \hline
         \multicolumn{7}{l}{\emph{BatchNorm}}                                                                                                                    \\
-        shot noise --- vanilla & 0.724\,$\pm$\,0.011 & 0.017\,$\pm$\,0.010  & 0.633\,$\pm$\,0.017 & 0.663\,$\pm$\,0.014 & 13.1\,$\pm$\,3.0  & 21.2\,$\pm$\,3.9  \\
-        shot noise --- curric. & 0.723\,$\pm$\,0.014 & 0.010\,$\pm$\,0.010  & 0.708\,$\pm$\,0.032 & 0.697\,$\pm$\,0.016 & 5.6\,$\pm$\,1.0   & 5.8\,$\pm$\,1.5   \\
-        contrast --- vanilla   & 0.671\,$\pm$\,0.026 & -0.008\,$\pm$\,0.006 & 0.610\,$\pm$\,0.063 & 0.586\,$\pm$\,0.048 & 15.4\,$\pm$\,3.9  & 33.4\,$\pm$\,4.5  \\
-        contrast --- curric.   & 0.671\,$\pm$\,0.044 & -0.012\,$\pm$\,0.007 & 0.727\,$\pm$\,0.034 & 0.643\,$\pm$\,0.048 & 3.7\,$\pm$\,1.1   & 2.2\,$\pm$\,0.9   \\
-        3-task --- vanilla     & 0.740\,$\pm$\,0.006 & -0.011\,$\pm$\,0.013 & 0.670\,$\pm$\,0.015 & 0.691\,$\pm$\,0.010 & 3.3\,$\pm$\,0.4   & 6.0\,$\pm$\,0.7   \\
-        3-task --- curric.     & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7   & 3.9\,$\pm$\,0.1   \\
+        shot noise (vanilla) & 0.724\,$\pm$\,0.011 & 0.017\,$\pm$\,0.010  & 0.633\,$\pm$\,0.017 & 0.663\,$\pm$\,0.014 & 13.1\,$\pm$\,3.0  & 21.2\,$\pm$\,3.9  \\
+        shot noise (curric.) & 0.723\,$\pm$\,0.014 & 0.010\,$\pm$\,0.010  & 0.708\,$\pm$\,0.032 & 0.697\,$\pm$\,0.016 & 5.6\,$\pm$\,1.0   & 5.8\,$\pm$\,1.5   \\
+        contrast (vanilla)   & 0.671\,$\pm$\,0.026 & -0.008\,$\pm$\,0.006 & 0.610\,$\pm$\,0.063 & 0.586\,$\pm$\,0.048 & 15.4\,$\pm$\,3.9  & 33.4\,$\pm$\,4.5  \\
+        contrast (curric.)   & 0.671\,$\pm$\,0.044 & -0.012\,$\pm$\,0.007 & 0.727\,$\pm$\,0.034 & 0.643\,$\pm$\,0.048 & 3.7\,$\pm$\,1.1   & 2.2\,$\pm$\,0.9   \\
+        3-task (vanilla)     & 0.740\,$\pm$\,0.006 & -0.011\,$\pm$\,0.013 & 0.670\,$\pm$\,0.015 & 0.691\,$\pm$\,0.010 & 3.3\,$\pm$\,0.4   & 6.0\,$\pm$\,0.7   \\
+        3-task (curric.)     & 0.745\,$\pm$\,0.010 & -0.021\,$\pm$\,0.008 & 0.677\,$\pm$\,0.025 & 0.696\,$\pm$\,0.017 & 6.9\,$\pm$\,2.7   & 3.9\,$\pm$\,0.1   \\
         \hline
         \multicolumn{7}{l}{\emph{GroupNorm}}                                                                                                                    \\
-        shot noise --- vanilla & 0.718\,$\pm$\,0.021 & -0.036\,$\pm$\,0.036 & 0.244\,$\pm$\,0.075 & 0.469\,$\pm$\,0.032 & 46.3\,$\pm$\,12.0 & 54.4\,$\pm$\,40.8 \\
-        shot noise --- curric. & 0.705\,$\pm$\,0.061 & -0.028\,$\pm$\,0.012 & 0.638\,$\pm$\,0.108 & 0.656\,$\pm$\,0.087 & 7.3\,$\pm$\,5.9   & 2.4\,$\pm$\,1.1   \\
-        contrast --- vanilla   & 0.777\,$\pm$\,0.022 & -0.067\,$\pm$\,0.021 & 0.641\,$\pm$\,0.061 & 0.710\,$\pm$\,0.040 & 8.4\,$\pm$\,4.4   & 3.3\,$\pm$\,0.6   \\
-        contrast --- curric.   & 0.778\,$\pm$\,0.032 & -0.070\,$\pm$\,0.013 & 0.668\,$\pm$\,0.077 & 0.724\,$\pm$\,0.054 & 3.9\,$\pm$\,3.1   & 1.2\,$\pm$\,0.8   \\
-        3-task --- vanilla     & 0.722\,$\pm$\,0.020 & -0.023\,$\pm$\,0.015 & 0.468\,$\pm$\,0.043 & 0.550\,$\pm$\,0.023 & 4.4\,$\pm$\,0.4   & 10.3\,$\pm$\,3.6  \\
-        3-task --- curric.     & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 32.0\,$\pm$\,19.5 \\
+        shot noise (vanilla) & 0.718\,$\pm$\,0.021 & -0.036\,$\pm$\,0.036 & 0.244\,$\pm$\,0.075 & 0.469\,$\pm$\,0.032 & 46.3\,$\pm$\,12.0 & 54.4\,$\pm$\,40.8 \\
+        shot noise (curric.) & 0.705\,$\pm$\,0.061 & -0.028\,$\pm$\,0.012 & 0.638\,$\pm$\,0.108 & 0.656\,$\pm$\,0.087 & 7.3\,$\pm$\,5.9   & 2.4\,$\pm$\,1.1   \\
+        contrast (vanilla)   & 0.777\,$\pm$\,0.022 & -0.067\,$\pm$\,0.021 & 0.641\,$\pm$\,0.061 & 0.710\,$\pm$\,0.040 & 8.4\,$\pm$\,4.4   & 3.3\,$\pm$\,0.6   \\
+        contrast (curric.)   & 0.778\,$\pm$\,0.032 & -0.070\,$\pm$\,0.013 & 0.668\,$\pm$\,0.077 & 0.724\,$\pm$\,0.054 & 3.9\,$\pm$\,3.1   & 1.2\,$\pm$\,0.8   \\
+        3-task (vanilla)     & 0.722\,$\pm$\,0.020 & -0.023\,$\pm$\,0.015 & 0.468\,$\pm$\,0.043 & 0.550\,$\pm$\,0.023 & 4.4\,$\pm$\,0.4   & 10.3\,$\pm$\,3.6  \\
+        3-task (curric.)     & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 32.0\,$\pm$\,19.5 \\
         \hline
     \end{tabular}
     \caption{CIFAR-10 generalisation block, full metrics. The two-task novel
@@ -352,7 +350,7 @@ group-norm transients vanilla ER shows on the same corruption family (shot
 noise: $46.3$ vs $13.1$ pp, Table~\ref{tab:app_cifar_gen}). We therefore read
 the episode as a reliability boundary of the gradient-norm-ratio signal rather
 than of the gate principle: the ratio loses its meaning when both norms become
-small, and the design admits direct guards --- freezing $\lambda$ when both
+small, and the design admits direct guards: freezing $\lambda$ when both
 norms fall below a reference scale, or reading a damage signal that does not
 vanish at a quiet boundary, such as the replay-loss excess over its pre-switch
 level.
@@ -367,19 +365,20 @@ the generalisation block (Table~\ref{tab:app_cifar_gen} above), and the compute 
 
 \paragraph{Momentum cross.}
 The cross repeats the composability test of Section~\ref{subsec:momentum} on the
-ResNet, pairing momentum-$0$ runs at group norm against the momentum-$0.9$ rows.
-Two of the three predicted signatures reproduce: momentum leaves vanilla ER's depth
-essentially unchanged ($40.5 \rightarrow 41.2$ pp, the deterministic-first-step null),
-and it composes with the curriculum, taking depth from $28.6$ to $5.2$ pp (source
-attenuation). The third, momentum re-inflating the directional gate, does not appear:
-momentum takes asymmetric PER from $22.6$ to $5.6$ pp instead. We read this as a
-convergence confound rather than a failure of the account: at momentum $0$ the ResNet
-under-converges the past task in ten epochs (vanilla min-ACC $0.11$, ACC $0.65$), so the
-momentum-$0$ depths sit on a degraded baseline and the directional-gate contrast is
-dominated by the general convergence gain rather than the per-step-attenuation effect
-the full-buffer MLP isolates cleanly (Section~\ref{subsec:res_directional}). On this
-backbone we confirm the mechanism only for the two gates whose momentum contrast is not
-swamped by convergence.
+ResNet, pairing momentum-$0$ runs at group norm against the momentum-$0.9$ rows,
+and it turns out to be only weakly informative. At momentum $0$ the ResNet
+under-converges the past task in ten epochs (vanilla min-ACC $0.11$, ACC $0.65$), so
+every momentum-$0$ depth sits on a degraded baseline. On that baseline both gates
+improve with momentum by similar margins (curriculum $28.6 \rightarrow 5.2$ pp,
+asymmetric PER $22.6 \rightarrow 5.6$ pp), so the cross cannot separate the predicted
+source-attenuation composition from a general convergence gain, and the prediction
+that momentum re-inflates the directional gate does not appear; the vanilla null
+($40.5 \rightarrow 41.2$ pp) is directionally consistent with the account but rests
+on the same degraded baseline. We therefore draw no mechanism conclusion from this
+cross in either direction: the momentum signatures rest on the rot-MNIST results,
+where the MLP isolates them cleanly (Sections~\ref{subsec:res_scalar}
+and~\ref{subsec:res_directional}), and a clean deep-backbone test would need a
+converged momentum-$0$ baseline (Section~\ref{subsec:disc_limits}).
 
 \begin{table}[H]
     \centering
@@ -394,9 +393,9 @@ swamped by convergence.
         \hline
     \end{tabular}
     \caption{CIFAR-10 momentum cross (group norm, buffer $5{,}000$, five seeds), gap
-        depth in pp. The vanilla null and the curriculum composition reproduce; the
-        directional-gate re-inflation does not, confounded by momentum-$0$
-        under-convergence of the ResNet.}
+        depth in pp. All momentum-$0$ cells sit on an under-converged baseline
+        (vanilla min-ACC $0.11$), so the cross is read as uninformative for the
+        momentum signatures rather than as partial confirmation (see text).}
     \label{tab:res_cifar_mom}
 \end{table}
 
@@ -416,8 +415,8 @@ step, each on the order of a backward pass, saturate the same card ($96\%$, $367
 for $16\times$ as long, and since energy is power times time the two factors compound
 to a $24\times$ energy gap ($13$ vs.\ $320$\,Wh per run). Memory is not the price:
 peak GPU memory differs by $11\%$. On the rot-MNIST MLP both gates finish in under
-half a minute at near-idle utilisation --- the wall-clock is fixed startup, not method
-compute --- so no meaningful ratio exists there and the cost question is decided
+half a minute at near-idle utilisation (the wall-clock is fixed startup, not method
+compute), so no meaningful ratio exists there and the cost question is decided
 entirely on the deep backbone. The ratios are the transferable claim; the absolute
 numbers are specific to this card, and because ${\sim}15$--$30$\,s of each run is
 startup, the training-only ratio is if anything slightly above $16\times$.
@@ -472,16 +471,12 @@ startup, the training-only ratio is if anything slightly above $16\times$.
     }
     \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
         consecutive transitions, five seeds), the L-series: both gates in their
-        practical configurations against vanilla ER, at both momentum settings. Depth is the
-        worst single-boundary drop (\texttt{gap\_depth}) and area the end-referenced
-        transient (\texttt{gap\_area\_end}), aggregated as in the two-task blocks so
-        the numbers are directly comparable. At momentum $0$ both gates cut the depth
-        from $21$ pp to ${\approx}4$ pp; under momentum, where the per-boundary drops
-        are already smaller, the curriculum stays ahead on cumulative retention
-        (lowest FORG, highest ACC and WC-ACC) while asymmetric PER holds the smallest
-        per-boundary area but, its per-step filter re-inflated by momentum
-        (Section~\ref{subsec:res_directional}), gives up its retention edge, falling
-        slightly behind vanilla on FORG ($0.104$ vs.\ $0.096$, all five seeds).}
+        practical configurations against vanilla ER, at both momentum settings.
+        Depth is the worst single-boundary drop and area the end-referenced
+        transient, aggregated as in the two-task blocks. At momentum $0$ both gates
+        cut the depth from $21$ pp to ${\approx}4$ pp; under momentum the curriculum
+        keeps the best cumulative retention while the re-inflated directional gate
+        falls slightly behind vanilla on FORG ($0.104$ vs.\ $0.096$, all five seeds).}
     \label{tab:app_longseq}
 \end{table}
 
@@ -497,7 +492,7 @@ analysed in Appendix~\ref{app:cifar_gen_full}.
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.72\linewidth]{img/results/D/drivers_t0.png}
-    \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. \emph{Depth} of the boundary spike falls when balancing switches off the imbalance driver (deep for the unbalanced D1, D2; shallow for the balanced D3, D4), while \emph{jitter} vanishes when the exact replay gradient switches off the variance driver (the full-data D2, D4 are smooth, the finite-buffer D1, D3 noisy). What no removal touches is the smooth dip-and-recover \emph{bend} beneath the spike, cleanest in the exact-gradient D4 where no jitter can hide it: that bend is the deterministic arc, and it responds to no optimiser hygiene, only to a change of path.}
+    \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. The boundary spike falls when balancing switches off the imbalance driver (D1, D2 vs.\ D3, D4), the jitter vanishes when the exact replay gradient switches off the variance driver (D2, D4 smooth), and the smooth dip-and-recover bend that no removal touches, cleanest in D4, is the deterministic arc (Section~\ref{subsec:res_levels}).}
     \label{fig:g_curves}
 \end{figure}
 
@@ -510,17 +505,11 @@ analysed in Appendix~\ref{app:cifar_gen_full}.
         (red), the practical curriculum $\lambda_{\min}{=}0.20$ (blue) and asymmetric
         PER $\delta{=}0.1$ (aqua); dashed lines mark the four switches, and the two
         panels are the two momentum settings. \textbf{(a) Momentum $0$:} both gates
-        hold $T_0$ almost flat through every boundary --- asymmetric PER the smoothest
-        of all, with only shallow dips (smallest per-boundary area,
-        Table~\ref{tab:app_longseq}) --- while vanilla ER takes a sharp instantaneous
-        drop at each switch. This is the near-gap-free directional-gate regime the
-        two-task sweep also finds at momentum $0$. \textbf{(b) Momentum $0.9$:}
-        momentum re-inflates PER's per-step filter, exactly as on the two-task
-        benchmark (Section~\ref{subsec:res_directional}), so its boundary transients
-        return and its cumulative forgetting falls slightly behind vanilla's; the curriculum keeps the
-        boundaries smoothest and holds the highest plateau, the least cumulative
-        forgetting on the long horizon. The single-transition reading thus carries
-        past one boundary, and the momentum roles carry with it.}
+        hold $T_0$ almost flat through every boundary, asymmetric PER the smoothest,
+        while vanilla ER drops sharply at each switch. \textbf{(b) Momentum $0.9$:}
+        PER's boundary transients return as momentum re-inflates its per-step filter
+        (Section~\ref{subsec:res_directional}); the curriculum keeps the boundaries
+        smoothest and holds the highest plateau (Table~\ref{tab:app_longseq}).}
     \label{fig:longseq}
 \end{figure}
 
