@@ -32,7 +32,7 @@ Figure~\ref{fig:lambda_evolution} shows this: as $\lambda$ grows, the loss conto
         {\scriptsize $\lambda = 1$}
     \end{minipage}
 
-    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$. As $\lambda$ increases, the contours morph continuously from the old-task basin around $A$ to the joint basin around $A{+}B$, and the current minimiser (\emph{Curr}) slides along the moving valley floor, forming the reference path $\Theta^*(\lambda)$. At the minimiser the replay (red) and current-task (blue) contributions cancel by the first-order condition $\nabla L_{\text{replay}} + \lambda\,\nabla L_{\text{current}} = 0$. Frames from the interactive visualisation of Figure~\ref{fig:loss_landscape_visualization}.}
+    \caption{Evolution of the curriculum loss $L_\lambda = A + \lambda B$. As $\lambda$ increases, the contours morph continuously from the old-task basin around $A$ to the joint basin around $A \cap B$, and the current minimiser (\emph{Curr}) slides along the moving valley floor, forming the reference path $\Theta^*(\lambda)$. At the minimiser the replay (red) and current-task (blue) contributions cancel by the first-order condition $\nabla L_{\text{replay}} + \lambda\,\nabla L_{\text{current}} = 0$. Frames from the interactive visualisation of Figure~\ref{fig:loss_landscape_visualization}.}
     \label{fig:lambda_evolution}
 \end{figure}
 
@@ -94,7 +94,7 @@ As detailed in Table~\ref{tab:gates}, gates vary by their \emph{domain}, scalar 
             \hline
         \end{tabular}%
     }
-    \caption{Replay methods as gates on the new-task gradient, Equation~\eqref{eq:gate}. The gradient-norm balancing of driver condition D3 (Section~\ref{subsec:drivers}) is deliberately absent: it rescales the replay gradient as well and is therefore a diagnostic intervention, not a one-sided gate. The two methods of this thesis occupy the pure corners: a scalar feedback gate and a directional feedforward gate.}
+    \caption{Replay methods written as gates on the new-task gradient, Equation~\eqref{eq:gate}: each method's gate $G$, its domain (scalar or directional), and its control (feedback or feedforward). The two methods of this thesis occupy the pure corners of the two axes: a scalar feedback gate and a directional feedforward gate.}
     \label{tab:gates}
 \end{table}
 

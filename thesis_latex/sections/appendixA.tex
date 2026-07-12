@@ -95,7 +95,7 @@ the experiments:
           one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
           with half the mini-batch drawn from the current task and half sampled
           with replacement from the buffer.
-    \item \emph{Balanced ER} (D3): two separate backward passes whose gradients are
+    \item \emph{Balanced ER} (D3, D4): two separate backward passes whose gradients are
           individually unit-normalised before being combined $50/50$, removing the
           magnitude asymmetry between $g_{\text{new}}$ and $g_{\text{replay}}$.
     \item \emph{Full-data replay} (D2, D4): the replay gradient is computed on

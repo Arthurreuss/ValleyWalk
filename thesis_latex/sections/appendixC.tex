@@ -35,6 +35,13 @@ This appendix gives the full metric set for every condition of the main experime
     \label{tab:app_decomp}
 \end{table}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\linewidth]{img/results/D/drivers_t0.png}
+    \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. The boundary spike falls when balancing switches off the imbalance driver (D1, D2 vs.\ D3, D4); the recovery is smoothest where the imbalance is off as well (D4, and to a lesser extent D3), while D2 keeps a visible jitter from its unbalanced, still-stochastic new-task push despite the exact replay gradient. The dip-and-recover bend that no removal touches, cleanest in D4, is the deterministic arc (Section~\ref{subsec:res_levels}).}
+    \label{fig:g_curves}
+\end{figure}
+
 \subsection{rot-MNIST: \texorpdfstring{$\lambda$}{lambda}-Curriculum (C-series)}
 \label{app:curr_full}
 
@@ -79,10 +86,23 @@ Source variance reduction alone (C8, full buffer, $\mu{=}0$) already closes the
 gap to $0.2$ pp, so the residual the curriculum leaves at $\mu{=}0$ is estimator
 variance, not structure; momentum's gap-closing role is interchangeable with the
 full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$
-reaches $0.955$, approaching the full-data ceiling (D2$_M$: $0.964$), while re-introducing only a $2.0$
-pp transient. C8$_M$'s larger tail area ($0.38$ vs.\ C7$_M$'s $0.03$) is the
-end-referencing convention of Section~\ref{subsec:metrics} at work: C8$_M$ recovers
-to a higher level, so its dip counts in full. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
+reaches $0.955$, approaching the full-data ceiling (D2$_M$: $0.964$), while
+re-introducing a small transient ($2.0$ pp, area $0.38$). The shape and timing
+of this transient point to the $\lambda_{\min}$ floor meeting momentum. With
+the replay gradient exact and the arc removed, the only push left in the first
+steps is the floored fifth of the new-task gradient (the logged gradient-norm
+ratio confirms the schedule sits at $\lambda = 0.2$ through the dip window),
+and momentum amplifies a persistent push toward $1/(1-\mu) = 10$ times its
+per-step size: the dip accordingly opens at the boundary, bottoms out about
+ten steps in, and closes within about fifty as the replay gradient reasserts
+itself. The floor is by construction the one share of the push the source gate
+does not attenuate, so momentum briefly re-inflates exactly that share, a
+miniature of the directional gate's re-inflation. The dose-response on the
+same exact buffer supports the reading: the floored push without momentum
+costs $0.2$ pp (C8), with momentum $2.0$ pp (C8$_M$), and the unfloored
+abrupt switch with momentum $14.9$ pp (D2$_M$). C8$_M$'s area additionally
+counts in full under the end-referencing convention of
+Section~\ref{subsec:metrics}, since it recovers above its pre-switch level. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
 premise, and the practical scalar-gate configuration remains C7$_M$
 ($3.7$ pp / $0.03$ / $0.931$) at $1/60$th the memory.
 
@@ -218,16 +238,16 @@ into a net removal of it.
 \begin{table}[H]
     \centering
     \small
-    \begin{tabular}{l ccc c ccc}
+    \begin{tabular}{l cccc c cccc}
         \hline
-                 & \multicolumn{3}{c}{Asymmetric ($g_{\text{rep}}$ free)} &           & \multicolumn{3}{c}{Symmetric (joint)}                                       \\
-        \cline{2-4}\cline{6-8}
-        $\delta$ & depth (pp)                                             & FORG      & ACC                                   &  & depth (pp) & FORG      & ACC     \\
+                 & \multicolumn{4}{c}{Asymmetric ($g_{\text{rep}}$ free)} &           & \multicolumn{4}{c}{Symmetric (joint)}                                                              \\
+        \cline{2-5}\cline{7-10}
+        $\delta$ & depth (pp)                                             & area      & FORG                                  & ACC     &  & depth (pp) & area   & FORG    & ACC     \\
         \hline
-        $1.0$    & $9.0$                                                  & $0.027$   & $0.869$                               &  & $5.7$      & $0.030$   & $0.872$ \\
-        $0.3$    & $7.4$                                                  & $0.023$   & $0.873$                               &  & $5.9$      & $0.042$   & $0.867$ \\
-        $0.1$    & $5.9$                                                  & $0.018$   & $0.876$                               &  & $6.2$      & $0.057$   & $0.861$ \\
-        $0.03$   & $4.8$                                                  & $0.012$   & $0.880$                               &  & $6.7$      & $0.066$   & $0.857$ \\
+        $1.0$    & $9.0$                                                  & $3.29$    & $0.027$                               & $0.869$ &  & $5.7$      & $2.69$ & $0.030$ & $0.872$ \\
+        $0.3$    & $7.4$                                                  & $2.32$    & $0.023$                               & $0.873$ &  & $5.9$      & $1.65$ & $0.042$ & $0.867$ \\
+        $0.1$    & $5.9$                                                  & $1.56$    & $0.018$                               & $0.876$ &  & $6.2$      & $0.34$ & $0.057$ & $0.861$ \\
+        $0.03$   & $4.8$                                                  & $1.04$    & $0.012$                               & $0.880$ &  & $6.7$      & $0.01$ & $0.066$ & $0.857$ \\
         \hline
     \end{tabular}
     \caption{Asymmetric versus symmetric preconditioning on the standard $1$k buffer at
@@ -237,7 +257,9 @@ into a net removal of it.
         summed update (symmetric). As $\delta \to 0$ the asymmetric gate improves on every
         axis while the symmetric gate degrades on every axis; symmetric depth stays flat
         because the filter suppresses the per-step expression of the dip even as the
-        underlying forgetting grows (Section~\ref{subsec:metrics}).}
+        underlying forgetting grows, and the symmetric end-referenced area collapses
+        toward zero for the same reason: the past task stops recovering, so the loss
+        registers in FORG rather than in the transient area (Section~\ref{subsec:metrics}).}
     \label{tab:res_per_sym}
 \end{table}
 
@@ -267,6 +289,23 @@ into a net removal of it.
         $\lambda_{\min} = 0.20$; ``asym.\ PER'' runs at $\delta = 0.1$.}
     \label{tab:app_cifar_headline}
 \end{table}
+
+\paragraph{The gates' residual batch-norm dip.}
+The small gap the gates keep under batch norm is a genuine boundary transient:
+in Figure~\ref{fig:cifar_curves}(a) both gated curves dip together over the
+first steps after the switch, by roughly the tabulated $5$ pp, and recover to
+their plateau within a few tens of steps. A reading consistent with this
+pattern is the normalisation pathway of Section~\ref{subsec:cifar}. BatchNorm's
+running statistics update on every forward pass, whatever the gate does to the
+gradient, so the first corrupted batches shift them away from the clean task
+and no gate on the update can hold that back; the clean replay samples in every
+batch pull the statistics back, which matches the fast recovery. The group-norm
+contrast supports the reading: with no cross-batch statistics to disturb, the
+curriculum holds $T_0$ flat through the same boundary
+(Figure~\ref{fig:cifar_curves}(b)) and its transient area falls to roughly half
+its batch-norm value ($1.7$ vs.\ $3.6$). This is a reading rather than an
+established mechanism; a control that freezes the running statistics across
+the switch would isolate it.
 
 \subsection{CIFAR-10: Generalisation Block}
 \label{app:cifar_gen_full}
@@ -354,6 +393,23 @@ small, and the design admits direct guards: freezing $\lambda$ when both
 norms fall below a reference scale, or reading a damage signal that does not
 vanish at a quiet boundary, such as the replay-loss excess over its pre-switch
 level.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/T/cifar_3task_failure.png}
+    \caption{Per-step past-task accuracy across the three-task CIFAR-10
+        generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot,
+        ResNet-18, practical curriculum, three seeds with $\pm$std bands), comparing
+        the group-norm run (orange) against its batch-norm counterpart (blue). The
+        two switches (dashed) fall at ${\sim}2$k and ${\sim}4$k steps. The first
+        boundary (none $\rightarrow$ Gaussian) barely perturbs the past tasks in
+        either norm. The second (Gaussian $\rightarrow$ shot, two near-identical
+        corruptions) drives a deep transient in $T_0$ (a) and $T_1$ (b) under group
+        norm only, while the batch-norm run holds flat through both switches. The dip
+        is thus localised entirely to the second transition and to group norm, the
+        adaptive-ratio reliability boundary analysed above.}
+    \label{fig:failure_curves}
+\end{figure}
 
 \subsection{CIFAR-10: Momentum Cross and Compute Cost}
 \label{app:cifar_extra}
@@ -480,23 +536,7 @@ startup, the training-only ratio is if anything slightly above $16\times$.
     \label{tab:app_longseq}
 \end{table}
 
-\subsection{Supplementary Figures}
-\label{app:supp_figures}
-
-This subsection collects supplementary figures: the full driver ladder
-(Figure~\ref{fig:g_curves}), the five-task rot-MNIST sequence
-(Figure~\ref{fig:longseq}, reported in Table~\ref{tab:app_longseq}), and the
-three-task group-norm generalisation outlier (Figure~\ref{fig:failure_curves})
-analysed in Appendix~\ref{app:cifar_gen_full}.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.72\linewidth]{img/results/D/drivers_t0.png}
-    \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. The boundary spike falls when balancing switches off the imbalance driver (D1, D2 vs.\ D3, D4), the jitter vanishes when the exact replay gradient switches off the variance driver (D2, D4 smooth), and the smooth dip-and-recover bend that no removal touches, cleanest in D4, is the deterministic arc (Section~\ref{subsec:res_levels}).}
-    \label{fig:g_curves}
-\end{figure}
-
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/L/longseq.png}
     \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
@@ -513,20 +553,3 @@ analysed in Appendix~\ref{app:cifar_gen_full}.
     \label{fig:longseq}
 \end{figure}
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{img/results/T/cifar_3task_failure.png}
-    \caption{Per-step past-task accuracy across the three-task CIFAR-10
-        generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot,
-        ResNet-18, practical curriculum, three seeds with $\pm$std bands), comparing
-        the group-norm run (orange) against its batch-norm counterpart (blue). The
-        two switches (dashed) fall at ${\sim}2$k and ${\sim}4$k steps. The first
-        boundary (none $\rightarrow$ Gaussian) barely perturbs the past tasks in
-        either norm. The second (Gaussian $\rightarrow$ shot, two near-identical
-        corruptions) drives a deep transient in $T_0$ (a) and $T_1$ (b) under group
-        norm only, while the batch-norm run holds flat through both switches. The dip
-        is thus localised entirely to the second transition and to group norm, the
-        adaptive-ratio reliability boundary analysed in
-        Appendix~\ref{app:cifar_gen_full}.}
-    \label{fig:failure_curves}
-\end{figure}
