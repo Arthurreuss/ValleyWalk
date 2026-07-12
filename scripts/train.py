@@ -407,10 +407,7 @@ def main(cfg: DictConfig) -> None:
                     # Persist the fine-grained sample to the SAME sinks the
                     # regular eval block writes to — per-task CSV, combined
                     # accuracy CSV, in-memory metrics tracker (which drives
-                    # WF10/WF100/WP10/WP100/min_ACC), and W&B.  Without this
-                    # the fine samples used to be live only on W&B and inside
-                    # gap_tracker._records, leaving local plots blind to the
-                    # dip and ContinualMetrics blind to the dense gap window.
+                    # WF10/WF100/WP10/WP100/min_ACC), and W&B.
                     #
                     # Skip on steps already handled by the regular eval block
                     # (a multiple of eval_every_n_steps) — those use the same

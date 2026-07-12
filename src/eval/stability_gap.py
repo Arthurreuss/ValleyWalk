@@ -439,11 +439,3 @@ class GradientTracker:
             sum(v for _, v in self._true_grad_mag_ratios)
             / len(self._true_grad_mag_ratios)
         )
-
-    def true_grad_cosine_series(self) -> List[Tuple[int, float]]:
-        """All recorded (step, cos(g_replay, g_true)) pairs, insertion order."""
-        return list(self._true_grad_cosines)
-
-    def true_grad_mag_ratio_series(self) -> List[Tuple[int, float]]:
-        """All recorded (step, ‖g_replay‖/‖g_true‖) pairs, insertion order."""
-        return list(self._true_grad_mag_ratios)

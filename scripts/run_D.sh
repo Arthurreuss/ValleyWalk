@@ -3,8 +3,7 @@
 #
 # D-series: the three-contributor decomposition experiments described in
 # Chapter 4 §4.4 of the thesis, plus the momentum-cross rows for those
-# conditions described in §4.6.  (Formerly run_decomposition.sh; the G-series
-# label was reassigned to the CIFAR generalisation block in scripts/run_G.sh.)
+# conditions described in §4.6.
 #
 # Aim
 # ---
@@ -28,18 +27,6 @@
 #   D5 — Asymmetric PER      (buffer 1 k; replay Fisher filters the current-task
 #              gradient only, replay gradient added raw)          preconditioner reference
 #   D6 — Averaged GEM        (buffer 1 k; gradient projection)   projection reference
-#
-# Deprecated reference conditions (D7–D10, commented out below; the collected
-# results are kept on disk under these labels but are no longer run by default):
-#   D7  — Standard NCL       (no replay buffer; precision prior).  Cut from the
-#              final story; the α-tuned NCL path-finding reference.
-#   D8  — PER_JOINT   \ symmetric preconditioned ER (Fisher of the joint / replay
-#   D9  — PER_REPLAY  / loss applied to the whole joint gradient).  Near-identical
-#              by construction; superseded by D5 (asymmetric PER).
-#   D10 — PER_JOINT_FULLBUF — joint-Fisher PER with a full-buffer replay gradient
-#              (variance-vs-trajectory probe).
-# To re-run any deprecated condition, uncomment its block and pass it via
-# CONDITIONS (e.g. CONDITIONS="D7").
 #
 # Momentum cross (§4.6)
 # ---------------------
@@ -223,33 +210,6 @@ spawn_er_block() {
     wait_block "${label} (µ=${mom})"
 }
 
-# NCL condition launcher.  No replay buffer; grad_diagnostics toggle is set
-# but silently ignored by NCL (no g_replay to compare against).
-spawn_ncl_block() {
-    local label="$1"; shift
-    local base_ablation="$1"; shift
-    local mom="$1"; shift
-    local suffix
-    suffix="$(mom_suffix "${mom}")"
-    local ablation_value="${base_ablation}${suffix}"
-    local mom_tag
-    if [ "$mom" = "${MOM_ON}" ]; then mom_tag="mom_on"; else mom_tag="mom_off"; fi
-    local tags_csv="${ABLATION_KEY},${label},${mom_tag}"
-    for seed in "${SEED_ARRAY[@]}"; do
-        spawn_job \
-            method=ncl \
-            "${DATASET_OVERRIDES[@]}" \
-            "${EVAL_OVERRIDES[@]}" \
-            "training.momentum=${mom}" \
-            "seed=${seed}" \
-            "+ablation_key=${ABLATION_KEY}" \
-            "+ablation_value=${ablation_value}" \
-            "tracking.wandb.tags=[${tags_csv}]" \
-            "$@"
-    done
-    wait_block "${label} (µ=${mom})"
-}
-
 # Preconditioned-ER launcher.  Replay-based (1 k reservoir), but the g_true
 # buffer-fidelity diagnostics are implemented only by the ER method, so the
 # caller leaves that toggle off (it would be inert here).
@@ -364,13 +324,13 @@ for mu in $(momentum_values); do
     # settings pinned for reproducibility: δ=1.0 damping, 10 CG iters, warm-start.
     # No grad_diagnostics: the g_true buffer-fidelity hooks are ER-only.
     #
-    # D5 (asymmetric PER) is the default preconditioner condition: the replay
-    # Fisher filters ONLY the current-task gradient and the replay gradient is
-    # added raw — d = δ(F_rep+δI)⁻¹ g_cur + g_rep.  The deprecated symmetric
-    # variants (D8/D9) rescale interference and restoration identically, so they
-    # preserve ER's drift equilibrium and can only shrink the spike; the
-    # asymmetric update keeps the full restoring force on task-A-sharp directions
-    # and is the one that targets the trajectory bend.
+    # D5 (asymmetric PER) is the preconditioner condition: the replay Fisher
+    # filters ONLY the current-task gradient and the replay gradient is added
+    # raw — d = δ(F_rep+δI)⁻¹ g_cur + g_rep.  A symmetric variant (Fisher
+    # applied to the whole joint gradient) would rescale interference and
+    # restoration identically, preserving ER's drift equilibrium and only
+    # shrinking the spike; the asymmetric update keeps the full restoring
+    # force on task-A-sharp directions and targets the trajectory bend.
 
     if should_run D5; then
         echo "=== D5: asymmetric preconditioned ER — replay Fisher on g_cur only, g_rep raw ==="
@@ -393,51 +353,6 @@ for mu in $(momentum_values); do
             method.gem.reference_gradient=joint \
             method.gem.margin=0.0
     fi
-
-    # ──────────────────────────────────────────────────────────────────────
-    # DEPRECATED reference conditions D7–D10 (commented out; not in the default
-    # set).  The collected 5-seed results live on disk under these labels; the
-    # blocks are kept for reproducibility.  Uncomment a block and pass its label
-    # via CONDITIONS (e.g. CONDITIONS="D7") to re-run it.
-    # ──────────────────────────────────────────────────────────────────────
-    #
-    # if should_run D7; then
-    #     echo "=== D7 (DEPRECATED): standard NCL — precision-matrix path-finding reference ==="
-    #     # prior_init=0.1 is the tuned winner from the α sweep (matches the
-    #     # global default in configs/method/ncl.yaml).  NCL has no replay buffer,
-    #     # so the g_replay diagnostics are silently ignored.  Cut from the final
-    #     # story; see thesis_draft/notes/ncl_implementation_findings.md.
-    #     spawn_ncl_block D7 D7_NCL_reference "${mu}" method.ncl.prior_init=0.1
-    # fi
-    #
-    # if should_run D8; then
-    #     echo "=== D8 (DEPRECATED): symmetric PER, Fisher of the JOINT (current+replay) batch ==="
-    #     spawn_precond_block D8 D8_PER_joint "${mu}" \
-    #         method.fisher.target=joint \
-    #         method.fisher.damping=1.0 \
-    #         method.cg.iters=10 \
-    #         method.cg.warm_start=true
-    # fi
-    #
-    # if should_run D9; then
-    #     echo "=== D9 (DEPRECATED): symmetric PER, Fisher of the REPLAY batch only ==="
-    #     spawn_precond_block D9 D9_PER_replay "${mu}" \
-    #         method.fisher.target=replay \
-    #         method.fisher.damping=1.0 \
-    #         method.cg.iters=10 \
-    #         method.cg.warm_start=true
-    # fi
-    #
-    # if should_run D10; then
-    #     echo "=== D10 (DEPRECATED): joint-Fisher PER + full-buffer replay gradient — variance/trajectory probe ==="
-    #     spawn_precond_block D10 D10_PER_joint_fullbuf "${mu}" \
-    #         method.fisher.target=joint \
-    #         method.fisher.damping=1.0 \
-    #         method.cg.iters=10 \
-    #         method.cg.warm_start=true \
-    #         method.replay_full_buffer=true \
-    #         memory.total_budget=60000
-    # fi
 done
 
 echo ""

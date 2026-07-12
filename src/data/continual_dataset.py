@@ -1,12 +1,11 @@
 """Continual dataset wrapper: task iterator + replay buffer management.
 
-`ContinualDataset` wraps `RotatedMNIST`, `DomainCIFAR10`, or `DomainCIFAR100` and
-provides a unified interface for the training loop:
+`ContinualDataset` wraps `RotatedMNIST` or `DomainCIFAR10` and provides a
+unified interface for the training loop:
 
 1. `task_iterator()` — a generator that yields one task at a time.
 
-2. `sample_replay(batch_size)` — draws a uniform random batch from the buffer,
-   which grows to hold samples from all completed tasks.
+2. `buffer` — the shared `ReservoirBuffer`, handed to replay-based methods.
 
 Buffer population is the responsibility of each method's `end_task()` call in
 the training loop (ER, GEM, PrecondER all do this).  The dataset does NOT populate
@@ -15,30 +14,26 @@ the buffer — doing so would double-fill it and inflate the reservoir sampler's
 
 Usage:
     cont = ContinualDataset(cfg.dataset, cfg.memory, batch_size=64)
+    method = ER(model, cfg, cont.buffer)
     for task_id, train_loader, test_loaders in cont.task_iterator():
         for x, y in train_loader:
-            loss = model(x, y)
-            if len(cont) > 0:
-                x_r, y_r, _ = cont.sample_replay(64)
+            method.observe(x, y, task_id)
         method.end_task(task_id, train_loader)  # fills buffer
 """
 
 from typing import Dict, Generator, Tuple
 
-import torch
 from torch.utils.data import DataLoader
 
 from src.data.memory_buffer import ReservoirBuffer
 from src.data.rotated_mnist import RotatedMNIST
 from src.data.domain_cifar10 import DomainCIFAR10
-from src.data.domain_cifar100 import DomainCIFAR100
 
 
 # Registry of supported dataset names → class
 _DATASET_REGISTRY = {
-    "rot_mnist":    RotatedMNIST,
-    "dom_cifar10":  DomainCIFAR10,
-    "dom_cifar100": DomainCIFAR100,
+    "rot_mnist":   RotatedMNIST,
+    "dom_cifar10": DomainCIFAR10,
 }
 
 
@@ -48,7 +43,7 @@ class ContinualDataset:
     Args:
         dataset_cfg: Dataset config (Hydra OmegaConf).  Must expose ``name``
                      (str) and the fields required by the underlying dataset
-                     class (see RotatedMNIST, DomainCIFAR100).
+                     class (see RotatedMNIST, DomainCIFAR10).
         memory_cfg:  Memory config.  Must expose ``total_budget`` (int).
         batch_size:  Batch size forwarded to the underlying DataLoaders.
         num_workers: Worker count forwarded to the underlying DataLoaders.
@@ -73,7 +68,7 @@ class ContinualDataset:
         self._batch_size = batch_size
         self._num_workers = num_workers
 
-        # Underlying benchmark dataset (RotatedMNIST, DomainCIFAR10, or DomainCIFAR100)
+        # Underlying benchmark dataset (RotatedMNIST or DomainCIFAR10)
         self._dataset = _DATASET_REGISTRY[name](
             dataset_cfg, batch_size=batch_size, num_workers=num_workers
         )
@@ -122,29 +117,6 @@ class ContinualDataset:
             yield task_id, train_loader, test_loaders
 
     # ------------------------------------------------------------------
-    # Replay
-    # ------------------------------------------------------------------
-
-    def sample_replay(
-        self, batch_size: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, list]:
-        """Sample a batch uniformly from the replay buffer.
-
-        Args:
-            batch_size: Number of samples to draw.
-
-        Returns:
-            x_batch:  Tensor of shape (batch_size, *input_shape).
-            y_batch:  Tensor of shape (batch_size,).
-            task_ids: List of int task IDs, length batch_size.
-
-        Raises:
-            ValueError: If called before any task has been completed (empty
-                        buffer).
-        """
-        return self._buffer.sample(batch_size)
-
-    # ------------------------------------------------------------------
     # Convenience / introspection
     # ------------------------------------------------------------------
 
@@ -152,8 +124,4 @@ class ContinualDataset:
     def buffer(self) -> ReservoirBuffer:
         """Public accessor for the shared replay buffer."""
         return self._buffer
-
-    def __len__(self) -> int:
-        """Return the number of samples currently stored in the buffer."""
-        return len(self._buffer)
 

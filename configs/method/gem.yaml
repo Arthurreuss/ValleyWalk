@@ -1,5 +1,5 @@
 name: gem
 gem:
   reference_gradient: per_task       # standard GEM: one constraint per past task (QP)
-  margin: 0.1                        # gemma
+  margin: 0.1
   mem_batch_size: 256                # samples drawn per task for reference gradient

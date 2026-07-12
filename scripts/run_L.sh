@@ -2,9 +2,6 @@
 # scripts/run_L.sh
 #
 # L-series: two-gate long-sequence ablation on five-task rot-MNIST.
-# (Split out of run_C.sh / run_curriculum.sh, which now covers the two-task
-# C-series only.  The old L-series — vanilla / NCL / λ_min∈{0.0,0.10} — is
-# replaced by the clean baseline-vs-both-gates ablation below.)
 #
 # Aim
 # ---
@@ -28,8 +25,7 @@
 # Each condition runs at both momentum legs — µ = 0.0 (plain SGD) and µ = 0.9;
 # momentum-on runs carry a "_M" suffix in ablation_value.  The directional gate
 # (L3) is strongest at µ = 0 and re-inflates under momentum, so both legs are
-# needed to read the frontier on the long sequence.  Set MOMENTUM_SET=on to
-# ship only the µ = 0.9 leg (the old L-series regime).
+# needed to read the frontier on the long sequence.
 #
 # Total (default): 3 conditions × 2 momentum × 5 seeds = 30 runs.  rot-MNIST +
 # MLP; L3's CG makes it the slow condition, but the block still finishes fast.

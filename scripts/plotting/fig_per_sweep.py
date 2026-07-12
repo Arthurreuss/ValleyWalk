@@ -15,8 +15,6 @@ stronger filter dark, a single-hue ordinal ramp):
 
 from __future__ import annotations
 
-import pandas as pd
-
 import scripts.plotting.vw_style as vw
 import matplotlib.pyplot as plt
 

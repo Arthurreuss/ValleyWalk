@@ -1,39 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
 /.venv
+/.pytest_cache
 .python-version
+
+# Editor / OS
+.vscode/
 .DS_Store
 /.claude
-/.pytest_cache
-/logs
 
 # Generated run artefacts
 outputs/
 checkpoints/
 /data/
-archive/
+/logs
 
-thesis_draft/
+# LaTeX build artefacts
 thesis_latex/indent.log
-thesis_latex/main.bbl
 thesis_latex/main.aux
+thesis_latex/main.bbl
 thesis_latex/main.blg
+thesis_latex/main.brf
+thesis_latex/main.fdb_latexmk
+thesis_latex/main.fls
 thesis_latex/main.log
 thesis_latex/main.out
 thesis_latex/main.synctex.gz
-thesis_latex/main.fdb_latexmk
-thesis_latex/main.fls
-thesis_latex/main.brf
+thesis_latex/main.toc
 texput.log
-.vscode/
-
-thesis_latex/main.synctex.gz
-thesis_latex/main.brf
-texput.log
-.vscode
-
-
-
-# Python bytecode
-__pycache__/
-*.pyc
-*.pyo
-outputs

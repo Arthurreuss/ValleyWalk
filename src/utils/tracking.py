@@ -1,4 +1,4 @@
-"""Dual-write tracking utility — T6.1.
+"""Dual-write tracking utility.
 
 Every metric is written to both a local CSV (ground truth for figures/archival)
 and a W&B run (live monitoring).  When ``cfg.tracking.backend == "csv_only"``,
@@ -98,7 +98,7 @@ class _NullRun:
 
 
 # ---------------------------------------------------------------------------
-# 4.1 init_tracking
+# init_tracking
 # ---------------------------------------------------------------------------
 
 def init_tracking(cfg: Any) -> tuple:
@@ -213,7 +213,7 @@ def init_tracking(cfg: Any) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# 4.2 DualLogger
+# DualLogger
 # ---------------------------------------------------------------------------
 
 class DualLogger:
@@ -297,7 +297,7 @@ class DualLogger:
 
 
 # ---------------------------------------------------------------------------
-# 4.3 save_and_log_checkpoint
+# save_and_log_checkpoint
 # ---------------------------------------------------------------------------
 
 def save_and_log_checkpoint(
@@ -352,7 +352,7 @@ def save_and_log_checkpoint(
 
 
 # ---------------------------------------------------------------------------
-# 4.4 save_and_log_results
+# save_and_log_results
 # ---------------------------------------------------------------------------
 
 def save_and_log_results(results_dir: str, run: Any, cfg: Any) -> None:
@@ -399,7 +399,7 @@ def save_and_log_results(results_dir: str, run: Any, cfg: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4.5 log_accuracy_matrix_table
+# log_accuracy_matrix_table
 # ---------------------------------------------------------------------------
 
 def log_accuracy_matrix_table(
@@ -434,7 +434,7 @@ def log_accuracy_matrix_table(
 
 
 # ---------------------------------------------------------------------------
-# 4.6 log_metrics_summary_table
+# log_metrics_summary_table
 # ---------------------------------------------------------------------------
 
 def log_metrics_summary_table(metrics: Dict[str, Any], run: Any) -> None:

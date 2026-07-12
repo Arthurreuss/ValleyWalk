@@ -1,6 +1,6 @@
-"""Tests for the dual-write tracking utility — T6.1.
+"""Tests for the dual-write tracking utility.
 
-Verifies the three "done when" criteria from the spec:
+Verifies that:
   (b) csv_only mode writes local CSVs without errors and without W&B dependency.
   (c) write_run_manifest() produces a valid JSON matching the schema.
 

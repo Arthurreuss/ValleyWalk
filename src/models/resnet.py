@@ -15,16 +15,14 @@ All other details — BasicBlock with batch-norm, 4 residual stages with
 widths [64, 128, 256, 512] and [2, 2, 2, 2] blocks, global average pooling,
 and a linear classifier — are unchanged from the standard ResNet-18.
 
-Output: 100 logits (Domain CIFAR-100 benchmark).
-
 Usage:
     from src.models.resnet import ResNet18
 
     model = ResNet18(cfg.model)
-    logits = model(x)   # x: (batch, 3, 32, 32) → logits: (batch, 100)
+    logits = model(x)   # x: (batch, 3, 32, 32) → logits: (batch, num_classes)
 
     # Or build directly (e.g. in tests):
-    model = ResNet18.from_dims(input_channels=3, num_classes=100)
+    model = ResNet18.from_dims(input_channels=3, num_classes=10)
 """
 
 from typing import Callable, List, Optional, Type
@@ -127,7 +125,7 @@ class ResNet18(nn.Module):
     Args:
         cfg: Model config object (Hydra OmegaConf).  Must expose:
                - input_channels (int): Number of input channels (3 for CIFAR).
-               - num_classes     (int): Number of output logits (100 for CIFAR-100).
+               - num_classes     (int): Number of output logits (10 for CIFAR-10).
     """
 
     # Block counts per stage — identical to canonical ResNet-18

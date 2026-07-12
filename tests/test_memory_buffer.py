@@ -1,6 +1,6 @@
 """Tests for ReservoirBuffer.
 
-Three checks as specified in T1.1:
+Three checks:
   (a) After adding N > budget items, buffer holds exactly `budget` items.
   (b) Over many independent trials, each item appears with frequency ≈
       budget/N  (chi-squared goodness-of-fit, p > 0.01).

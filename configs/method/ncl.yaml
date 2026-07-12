@@ -1,6 +1,6 @@
-name: ncl # lr 0.1
+name: ncl
 ncl:
   fisher_samples: 1000          # max training examples used to estimate K-FAC factors
   damping: 1.0e-3               # ε added to A and G diagonals before inversion; small now because the identity prior (prior_init) bounds Λ⁻¹ — damping only handles residual rank-deficiency in F_k itself
   trust_radius: 1.0             # nominal Λ-norm radius r; reported via diag.tr_scale = min(1, r / ||step||_Λ). Per Kao et al. (2021) Eq. (8) the radius is implicit in the learning rate — no clip is enforced.
-  prior_init: 0.1               # α in p_w = α·I (paper Algo 1 line 6 — Gaussian prior precision). Bounds Λ⁻¹: with Λ_k = α·I + Σ F_i, the natural gradient cannot amplify the raw gradient beyond 1/α in any direction. K-FAC realisation: A_l, G_l initialised to √α·I per Linear layer. Tuned default — paper-literal α=1.0 over-regularises on rot-MNIST; α≤0.03 diverges at lr=0.1. See thesis_draft/notes/ncl_implementation_findings.md.
+  prior_init: 0.1               # α in p_w = α·I (paper Algo 1 line 6 — Gaussian prior precision). Bounds Λ⁻¹: with Λ_k = α·I + Σ F_i, the natural gradient cannot amplify the raw gradient beyond 1/α in any direction. K-FAC realisation: A_l, G_l initialised to √α·I per Linear layer. Tuned default — paper-literal α=1.0 over-regularises on rot-MNIST; α≤0.03 diverges at lr=0.1.

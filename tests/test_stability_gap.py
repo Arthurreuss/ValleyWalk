@@ -1,4 +1,4 @@
-"""Tests for StabilityGapTracker (T3.2).
+"""Tests for StabilityGapTracker.
 
 Synthetic scenario: a small linear classifier on a balanced two-class dataset.
 

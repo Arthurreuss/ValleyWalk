@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# scripts/run_C.sh  (formerly run_curriculum.sh)
+# scripts/run_C.sh
 #
 # Implements the λ-curriculum sweep, the λ_min refinement, and the momentum
 # cross-cut over those conditions on two-task rot-MNIST (Chapter 4 §4.5–§4.6).
 #
-# The five-task long-sequence block moved to scripts/run_L.sh (L-series).
-# CIFAR-10 generalisation lives in scripts/run_G.sh.  This script is two-task
-# rot-MNIST only.
+# This script is two-task rot-MNIST only: the five-task long-sequence block
+# lives in scripts/run_L.sh (L-series), CIFAR-10 generalisation in
+# scripts/run_G.sh (G-series).
 #
 # Conditions (rot-MNIST, applied on top of standard ER, buffer 1 k reservoir)
 # --------------------------------------------------------------------------

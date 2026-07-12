@@ -57,7 +57,6 @@ class ER(BaseMethod):
         # BaseMethod stores model and the *method* sub-config
         super().__init__(model, cfg.method)
 
-        self._full_cfg = cfg        # kept for any downstream use
         self.buffer = buffer
 
         # Standard SGD — using cfg.training ensures ER is controlled by the

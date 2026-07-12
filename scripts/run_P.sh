@@ -2,7 +2,6 @@
 # scripts/run_P.sh
 #
 # P-series: damping sweep for asymmetric preconditioned ER (PER_ASYM).
-# (Formerly run_per_asym_sweep.sh.)
 #
 # Aim
 # ---
@@ -30,7 +29,7 @@
 # Cross of DAMPINGS × buffer legs:
 #   std     — 1 k reservoir buffer (matches the decomposition PER conditions).
 #             The raw g_rep carries buffer sampling noise, which inflates
-#             per-seed depth minima (see PER_asym vs PER_replay at µ=0).
+#             per-seed depth minima.
 #   fullbuf — replay gradient over the full 60 k buffer (zero estimator noise,
 #             mirrors D2/D4).  The Fisher metric stays on a sampled subset
 #             (see precond_er.py).  Isolates mechanism from estimator variance.

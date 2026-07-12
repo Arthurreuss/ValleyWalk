@@ -1,4 +1,4 @@
-"""Tests for scripts/aggregate_results.py  (T7.2).
+"""Tests for scripts/aggregate_results.py.
 
 We import the script as a module by adding the scripts/ directory to sys.path,
 then exercising each function in isolation and via a full end-to-end run on

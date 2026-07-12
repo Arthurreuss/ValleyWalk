@@ -1,8 +1,8 @@
-"""Appendix figure: five-task rot-MNIST long sequence (refactored L-series).
+"""Appendix figure: five-task rot-MNIST long sequence (L-series).
 
 Does each gate carry past a single transition, and how does momentum act on the
 long horizon?  Rotations [0, 30, 60, 90, 120] deg, four consecutive switches,
-five seeds.  The refactored L-series is the two-gate comparison: L1 vanilla ER
+five seeds.  The L-series is the two-gate comparison: L1 vanilla ER
 (red), L2 the shipping curriculum (blue), L3 asymmetric PER delta=0.1 (aqua).
 Both panels show first-task T0 accuracy across the whole sequence (dashed lines
 are the four switches); the two panels are the two momentum settings.
