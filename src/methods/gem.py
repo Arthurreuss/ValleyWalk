@@ -71,7 +71,6 @@ class GEM(BaseMethod):
     def __init__(self, model: nn.Module, cfg, buffer: ReservoirBuffer) -> None:
         super().__init__(model, cfg.method)
 
-        self._full_cfg = cfg
         self.buffer = buffer
 
         self._mode: str = str(cfg.method.gem.reference_gradient)  # "per_task" | "joint"

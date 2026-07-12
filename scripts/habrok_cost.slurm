@@ -262,9 +262,9 @@ trap cleanup EXIT
 # ─── Measured run ─────────────────────────────────────────────────────────
 # Portable timing: a tiny Python launcher runs train.py as a child and reads
 # wall / CPU / peak-RSS from resource.getrusage(RUSAGE_CHILDREN).  This does
-# NOT depend on GNU /usr/bin/time, which is absent on Habrok compute nodes and
-# previously left wall/CPU/RSS blank.  TIME_LOG is written even when the child
-# crashes, so failed runs still get timing.
+# NOT depend on GNU /usr/bin/time, which is absent on Habrok compute nodes.
+# TIME_LOG is written even when the child crashes, so failed runs still get
+# timing.
 echo "  + train.py ${OVERRIDES[*]}"
 set +e
 TIME_LOG="$TIME_LOG" "$PYTHON" - "$PYTHON" scripts/train.py "${OVERRIDES[@]}" <<'PY'

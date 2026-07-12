@@ -191,18 +191,3 @@ class RotatedMNIST:
         )
 
         return train_loader, test_loader
-
-    # ------------------------------------------------------------------
-    # Convenience
-    # ------------------------------------------------------------------
-
-    def angle_for_task(self, task_id: int) -> float:
-        """Return the rotation angle (degrees) for a given task.
-
-        Args:
-            task_id: Zero-based task index.
-
-        Returns:
-            Rotation angle in degrees.
-        """
-        return self.rotations_deg[task_id]

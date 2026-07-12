@@ -20,7 +20,6 @@ replay_batch_size: null
 # to the per-task training-set size, this gives the exact empirical past-
 # task gradient at the current parameters — used by the G2 / G4 conditions
 # in §4.4 to remove estimator noise from the decomposition.
-# Default false to preserve the legacy sampling-with-replacement behaviour.
 replay_full_buffer: false
 
 grad_balance:
@@ -46,7 +45,7 @@ grad_balance:
 #              ramp_steps; self-terminates when balance is achieved.  Only
 #              `ema_alpha` (numerical smoothing) is exposed.
 lambda_curriculum:
-  enabled: false                    # off by default — preserves existing behaviour
+  enabled: false                    # off by default
   ramp_steps: 0                     # number of steps to ramp 0 → 1 (ignored when schedule=adaptive)
   schedule: linear                  # linear | cosine | step | adaptive
   ema_alpha: 0.05                   # EMA smoothing on the gradient ratio (only used when schedule=adaptive).
@@ -68,5 +67,5 @@ lambda_curriculum:
 # matches the depth reduction of λ-curriculum at matched N, the operative
 # mechanism is "small steps in early training", not asymmetric scaling.
 lr_warmup:
-  enabled: false                    # off by default — preserves existing behaviour
+  enabled: false                    # off by default
   warmup_steps: 0                   # number of steps to ramp lr 0 → full (0 = disabled)

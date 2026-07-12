@@ -222,18 +222,3 @@ class DomainCIFAR10:
         )
 
         return train_loader, test_loader
-
-    # ------------------------------------------------------------------
-    # Convenience
-    # ------------------------------------------------------------------
-
-    def corruption_for_task(self, task_id: int) -> str:
-        """Return the corruption name for a given task.
-
-        Args:
-            task_id: Zero-based task index.
-
-        Returns:
-            Corruption name string (e.g. ``"gaussian_noise"``).
-        """
-        return self.corruption_types[task_id]

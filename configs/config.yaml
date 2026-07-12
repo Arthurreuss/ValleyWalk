@@ -20,7 +20,7 @@ training:
 
 memory:
   total_budget: 1000                # total samples across all replay buffers
-  sampling: reservoir                # reservoir | ring
+  sampling: reservoir                # only reservoir is implemented
 
 eval:
   eval_every_n_steps: 10              # general periodic eval → logged to W&B live
@@ -56,7 +56,6 @@ outputs:
   dir: results/                      # relative to Hydra job dir
   save_accuracy_matrix: true         # R[i,j] as .npy
   save_task_curves: true             # per-step loss/acc CSVs per task
-  save_diagnostics: true             # eigenvalues, trust radius, fallback per step
 
 # ──────────────────────────────────────────────
 # Tracking: W&B (live monitoring + artifacts)
@@ -65,7 +64,7 @@ tracking:
   backend: wandb                     # wandb | csv_only (for debugging without W&B)
   wandb:
     project: ValleyWalk                     # W&B project name
-    entity: arthurreuss-bachelor-thesis                     
+    entity: arthurreuss-bachelor-thesis
     tags: []                         # auto-populated at runtime: [method, dataset, ablation]
     # W&B Artifacts — versioned model + results linked to each run
     artifacts:
@@ -75,9 +74,6 @@ tracking:
       results_type: results          # W&B Artifact type for results bundle
   # Local diagnostics (always written regardless of backend)
   local:
-    log_eigenvalues: false           # per-step eigenvalue spectrum CSV (expensive I/O)
-    log_cone_fallback: true          # per-step cone fallback CSV
-    log_trust_radius: true           # per-step trust radius + rho CSV
     log_wall_clock: true             # per-task wall clock timing
 
 hydra:

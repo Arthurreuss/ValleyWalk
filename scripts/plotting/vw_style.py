@@ -13,7 +13,7 @@ every figure:
 
 The damping (delta) sweep is an *ordinal* magnitude, so it uses a single-hue
 blue ramp (weaker filter light -> stronger filter dark), not the categorical
-slots.  Palette validated with the data-viz skill's ``validate_palette.js``.
+slots.
 """
 
 from __future__ import annotations

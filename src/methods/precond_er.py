@@ -91,7 +91,6 @@ class PrecondER(BaseMethod):
     def __init__(self, model: nn.Module, cfg: Any, buffer: ReservoirBuffer) -> None:
         super().__init__(model, cfg.method)
 
-        self._full_cfg = cfg
         self.buffer = buffer
 
         self._params: List[nn.Parameter] = [

@@ -2,7 +2,6 @@
 # scripts/habrok.slurm
 #
 # Habrok (RUG) SLURM launcher — general dispatcher for every experiment script.
-# (Formerly habrok_cifar_PM.slurm, which only ran the CIFAR P/M blocks.)
 #
 # One SLURM array task == one (condition, seed) == one train.py run on one GPU.
 # All Hydra overrides are owned by the run_*.sh scripts; this launcher only
@@ -22,7 +21,7 @@
 #   G-per       CIFAR asym PER(run_G.sh):             G7,G8 × 5 seeds  (CG SLOW) = 10
 #   G-mom       CIFAR momentum(run_G.sh):             G9,G10,G11 × 5 seeds      = 15
 #
-# Default SUITE is "G-per G-mom" (25 tasks) — the old habrok_cifar_PM behaviour.
+# Default SUITE is "G-per G-mom" (25 tasks).
 #
 # The rot-MNIST suites (D, C, L, P) run an MLP in seconds and do not need
 # a GPU, but running them here is harmless if you want one submission path.

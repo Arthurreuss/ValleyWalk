@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # scripts/run_G.sh
 #
-# Unified CIFAR-10 sweep (G-series).  Supersedes the earlier ad-hoc CIFAR
-# blocks that lived in other scripts; all CIFAR work happens here now.
+# Unified CIFAR-10 sweep (G-series) — all CIFAR work happens here.
 #
 # Four opt-in blocks
 # ------------------
@@ -11,8 +10,8 @@
 #   generalization  — does the headline finding carry to other corruptions
 #                     and to 3-task sequences?  Vanilla-ER controls included
 #                     so the comparison stays interpretable on the new shifts.
-#   per_asym        — asymmetric PER on CIFAR (story-v2 RQ4: the directional
-#                     gate's deep-backbone leg; see thesis_draft/story_v2/04).
+#   per_asym        — asymmetric PER on CIFAR (RQ4: the directional gate's
+#                     deep-backbone leg).
 #   momentum_cross  — µ = 0 legs for {vanilla, curriculum, asym PER} so the
 #                     momentum-composability rule can be read on the ResNet.
 #
@@ -54,8 +53,8 @@
 # generalization block; the env var changes only the normalisation on the
 # six gen conditions, nothing else.
 #
-# Asym-PER block (ablation_key = "cifar_per_asym")   — STILL TO RUN
-# -----------------------------------------------------------------
+# Asym-PER block (ablation_key = "cifar_per_asym")
+# -------------------------------------------------
 # The directional feedforward gate  d = δ(F_rep+δI)⁻¹ g_cur + g_rep  on the
 # deep backbone, matched to the headline protocol (dom_cifar10 2-task
 # gaussian_noise, buffer 5000, µ = 0.9) so rows are directly comparable to
@@ -80,14 +79,14 @@
 # If cost forces cuts, drop a norm before dropping seeds.
 #
 # A non-default PER_CG_ITERS is appended to the ablation_value as "_cg<N>"
-# (same convention as run_per_asym_sweep.sh) so solver-control runs never mix
-# with the main block during aggregation.
+# (same convention as run_P.sh) so solver-control runs never mix with the
+# main block during aggregation.
 #
-# Momentum-cross block (ablation_key = "cifar_momentum_cross")   — STILL TO RUN
-# -----------------------------------------------------------------------------
+# Momentum-cross block (ablation_key = "cifar_momentum_cross")
+# ------------------------------------------------------------
 # Unwraps momentum's effect per gate type on the deep backbone.  The
-# rot-MNIST composability rule (source vs per-step attenuation,
-# thesis_draft/story_v2/03) predicts, µ = 0 → µ = 0.9:
+# rot-MNIST composability rule (source vs per-step attenuation) predicts,
+# µ = 0 → µ = 0.9:
 #   vanilla ER  — depth ~unchanged, tail cut          (nothing tamed, noise averaged)
 #   curriculum  — gap helped/held, ACC up             (push attenuated at source)
 #   asym PER    — depth re-inflated, ACC up           (push attenuated per step)
@@ -166,7 +165,7 @@ CROSS_NORM="${CROSS_NORM:-gn}"
 
 # CG iterations for the per_asym block (rot-MNIST sweep default).  Non-default
 # values suffix the ablation_value with "_cg<N>" so control runs aggregate
-# separately (matches run_per_asym_sweep.sh).
+# separately (matches run_P.sh).
 PER_CG_ITERS_DEFAULT=25
 PER_CG_ITERS="${PER_CG_ITERS:-${PER_CG_ITERS_DEFAULT}}"
 if [ "$PER_CG_ITERS" != "$PER_CG_ITERS_DEFAULT" ]; then
@@ -175,8 +174,8 @@ else
     PER_CG_SUFFIX=""
 fi
 
-# Which norm to ship in the generalization block.  Default "bn" — set to
-# "gn" after the headline block if GroupNorm wins.
+# Which norm to ship in the generalization block.  Default "gn" — GroupNorm
+# won the headline block.
 SHIP_NORM="${SHIP_NORM:-gn}"
 
 DRY_RUN="${DRY_RUN:-0}"
@@ -238,9 +237,9 @@ NCL_CONFIG=(
     method.ncl.trust_radius=1.0
 )
 
-# Asymmetric PER — fixed choices mirror the rot-MNIST sweep
-# (run_per_asym_sweep.sh): gate the current-task gradient only, through the
-# replay Fisher, warm-started CG.  δ comes per condition.
+# Asymmetric PER — fixed choices mirror the rot-MNIST sweep (run_P.sh):
+# gate the current-task gradient only, through the replay Fisher,
+# warm-started CG.  δ comes per condition.
 PER_ASYM_BASE=(
     method=precond_er
     method.apply_to=current

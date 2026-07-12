@@ -1,7 +1,5 @@
 """Aggregate run_manifest.json files into a master index and per-dataset tables.
 
-T7.2 — Results aggregation into master index.
-
 Usage
 -----
     python scripts/aggregate_results.py \\

@@ -107,7 +107,6 @@ class NCL(BaseMethod):
 
     def __init__(self, model: nn.Module, cfg) -> None:
         super().__init__(model, cfg.method)
-        self._full_cfg = cfg
 
         ncl_cfg = cfg.method.ncl
         self._fisher_samples: int = int(ncl_cfg.fisher_samples)
