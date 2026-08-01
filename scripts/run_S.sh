@@ -34,9 +34,12 @@
 #
 #   3. MATCHED RECORD GRID.  The eval cadence scales with the epoch count, so
 #      every cell records the same number of samples at the same flow-time
-#      spacing.  gap_area_end (a sum over records) is therefore directly
-#      comparable across the ladder with no rescaling; gap_depth is
-#      eta-invariant by construction.
+#      spacing, and the rungs can be overlaid point for point.  gap_depth is
+#      eta-invariant by construction.  gap_area_end is NOT: it is a trapezoid
+#      weighted by step differences (src/eval/stability_gap.py, gap_area —
+#      units accuracy*steps), so it scales with c and must be converted to
+#      flow time as area_tau = eta * area_steps before rungs are compared.
+#      scripts/analyze_ladder.py does this.
 #
 #   4. CADENCE COUNTED FROM THE BOUNDARY.  Inside the dense window the eval
 #      cadence fires on task_step % eval_freq_steps rather than on global_step
@@ -48,19 +51,22 @@
 #
 # Grid
 # ----
-#   eta in {0.1, 0.01, 0.1/33}  x  momentum in {0.0, 0.9}  x  buffer in {1k, 60k}
+#   eta in {0.1, 0.1/3, 0.01}  x  momentum in {0.0, 0.9}  x  buffer in {1k, 60k}
 #   = 12 cells x 5 seeds = 60 runs, plus 10 task-0 anchors.
 #
 # The eta values are written out exactly (0.1/c) rather than rounded, so that
-# eta * epochs is 0.1 in every rung; the thesis may report ~0.003.
+# eta * epochs is 0.1 in every rung; the thesis may report ~0.033.  Rounding the
+# middle rung to a clean 0.03 would cost 10 % of the flow time at 3 epochs
+# (0.03 * 3 * 235 = 21.2 against 23.5) and break constraint 1.
 #
 # Two readings the grid supports beyond the ladder itself:
 #
 #   * MATCHED EFFECTIVE STEP.  Momentum multiplies the asymptotic step by
-#     1/(1-mu), so the mu=0.9 rungs sit at effective 1.0, 0.1, 0.03 against the
-#     mu=0 rungs' 0.1, 0.01, 0.003: (eta=0.01, mu=0.9) and (eta=0.1, mu=0) are
-#     an exactly matched pair at 0.1, as are (0.1/33, 0.9) and (0.01, 0) at
-#     0.03 vs 0.01 — one exact pair and one near pair.  If a momentum cell
+#     1/(1-mu), so the mu=0.9 rungs sit at effective 1.0, 0.333, 0.1 against
+#     the mu=0 rungs' 0.1, 0.0333, 0.01: (eta=0.01, mu=0.9) and (eta=0.1, mu=0)
+#     are an exactly matched pair at effective step 0.1, the one the decoupling
+#     read rests on; the other two mu=0.9 rungs have no mu=0 partner in this
+#     grid and are read within their own leg.  If a momentum cell
 #     behaves like its matched mu=0 partner, the momentum signature is an
 #     effective-step effect; if it does not, it is the accumulator.  Plot
 #     against effective flow time tau = t * eta/(1-mu) so the differing run
@@ -79,9 +85,14 @@
 # Conditions
 # ----------
 #   S1 — eta = 0.1        1 epoch    (the standard operating point)
-#   S2 — eta = 0.01      10 epochs
-#   S3 — eta = 0.1/33    33 epochs
+#   S2 — eta = 0.1/3      3 epochs
+#   S3 — eta = 0.01      10 epochs
 # each x {1k reservoir, 60k exact} x {mu=0.0, mu=0.9}.
+#
+# A first pass at eta in {0.1, 0.01, 0.1/33} showed the ladder already converged
+# by eta = 0.01 (depth 22.9 -> 4.9 -> 4.8 pp, the last two rungs within
+# 0.13 pp), so the 33-epoch rung bought nothing and the lever arm was moved
+# inward to put a point between the two that actually separate.
 #
 # ablation_value: S{1,2,3}_eta<val>[_exact][_M]   ablation_key: lr_ladder
 # Deliberately NOT reusing the D2/D3 labels: those mean "full-data" and
@@ -92,14 +103,13 @@
 # rows, because every cell of the ladder has to share theta*_0.
 #
 # Buffer-fidelity diagnostics are OFF: they cost a full past-task
-# forward+backward per step, unaffordable at 33 epochs, and D1/D2 already
-# carry those numbers.
+# forward+backward per step, and D1 already carries those numbers.
 #
 # Cost (task 0 is skipped, so this is T1 only)
 # --------------------------------------------
-#   1k arm:     ~3 / ~8 / ~25 min per run
-#   exact arm:  ~2 / ~20 / ~65 min per run
-#   whole grid at N_JOBS=5: roughly 4 h, i.e. one overnight batch.
+#   1k arm:     ~3 / ~4 / ~8 min per run
+#   exact arm:  ~2 / ~7 / ~20 min per run
+#   whole grid at N_JOBS=5: roughly 1.5 h.
 #
 # Usage
 # -----
@@ -180,8 +190,8 @@ MOM_ON=0.9
 rung_spec() {
     case "$1" in
         S1) echo "0.1 1 10" ;;
-        S2) echo "0.01 10 100" ;;
-        S3) echo "0.0030303030303030303 33 330" ;;
+        S2) echo "0.03333333333333333 3 30" ;;
+        S3) echo "0.01 10 100" ;;
     esac
 }
 
@@ -189,8 +199,8 @@ rung_spec() {
 rung_tag() {
     case "$1" in
         S1) echo "S1_eta0.1" ;;
-        S2) echo "S2_eta0.01" ;;
-        S3) echo "S3_eta0.003" ;;
+        S2) echo "S2_eta0.033" ;;
+        S3) echo "S3_eta0.01" ;;
     esac
 }
 

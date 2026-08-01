@@ -63,6 +63,100 @@ DELTA_RAMP = {
     0.03: "#184f95",
 }
 
+# Ordinal ramp for the S-series step-size ladder.  Every rung *is* vanilla ER —
+# only eta differs — so the ramp stays on the vanilla hue and darkens as the
+# step shrinks: eta = 0.1 is the standard operating point and keeps exactly
+# C_VANILLA, the smaller steps sit below it on the same hue.
+LADDER_RAMP = {
+    0.1:     C_VANILLA,
+    0.03333: "#a5302f",
+    0.01:    "#66191a",
+}
+
+
+def ladder_color(eta: float) -> str:
+    """Colour for a ladder rung, matched to the nearest tabulated eta.
+
+    The exact eta of the middle rung is 0.1/3 = 0.03333..., not the 0.033 of
+    its label, so a dict lookup on the raw value would miss.
+    """
+    key = min(LADDER_RAMP, key=lambda e: abs(np.log(e) - np.log(float(eta))))
+    return LADDER_RAMP[key]
+
+# ---------------------------------------------------------------------------
+# Reader-facing condition names
+# ---------------------------------------------------------------------------
+#
+# ``ablation_value`` is an internal key: it encodes the block a condition was
+# launched in (D1, C7, P3, S2) rather than what the reader is being shown.
+# Figures and tables should carry the second, so the same condition reads the
+# same way everywhere; this dict is the single place that mapping lives.
+#
+# Keys are looked up whole first, so a variant with its own established name
+# (C8, the curriculum + full-buffer cell) wins over the suffix rules below.
+
+DISPLAY_NAMES: dict[str, str] = {
+    # Driver block (D-series) — plain ER is the reference every figure returns to.
+    "D1_vanilla": "Experience replay",
+    # Step-size ladder (S-series): the rung *is* the step size.
+    # The label rounds; the true value is 0.1/c (see run_S.sh) and is always
+    # read from the run config, never parsed back out of the tag.
+    "S1_eta0.1":   "η = 0.1",
+    "S2_eta0.033": "η = 0.033",
+    "S3_eta0.01":  "η = 0.01",
+    # Curriculum (C-series) — only the two conditions the narrative keeps.
+    "C7_adaptive_lmin0.20": "loss curriculum",
+    "C8_adaptive_lmin0.20_fullbuf": "curriculum + exact replay",
+    # Asymmetric PER (P-series): an ordinal damping sweep.
+    "P1_d1.0":  "curvature filter (δ = 1.0)",
+    "P2_d0.3":  "curvature filter (δ = 0.3)",
+    "P3_d0.1":  "curvature filter (δ = 0.1)",
+    "P4_d0.03": "curvature filter (δ = 0.03)",
+}
+
+# Suffixes that modify a base condition rather than naming a new one.  Both
+# ``_exact`` (S-series) and ``_fullbuf`` (C/P-series) mean the same thing —
+# replay over the whole past-task set, i.e. the exact past-task gradient — so
+# they get the same qualifier; the two spellings are historical.
+_NAME_SUFFIXES: list[tuple[str, str]] = [
+    ("_exact", ", exact replay gradient"),
+    ("_fullbuf", ", exact replay gradient"),
+    ("_M", " (momentum 0.9)"),
+]
+
+
+def display_name(ablation_value: str) -> str:
+    """Reader-facing name for an ``ablation_value``.
+
+    Whole-key matches win; otherwise the recognised variant suffixes are
+    stripped (in any order and combination), the base is looked up, and the
+    qualifiers are appended in the fixed order of :data:`_NAME_SUFFIXES` so
+    that ``X_exact_M`` and ``X_M_exact`` read identically.  An unknown base is
+    returned unchanged rather than raising: a missing entry should show up as
+    an ugly label on a draft figure, not as a crashed figure run.
+    """
+    if ablation_value in DISPLAY_NAMES:
+        return DISPLAY_NAMES[ablation_value]
+    base = ablation_value
+    qualifiers: list[str] = []
+    changed = True
+    while changed:                       # peel suffixes until none match
+        changed = False
+        for suffix, qualifier in _NAME_SUFFIXES:
+            if base.endswith(suffix):
+                base = base[: -len(suffix)]
+                if qualifier not in qualifiers:
+                    qualifiers.append(qualifier)
+                changed = True
+        if base in DISPLAY_NAMES:        # a named variant, not a bare base
+            break
+    if base not in DISPLAY_NAMES:
+        return ablation_value
+    order = [q for _, q in _NAME_SUFFIXES]
+    qualifiers.sort(key=order.index)
+    return DISPLAY_NAMES[base] + "".join(qualifiers)
+
+
 # ---------------------------------------------------------------------------
 # Matplotlib style
 # ---------------------------------------------------------------------------
@@ -209,11 +303,20 @@ _METRIC_SCALE = {"stab_gap_depth": 100.0, "stab_gap_max_drop": 100.0,
 
 
 def agg(method: str, ablation_key: str, ablation_value: str) -> dict:
-    """Mean/std over seeds for one condition. Depth returned in pp."""
+    """Mean/std over seeds for one condition. Depth returned in pp.
+
+    Only rows with ``status == "completed"`` are aggregated, matching
+    :func:`run_dirs` — a run that crashed, is still in flight, or whose
+    manifest failed to parse still has a row in the master index, and its
+    partial or absent metrics must not enter a published mean.  Every row in
+    the archive is currently ``completed``, so this changes no reported number;
+    it is a guard for the sweeps that are still running.
+    """
     df = master()
     sel = df[(df["method"] == method)
              & (df["ablation_key"] == ablation_key)
-             & (df["ablation_value"] == ablation_value)]
+             & (df["ablation_value"] == ablation_value)
+             & (df["status"] == "completed")]
     out: dict = {"n": len(sel)}
     for col in ["ACC", "FORG", "min_ACC", "WF10", "WF100", "WP10", "WP100",
                 "WC_ACC", "stab_gap_depth", "stab_gap_max_drop",
@@ -294,6 +397,53 @@ def plot_transition(ax, method, key, value, task_col, color, label, *,
     ax.plot(x, mean, color=color, lw=lw, linestyle=linestyle, label=label,
             solid_capstyle="round")
     return x, mean, std
+
+
+def seed_metric(runs, fn) -> dict[int, float]:
+    """Apply ``fn(curve)`` to each run's ``accuracy_curves.csv``, keyed by seed.
+
+    ``runs`` maps ``seed -> run directory`` (or is any iterable of such pairs).
+    A run whose curve is missing or unreadable, or for which ``fn`` returns
+    ``None``, is skipped rather than contributing a NaN: the callers of this
+    helper are paired analyses, where a NaN seed silently unpairs a comparison.
+    Seeds come from the caller because the run directory name does not carry
+    one — the master index and ``.hydra/overrides.yaml`` do.
+    """
+    items = runs.items() if hasattr(runs, "items") else runs
+    out: dict[int, float] = {}
+    for seed, run_dir in items:
+        f = Path(run_dir) / "results" / "accuracy_curves.csv"
+        if not f.exists():
+            continue
+        try:
+            curve = read_curve_csv(f)
+        except Exception:                # a truncated / half-flushed CSV
+            continue
+        value = fn(curve)
+        if value is not None:
+            out[int(seed)] = float(value)
+    return out
+
+
+def dot_ladder(ax, xs, means, stds, color, label=None, *, marker="o",
+               ms=6.0, lw=1.4, capsize=3.0, zorder=3):
+    """Plot a mean±std dot ladder: one marker per rung, joined by a guide line.
+
+    The companion to :func:`plot_transition` for the summary view of an
+    ordinal sweep (the delta sweep, the step-size ladder): the trajectory
+    panels show *what happens*, this shows the scalar it collapses to as the
+    swept parameter moves.  ``xs`` is normally set on a log axis by the caller.
+    """
+    xs = np.asarray(xs, dtype=float)
+    means = np.asarray(means, dtype=float)
+    stds = np.asarray(stds, dtype=float)
+    order = np.argsort(xs)
+    xs, means, stds = xs[order], means[order], stds[order]
+    ax.plot(xs, means, color=color, lw=lw, alpha=0.55, zorder=zorder - 1)
+    ax.errorbar(xs, means, yerr=stds, color=color, fmt=marker, ms=ms,
+                lw=0, elinewidth=lw, capsize=capsize, capthick=lw,
+                label=label, zorder=zorder)
+    return xs, means, stds
 
 
 def mark_switch(ax, x=0.0):
