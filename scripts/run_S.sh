@@ -87,7 +87,15 @@
 #   S1 — eta = 0.1        1 epoch    (the standard operating point)
 #   S2 — eta = 0.1/3      3 epochs
 #   S3 — eta = 0.01      10 epochs
+#   S4 — eta = 0.001    100 epochs   (opt-in; see below)
 # each x {1k reservoir, 60k exact} x {mu=0.0, mu=0.9}.
+#
+# S4 exists because the mu=0.9 leg does not converge on S1-S3.  Momentum
+# multiplies the asymptotic step by 1/(1-mu), so those rungs sit at effective
+# 1.0 / 0.333 / 0.1 while the mu=0 leg only settles below effective 0.033 —
+# the momentum ladder is still descending at its bottom rung (depth
+# 0.141 -> 0.099 -> 0.050) and its extrapolated A_0 is therefore not the arc.
+# S4 puts mu=0.9 at effective step 0.01, matching where mu=0 converged.
 #
 # A first pass at eta in {0.1, 0.01, 0.1/33} showed the ladder already converged
 # by eta = 0.01 (depth 22.9 -> 4.9 -> 4.8 pp, the last two rungs within
@@ -132,6 +140,9 @@ set -euo pipefail
 N_JOBS="${N_JOBS:-5}"
 SEEDS="${SEEDS:-1,2,3,4,5}"
 
+# S4 is not in the default set: the mu=0 leg is already converged by S3, so the
+# 100-epoch rung is only worth its ~1.8 h on the exact arm when the momentum leg
+# is the question.  Request it explicitly with CONDITIONS="S4".
 CONDITIONS="${CONDITIONS:-S1 S2 S3}"
 
 # ARMS: "standard" → 1 k reservoir, "exact" → 60 k full-buffer gradient.
@@ -192,6 +203,7 @@ rung_spec() {
         S1) echo "0.1 1 10" ;;
         S2) echo "0.03333333333333333 3 30" ;;
         S3) echo "0.01 10 100" ;;
+        S4) echo "0.001 100 1000" ;;
     esac
 }
 
@@ -201,6 +213,7 @@ rung_tag() {
         S1) echo "S1_eta0.1" ;;
         S2) echo "S2_eta0.033" ;;
         S3) echo "S3_eta0.01" ;;
+        S4) echo "S4_eta0.001" ;;
     esac
 }
 
@@ -228,8 +241,8 @@ arm_suffix() {
 
 for cond in $CONDITIONS; do
     case "$cond" in
-        S1|S2|S3) ;;
-        *) echo "ERROR: unknown condition '$cond' (expected S1|S2|S3)" >&2; exit 1 ;;
+        S1|S2|S3|S4) ;;
+        *) echo "ERROR: unknown condition '$cond' (expected S1|S2|S3|S4)" >&2; exit 1 ;;
     esac
 done
 
