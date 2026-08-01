@@ -1,4 +1,4 @@
-"""RQ2a falsification figure: curriculum vs symmetric LR warm-up at matched N.
+"""RQ2 falsification figure: curriculum vs symmetric LR warm-up at matched N.
 
 Gap depth against ramp length N in {50, 100, 200} for the linear lambda-
 curriculum (C1-C3) and the symmetric learning-rate warm-up (M1-M3), at

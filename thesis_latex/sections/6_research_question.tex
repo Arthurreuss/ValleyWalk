@@ -1,18 +1,16 @@
 \section{Research Questions}
 \label{sec:research_questions}
 
-The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the gap and each gate. The experiments are organised around four questions. The first three are answered on rotated MNIST with a small MLP, where the gap can be probed step by step across many conditions and seeds; the fourth asks whether those answers survive a deeper backbone and a stronger task shift.
+The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the stability gap and the behaviour of distinct gating mechanisms. To evaluate these predictions, our experiments are organised around four core questions. The first three are evaluated in a controlled setting (rotated MNIST with a small MLP) to probe the gap's dynamics step-by-step, while the fourth tests the generalisability of these findings under increased complexity.
 
-\paragraph{RQ1: The account.} Does the gap separate into a deterministic arc of the intended trajectory and overshoot of the followed path? Concretely: do the step-level interventions (shortening the first steps, removing gradient noise) act on the drop and leave the arc; does remixing the boundary gradients at matched step length, which alters the Level-One field rather than any Level-Two driver, fail to remove the drop; does placing the optimiser on the reference path remove the arc and leave the overshoot; and does only fixing path and step together close the gap, while the permanent stability--plasticity cost stays visible as reduced plasticity?
+\paragraph{RQ1: The account.}
+Does the stability gap fundamentally decompose into a deterministic arc of the intended trajectory and an optimizer overshoot of the followed path?
 
-\paragraph{RQ2: The scalar feedback gate.} Does the $\lambda$-curriculum reduce the gap by timing the new-task push, and how do its ingredients divide the work? Four sub-questions probe the design:
-\begin{description}
-    \item[RQ2a (linear ramp).] Does gap depth fall as the ramp length $N$ grows, consistent with the $O(1/N)$ bound? And does the one-sided schedule beat a symmetric learning-rate warm-up at matched $N$, or is ``small steps early'' the whole effect?
-    \item[RQ2b (adaptive schedule).] Does the gradient-norm feedback signal match the best fixed ramp while removing the knob $N$?
-    \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early plasticity at a modest depth cost?
-    \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged?
-\end{description}
+\paragraph{RQ2: The scalar feedback gate.}
+How does a scalar feedback gate (the $\lambda$-curriculum) attenuate the new-task push, and what is its interplay with optimizer momentum and overall plasticity?
 
-\paragraph{RQ3: The directional feedforward gate.} Does asymmetric PER reduce the gap as its filter strengthens, at what plasticity cost, and where does a feedforward gate fail? The account predicts one failure axis, momentum, whose accumulated velocity rebuilds the push the filter shrinks one step at a time.
+\paragraph{RQ3: The directional feedforward gate.}
+To what extent does a directional feedforward gate (asymmetric PER) reduce the stability gap, and how does accumulated momentum compromise this gating mechanism?
 
-\paragraph{RQ4: Generalisation.} Do the findings carry to a deeper backbone (ResNet-18) and a stronger task shift (CIFAR-10 domain corruption): does each gate still cut the gap at matched final accuracy, and do the momentum signatures of RQ2d and RQ3 reproduce there in a momentum cross?
+\paragraph{RQ4: Generalisation.}
+Do the mechanisms underlying the stability gap, and the effectiveness of the proposed gates, generalise to deeper network architectures and more severe task shifts?

@@ -121,6 +121,32 @@ An earlier version of the driver block balanced the two gradients differently: e
     \label{tab:app_curr}
 \end{table}
 
+\paragraph{The ingredient sweep: adaptive signal and $\lambda_{\min}$ floor.}
+Table~\ref{tab:app_curr} settles the two design choices of the shipped
+configuration, and both are decided in the momentum-on leg. At momentum $0$
+the adaptive schedule is indistinguishable from the longest linear ramp
+($12.8$ pp / $2.2$ / $0.833$ against C3's $14.3$ pp / $1.8$ / $0.828$, seeds
+split on depth, $p = 0.44$), so at that setting it is preferred for having no
+ramp length to tune rather than for its numbers. Under momentum the same pair
+separates: C4$_M$ reaches $2.5$ pp / $0.3$ / $0.917$ against C3$_M$'s
+$6.2$ pp / $0.1$ / $0.925$, shallower in all five seeds by ${\approx}3.7$ pp,
+so the feedback signal both removes the knob and beats the best setting of the
+knob, at a small cost in final accuracy and in the tail. The floor trades that
+cost back. Raising $\lambda_{\min}$ from $0$ to $0.20$ (C4$_M$ $\rightarrow$
+C7$_M$) moves depth from $2.5$ to $3.7$ pp, worse in all five seeds, while
+accuracy moves from $0.917$ to $0.931$ and the area from $0.3$ to $0.03$,
+better in all five seeds on both; the intermediate settings C5$_M$ and C6$_M$
+walk monotonically between the two ends in depth and accuracy, so the floor is
+a graded Pareto knob rather than a switch. C7$_M$ is the shipped point because
+it clears the tuned linear ramp on all three quantities (depth in five seeds
+of five, accuracy in four) and returns accuracy to vanilla ER's level
+($3.7$ pp / $0.03$ / $0.931$ against $15.9$ pp / $1.0$ / $0.928$, above
+vanilla in four of five seeds and within the seed spread). At momentum $0$
+the floor is not a useful knob: it costs depth ($12.8 \rightarrow 13.9$ pp)
+and returns almost nothing in accuracy ($0.833 \rightarrow 0.837$), since
+early $T_1$ progress there is set by the boundary gradient the floor is too
+small to redirect.
+
 \paragraph{Full-buffer momentum diagnostic (C8).}
 Table~\ref{tab:res_c8} crosses the practical curriculum with the full $60$k buffer
 at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}).
