@@ -3,11 +3,11 @@
 
 The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the gap and each gate. The experiments are organised around four questions. The first three are answered on rotated MNIST with a small MLP, where the gap can be probed step by step across many conditions and seeds; the fourth asks whether those answers survive a deeper backbone and a stronger task shift.
 
-\paragraph{RQ1: The account.} Does the gap separate into a deterministic arc of the descent path and overshoot of the followed path, such that removing the overshoot drivers leaves the arc, placing the optimiser on the reference path leaves the overshoot, and doing both removes the gap while the permanent stability--plasticity cost stays visible as reduced plasticity?
+\paragraph{RQ1: The account.} Does the gap separate into a deterministic arc of the intended trajectory and overshoot of the followed path? Concretely: do the step-level interventions (shortening the first steps, removing gradient noise) act on the drop and leave the arc; does remixing the boundary gradients at matched step length, which alters the Level-One field rather than any Level-Two driver, fail to remove the drop; does placing the optimiser on the reference path remove the arc and leave the overshoot; and does only fixing path and step together close the gap, while the permanent stability--plasticity cost stays visible as reduced plasticity?
 
 \paragraph{RQ2: The scalar feedback gate.} Does the $\lambda$-curriculum reduce the gap by timing the new-task push, and how do its ingredients divide the work? Four sub-questions probe the design:
 \begin{description}
-    \item[RQ2a (linear ramp).] Does gap depth fall as the ramp length $N$ grows, consistent with the $O(1/N)$ bound?
+    \item[RQ2a (linear ramp).] Does gap depth fall as the ramp length $N$ grows, consistent with the $O(1/N)$ bound? And does the one-sided schedule beat a symmetric learning-rate warm-up at matched $N$, or is ``small steps early'' the whole effect?
     \item[RQ2b (adaptive schedule).] Does the gradient-norm feedback signal match the best fixed ramp while removing the knob $N$?
     \item[RQ2c ($\lambda_{\min}$ floor).] Does a small floor $\lambda_{\min} > 0$ recover early plasticity at a modest depth cost?
     \item[RQ2d (momentum).] Does momentum compose with the curriculum, closing the stochastic residual and restoring final accuracy, while leaving the depth of vanilla ER unchanged?

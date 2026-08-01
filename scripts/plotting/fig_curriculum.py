@@ -59,8 +59,8 @@ def main() -> None:
     axL.set_title("(a) Stability")
 
     # -- (b) plasticity: T1 learning curve ----------------------------------
-    _panel(axR, "task_1_acc", (0, 234))
-    axR.set_xlim(0, 234)
+    _panel(axR, "task_1_acc", (1, 235))
+    axR.set_xlim(1, 235)
     axR.set_ylim(0.15, 0.99)
     axR.set_xlabel("steps into new task ($T_1$)")
     axR.set_ylabel("new-task ($T_1$) accuracy")

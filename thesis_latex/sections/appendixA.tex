@@ -95,14 +95,24 @@ the experiments:
           one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
           with half the mini-batch drawn from the current task and half sampled
           with replacement from the buffer.
-    \item \emph{Balanced ER} (D3, D4): two separate backward passes whose gradients are
-          individually unit-normalised before being combined $50/50$, removing the
-          magnitude asymmetry between $g_{\text{new}}$ and $g_{\text{replay}}$.
+    \item \emph{Balanced-direction ER} (D3, D4): two separate backward passes; the
+          update direction is the equal-magnitude mix
+          $\hat{g}_{\text{new}} + \hat{g}_{\text{rep}}$, rescaled so its length equals
+          $\lVert g_{\text{new}} + g_{\text{replay}} \rVert$, the length of the step
+          vanilla ER would have taken at the same parameters. When the two component
+          norms are equal, the update reduces to vanilla ER exactly. (The original
+          conditions instead normalised the joint direction to unit length, fixing
+          the step at $\eta$; Appendix~\ref{app:old_balanced}.)
     \item \emph{Full-data replay} (D2, D4): the replay gradient is computed on
           \emph{every} stored sample exactly once per step (no sub-sampling). Paired
           with a buffer equal to the full past-task training set ($60{,}000$ for
           rot-MNIST $T_0$), this yields the deterministic empirical past-task
           gradient at the current parameters, removing estimator variance.
+    \item \emph{Learning-rate warm-up} (M1--M3): a standard ER step whose learning
+          rate is scaled by $\min((t-1)/N,\, 1)$ over the first $N$ steps of each
+          task with $\text{task\_id} > 0$; the scaling applies to the step only,
+          so with momentum the velocity buffer still accumulates full-magnitude
+          gradients during the ramp.
 \end{itemize}
 
 The $\lambda$-curriculum re-weights only the current-task term, minimising
@@ -113,14 +123,50 @@ moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$
 \subsection{Asymmetric PER}
 \label{app:impl_per}
 
+\paragraph{How the Fisher is computed.}
+For a softmax cross-entropy model the Fisher information matrix equals the
+generalised Gauss--Newton matrix
+\begin{equation*}
+    F \;=\; \frac{1}{B} \sum_b J_b^\top H_b J_b,
+    \qquad J_b = \frac{\partial z_b}{\partial \theta},
+    \qquad H_b = \operatorname{diag}(p_b) - p_b p_b^\top,
+\end{equation*}
+where $z_b$ are the logits of sample $b$ and $p_b = \operatorname{softmax}(z_b)$
+\citep{martens2020insights}. This matrix is positive semi-definite by
+construction, so $F + \delta I$ is positive-definite and the solve is
+well-posed; it depends only on the model's predictive distribution, not on the
+labels. $F_{\text{rep}}$ is estimated on a mini-batch sampled from the replay
+buffer and \emph{recomputed at every step from the current parameters}: the
+gate uses a live local curvature model, not a snapshot frozen at the task
+boundary. It remains feedforward in the sense of
+Section~\ref{subsec:gates}, because what it reads is the curvature model, never
+the past-task performance it is meant to protect. The matrix is never formed
+explicitly. Fisher-vector products $v \mapsto F v$ are computed matrix-free by
+the Gauss--Newton trick of \citet{schraudolph2002fast}: one forward pass gives
+the logits (retained across the solve), each product then costs one
+Jacobian-vector and one vector-Jacobian product.
+
+\paragraph{The solve.}
 The filtered push $\delta\,(F_{\text{rep}}+\delta I)^{-1} g_{\text{cur}}$ of
-Equation~\eqref{eq:asym_per} is computed each step by warm-started conjugate
-gradients over Fisher-vector products ($25$ iterations), so the metric is never
-formed as a matrix; warm-starting from the previous step's solution keeps the
-per-step solve cheap across the run. The solver control of
+Equation~\eqref{eq:asym_per} is computed each step by conjugate gradients over
+these Fisher-vector products ($25$ iterations, relative-residual tolerance
+$10^{-4}$), warm-started from the previous step's solution, which keeps the
+per-step solve cheap across the run; the warm start is dropped at task
+boundaries, where the landscape shifts. The solver control of
 Section~\ref{subsec:per_asym} reruns the strongest filter ($\delta = 0.03$, full
 buffer) at $60$ iterations to separate properties of the gate from artefacts of
 an under-converged solve. On the full-buffer leg the replay gradient is exact
 over all $60$k past samples while the Fisher stays estimated on a sampled batch,
 since a full-buffer Fisher-vector product per CG iteration would dominate the
 runtime.
+
+\paragraph{Order of gate and momentum.}
+When momentum is enabled, the gate is applied first: the filtered direction
+$d$ is written in place of the gradient, and the optimiser's velocity buffer
+accumulates $v \leftarrow \mu v + d$ with the step $-\eta\,v$. The velocity is
+therefore built from already-filtered directions and is itself applied
+unfiltered. The alternative ordering, accumulating raw gradients and filtering
+the velocity, is a distinct design with potentially different behaviour under
+the re-inflation mechanism of Section~\ref{subsec:res_directional}; it is not
+implemented here and is discussed as future work in
+Section~\ref{subsec:disc_outlook}.

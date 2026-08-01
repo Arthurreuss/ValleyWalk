@@ -18,29 +18,71 @@ This appendix gives the full metric set for every condition of the main experime
             \multicolumn{10}{l}{\emph{Momentum $0.0$}}                                                                                                                                                                        \\
             D1 vanilla           & 0.873\,$\pm$\,0.005 & 0.019\,$\pm$\,0.020  & 0.706\,$\pm$\,0.056 & 0.147\,$\pm$\,0.029 & 0.736\,$\pm$\,0.020 & 0.794\,$\pm$\,0.028 & 19.5\,$\pm$\,4.1 & 6.3\,$\pm$\,0.5 & 3.6\,$\pm$\,0.9  \\
             D2 fulldata          & 0.890\,$\pm$\,0.009 & -0.016\,$\pm$\,0.009 & 0.719\,$\pm$\,0.039 & 0.126\,$\pm$\,0.020 & 0.736\,$\pm$\,0.018 & 0.801\,$\pm$\,0.022 & 18.3\,$\pm$\,2.5 & 8.1\,$\pm$\,0.7 & 3.0\,$\pm$\,1.2  \\
-            D3 balanced          & 0.849\,$\pm$\,0.005 & 0.031\,$\pm$\,0.018  & 0.824\,$\pm$\,0.006 & 0.045\,$\pm$\,0.002 & 0.721\,$\pm$\,0.004 & 0.836\,$\pm$\,0.004 & 5.7\,$\pm$\,1.9  & 1.4\,$\pm$\,0.4 & ---              \\
-            D4 fulldata balanced & 0.869\,$\pm$\,0.002 & -0.014\,$\pm$\,0.013 & 0.862\,$\pm$\,0.002 & 0.030\,$\pm$\,0.007 & 0.710\,$\pm$\,0.003 & 0.852\,$\pm$\,0.002 & 1.9\,$\pm$\,1.3  & 3.2\,$\pm$\,0.5 & ---              \\
+            D3 balanced-dir      & 0.873\,$\pm$\,0.003 & 0.014\,$\pm$\,0.019  & 0.662\,$\pm$\,0.065 & 0.199\,$\pm$\,0.056 & 0.742\,$\pm$\,0.018 & 0.770\,$\pm$\,0.034 & 31.0\,$\pm$\,9.9 & 5.4\,$\pm$\,0.7 & 5.6\,$\pm$\,4.2  \\
+            D4 fulldata bal-dir  & 0.894\,$\pm$\,0.003 & -0.036\,$\pm$\,0.014 & 0.675\,$\pm$\,0.061 & 0.190\,$\pm$\,0.065 & 0.738\,$\pm$\,0.016 & 0.772\,$\pm$\,0.030 & 31.4\,$\pm$\,13.7 & 3.0\,$\pm$\,1.3 & 6.2\,$\pm$\,6.1 \\
+            M1 lr-warmup N50     & 0.846\,$\pm$\,0.026 & 0.045\,$\pm$\,0.024  & 0.666\,$\pm$\,0.047 & 0.170\,$\pm$\,0.034 & 0.743\,$\pm$\,0.004 & 0.762\,$\pm$\,0.026 & 21.5\,$\pm$\,5.2 & 5.7\,$\pm$\,0.5 & 44.4\,$\pm$\,5.5 \\
+            M2 lr-warmup N100    & 0.839\,$\pm$\,0.025 & 0.050\,$\pm$\,0.024  & 0.706\,$\pm$\,0.032 & 0.153\,$\pm$\,0.027 & 0.726\,$\pm$\,0.005 & 0.777\,$\pm$\,0.024 & 17.5\,$\pm$\,3.7 & 4.9\,$\pm$\,0.5 & 76.4\,$\pm$\,9.9 \\
+            M3 lr-warmup N200    & 0.815\,$\pm$\,0.025 & 0.068\,$\pm$\,0.030  & 0.738\,$\pm$\,0.009 & 0.111\,$\pm$\,0.013 & 0.698\,$\pm$\,0.004 & 0.777\,$\pm$\,0.015 & 14.3\,$\pm$\,1.4 & 2.7\,$\pm$\,0.4 & 125.0\,$\pm$\,6.9 \\
             \hline
             \multicolumn{10}{l}{\emph{Momentum $0.9$}}                                                                                                                                                                        \\
             D1 vanilla           & 0.928\,$\pm$\,0.003 & 0.058\,$\pm$\,0.007  & 0.797\,$\pm$\,0.028 & 0.092\,$\pm$\,0.016 & 0.808\,$\pm$\,0.012 & 0.878\,$\pm$\,0.014 & 15.9\,$\pm$\,2.6 & 1.0\,$\pm$\,0.2 & 12.6\,$\pm$\,1.7 \\
             D2 fulldata          & 0.964\,$\pm$\,0.002 & -0.010\,$\pm$\,0.003 & 0.807\,$\pm$\,0.009 & 0.082\,$\pm$\,0.004 & 0.808\,$\pm$\,0.012 & 0.885\,$\pm$\,0.004 & 14.9\,$\pm$\,0.9 & 3.1\,$\pm$\,0.2 & 10.6\,$\pm$\,1.1 \\
-            D3 balanced          & 0.932\,$\pm$\,0.005 & 0.038\,$\pm$\,0.003  & 0.897\,$\pm$\,0.006 & 0.040\,$\pm$\,0.003 & 0.822\,$\pm$\,0.011 & 0.922\,$\pm$\,0.003 & 5.9\,$\pm$\,0.6  & 0.4\,$\pm$\,0.2 & ---              \\
-            D4 fulldata balanced & 0.967\,$\pm$\,0.001 & -0.022\,$\pm$\,0.003 & 0.942\,$\pm$\,0.005 & 0.016\,$\pm$\,0.004 & 0.834\,$\pm$\,0.010 & 0.950\,$\pm$\,0.002 & 1.3\,$\pm$\,0.4  & 0.2\,$\pm$\,0.1 & ---              \\
+            D3 balanced-dir      & 0.933\,$\pm$\,0.004 & 0.037\,$\pm$\,0.004  & 0.830\,$\pm$\,0.029 & 0.078\,$\pm$\,0.012 & 0.808\,$\pm$\,0.011 & 0.889\,$\pm$\,0.013 & 12.6\,$\pm$\,2.8 & 1.6\,$\pm$\,0.5 & 8.0\,$\pm$\,5.5 \\
+            D4 fulldata bal-dir  & 0.967\,$\pm$\,0.001 & -0.021\,$\pm$\,0.002 & 0.864\,$\pm$\,0.025 & 0.052\,$\pm$\,0.012 & 0.820\,$\pm$\,0.015 & 0.911\,$\pm$\,0.013 & 9.2\,$\pm$\,2.5  & 1.2\,$\pm$\,0.2 & 3.5\,$\pm$\,2.1  \\
+            M1 lr-warmup N50     & 0.931\,$\pm$\,0.006 & 0.055\,$\pm$\,0.010  & 0.805\,$\pm$\,0.018 & 0.085\,$\pm$\,0.008 & 0.828\,$\pm$\,0.010 & 0.883\,$\pm$\,0.009 & 15.0\,$\pm$\,1.6 & 1.4\,$\pm$\,0.4 & 21.2\,$\pm$\,6.3 \\
+            M2 lr-warmup N100    & 0.931\,$\pm$\,0.003 & 0.054\,$\pm$\,0.008  & 0.844\,$\pm$\,0.014 & 0.066\,$\pm$\,0.008 & 0.823\,$\pm$\,0.011 & 0.902\,$\pm$\,0.007 & 11.1\,$\pm$\,1.2 & 1.0\,$\pm$\,0.3 & 23.4\,$\pm$\,3.0 \\
+            M3 lr-warmup N200    & 0.925\,$\pm$\,0.007 & 0.052\,$\pm$\,0.005  & 0.878\,$\pm$\,0.018 & 0.051\,$\pm$\,0.007 & 0.816\,$\pm$\,0.011 & 0.912\,$\pm$\,0.009 & 7.8\,$\pm$\,1.6  & 0.5\,$\pm$\,0.3 & 31.0            \\
             \hline
         \end{tabular}%
     }
-    \caption{rot-MNIST decomposition block, full metrics, at both momentum
-        settings. Buffer-fidelity diagnostics for these runs are in
-        Table~\ref{tab:app_grad}.}
+    \caption{rot-MNIST step- and field-intervention block (revised D-series
+        plus the M-series learning-rate warm-up), full metrics, at both
+        momentum settings. For the balanced-direction conditions, depth reads
+        the manufactured first step discussed in
+        Section~\ref{subsec:res_levels}, not the excursion that follows.
+        M3's momentum-$0.9$ recovery time is from the single seed with a
+        recovery event. Buffer-fidelity diagnostics for these runs are in
+        Table~\ref{tab:app_grad}. The original unit-norm balanced conditions
+        are in Appendix~\ref{app:old_balanced}.}
     \label{tab:app_decomp}
 \end{table}
 
+\subsection{rot-MNIST: The Original Unit-Norm Balanced Conditions}
+\label{app:old_balanced}
+
+An earlier version of the driver block balanced the two gradients differently: each component was normalised to unit length, combined at equal weight, and the joint direction was then normalised to unit length again, so every update had length exactly $\eta$ regardless of the local gradient magnitude. These conditions (here labelled old D3 and old D4) appeared to remove the boundary spike outright, cutting depth from $19.5$ to $5.7$ pp on the sampled buffer and to $1.9$ pp on the exact one. The revised block shows where that reduction came from. At the boundary the raw joint gradient is at its largest, so fixing the step length at $\eta$ caps precisely the steps that produce the drop: the manipulation is a step-size intervention wearing a balancing costume. The balanced-direction conditions of the main text perform the same remix at vanilla's step length and deepen the drop instead (Figure~\ref{fig:old_balanced}), which is why the main text replaces these conditions rather than building on them. Full metrics below.
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\linewidth]{img/results/D/drivers_t0.png}
-    \caption{The full driver ladder: per-step past-task ($T_0$) accuracy across the $T_0 \rightarrow T_1$ transition for the four driver-removal conditions at momentum $0$; solid lines are the seed mean, bands the standard deviation, $x{=}0$ the task switch. The boundary spike falls when balancing switches off the imbalance driver (D1, D2 vs.\ D3, D4); the recovery is smoothest where the imbalance is off as well (D4, and to a lesser extent D3), while D2 keeps a visible jitter from its unbalanced, still-stochastic new-task push despite the exact replay gradient. The dip-and-recover bend that no removal touches, cleanest in D4, is the deterministic arc (Section~\ref{subsec:res_levels}).}
-    \label{fig:g_curves}
+    \includegraphics[width=0.72\linewidth]{img/results/D/old_balanced_t0.png}
+    \caption{Per-step past-task ($T_0$) accuracy across the rot-MNIST switch at momentum $0$: vanilla ER (red), the original unit-norm balanced conditions (blue; dashed: exact gradient), and the revised balanced-direction condition at vanilla's step length (orange). The original conditions show no boundary spike because the unit normalisation caps the step exactly where the raw gradient is large; the same remix at full step length deepens the spike instead.}
+    \label{fig:old_balanced}
 \end{figure}
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \setlength{\tabcolsep}{4pt}
+    \resizebox{\textwidth}{!}{%
+        \begin{tabular}{l ccc cc c cc c}
+            \hline
+            Condition            & ACC                 & FORG                 & min-ACC             & $\mathrm{WF}_{100}$ & $\mathrm{WP}_{100}$ & WC-ACC              & Depth            & Area end        & Recov.           \\
+            \hline
+            \multicolumn{10}{l}{\emph{Momentum $0.0$}}                                                                                                                                                                        \\
+            old D3 unit-norm balanced & 0.849\,$\pm$\,0.005 & 0.031\,$\pm$\,0.018  & 0.824\,$\pm$\,0.006 & 0.045\,$\pm$\,0.002 & 0.721\,$\pm$\,0.004 & 0.836\,$\pm$\,0.004 & 5.7\,$\pm$\,1.9  & 1.4\,$\pm$\,0.4 & ---              \\
+            old D4 fulldata unit-norm & 0.869\,$\pm$\,0.002 & -0.014\,$\pm$\,0.013 & 0.862\,$\pm$\,0.002 & 0.030\,$\pm$\,0.007 & 0.710\,$\pm$\,0.003 & 0.852\,$\pm$\,0.002 & 1.9\,$\pm$\,1.3  & 3.2\,$\pm$\,0.5 & ---              \\
+            \hline
+            \multicolumn{10}{l}{\emph{Momentum $0.9$}}                                                                                                                                                                        \\
+            old D3 unit-norm balanced & 0.932\,$\pm$\,0.005 & 0.038\,$\pm$\,0.003  & 0.897\,$\pm$\,0.006 & 0.040\,$\pm$\,0.003 & 0.822\,$\pm$\,0.011 & 0.922\,$\pm$\,0.003 & 5.9\,$\pm$\,0.6  & 0.4\,$\pm$\,0.2 & ---              \\
+            old D4 fulldata unit-norm & 0.967\,$\pm$\,0.001 & -0.022\,$\pm$\,0.003 & 0.942\,$\pm$\,0.005 & 0.016\,$\pm$\,0.004 & 0.834\,$\pm$\,0.010 & 0.950\,$\pm$\,0.002 & 1.3\,$\pm$\,0.4  & 0.2\,$\pm$\,0.1 & ---              \\
+            \hline
+        \end{tabular}%
+    }
+    \caption{The original unit-norm balanced conditions, full metrics. The
+        low depths are produced by the step cap, not by the remix; see the
+        text of this appendix and Section~\ref{subsec:res_levels}.}
+    \label{tab:app_old_balanced}
+\end{table}
 
 \subsection{rot-MNIST: \texorpdfstring{$\lambda$}{lambda}-Curriculum (C-series)}
 \label{app:curr_full}

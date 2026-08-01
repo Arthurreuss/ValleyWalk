@@ -47,6 +47,7 @@ C_CURR    = "#2a78d6"   # blue   -- curriculum / scalar feedback gate
 C_PER     = "#1baf7a"   # aqua   -- asymmetric PER / directional feedforward gate
 C_FULL    = "#4a3aa7"   # violet -- full-data / exact-gradient variant (driver block)
 C_EXTRA   = "#eb6834"   # orange -- fourth driver-block slot
+C_WARM    = "#b8477d"   # magenta -- learning-rate warm-up (symmetric step control)
 
 INK        = "#0b0b0b"
 INK_SOFT   = "#52514e"
@@ -236,13 +237,53 @@ def agg(method: str, ablation_key: str, ablation_value: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def anchor_boundary(x, *series, at=0.0):
+    """Insert a hold-last sample at ``at`` so a sparse->dense cadence change
+    does not linearly interpolate the drop across the boundary.
+
+    Per-step accuracy is logged every ten steps *before* a task switch and every
+    step *after* it, so the last pre-switch sample can sit several steps short of
+    the boundary (rot-MNIST: step 230 then step 235, with the boundary at 234).
+    Matplotlib joins those two samples with one straight segment, which reads as
+    a drop that began before the switch -- an artifact of the cadence, not of the
+    run: steps 231-234 are still past-task training, so the level is flat there.
+    Repeating the last pre-boundary value at ``at`` restores that plateau and
+    puts the whole descent after the marker.
+
+    ``x`` must be sorted ascending.  Returns ``(x, *series)`` with one sample
+    inserted in each, or the inputs unchanged when there is nothing to anchor:
+    a sample already sits at ``at``, or none lies on one side of it (the
+    new-task curves legitimately start at the boundary).
+    """
+    x = np.asarray(x, dtype=float)
+    before = np.flatnonzero(x < at)
+    if before.size == 0 or not np.any(x > at) or np.any(np.isclose(x, at)):
+        return (x, *series)
+    i = int(before[-1])          # last sample strictly before the boundary
+    out = [np.insert(x, i + 1, at)]
+    for s in series:
+        s = np.asarray(s, dtype=float)
+        out.append(np.insert(s, i + 1, s[i]))
+    return tuple(out)
+
+
 def plot_transition(ax, method, key, value, task_col, color, label, *,
                     linestyle="-", zero_at_switch=True, band=True,
                     window=None, lw=2.0, alpha_band=0.16):
-    """Plot one per-step transition curve (mean + std band) on ``ax``."""
+    """Plot one per-step transition curve (mean + std band) on ``ax``.
+
+    With ``zero_at_switch`` the x axis counts completed new-task updates:
+    the first evaluated step after the switch already includes one update,
+    so it is placed at x = 1, and x = 0 is the state at the switch, before
+    any new-task training.
+    """
     steps, mean, std = task_curve(method, key, value, task_col)
     sw = switch_step(method, key, value)
-    x = steps - sw if zero_at_switch else steps
+    x = steps - sw + 1 if zero_at_switch else steps
+    if zero_at_switch:
+        # Hold the last pre-switch level up to x = 0 before the window is cut,
+        # so the anchor cannot be clipped away by the mask.
+        x, mean, std = anchor_boundary(x, mean, std, at=0.0)
     if window is not None:
         lo, hi = window
         m = (x >= lo) & (x <= hi)

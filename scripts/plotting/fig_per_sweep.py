@@ -35,9 +35,15 @@ def _seed_curves(ax, value, color, label):
         if not f.exists():
             continue
         c = vw.read_curve_csv(f)[["step", "task_0_acc"]].dropna()
-        x = c["step"].to_numpy(float) - sw
+        # +1 matches vw.plot_transition: the first evaluated post-switch step
+        # already contains one new-task update, so it sits at x = 1 and x = 0
+        # is the pre-update state marked by vw.mark_switch.
+        x = c["step"].to_numpy(float) - sw + 1
+        y = c["task_0_acc"].to_numpy(float)
+        # Same hold-last anchor as vw.plot_transition, applied before the mask.
+        x, y = vw.anchor_boundary(x, y, at=0.0)
         m = (x >= WINDOW[0]) & (x <= WINDOW[1])
-        ax.plot(x[m], c["task_0_acc"].to_numpy(float)[m], color=color, lw=1.1,
+        ax.plot(x[m], y[m], color=color, lw=1.1,
                 alpha=0.85, label=label if first else None, zorder=3)
         first = False
 

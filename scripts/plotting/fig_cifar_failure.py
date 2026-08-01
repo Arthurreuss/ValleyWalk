@@ -17,7 +17,9 @@ import matplotlib.pyplot as plt
 KEY = "cifar_generalization"
 GN_COLOR = vw.C_EXTRA   # orange
 BN_COLOR = vw.C_CURR    # blue
-BOUNDARIES = [1960, 3920]
+# sw - 1 for each switch step sw in {1960, 3920}: the marker belongs at the last
+# pre-update state, mirroring vw.mark_switch(ax, 0) on shifted axes.
+BOUNDARIES = [1959, 3919]
 SERIES = [("Gt1_ship_3task_gn", GN_COLOR, "GroupNorm"),
           ("Gt1_ship_3task_bn", BN_COLOR, "BatchNorm")]
 
@@ -27,6 +29,11 @@ def _panel(ax, task_col, title):
         vw.mark_switch(ax, b)
     for value, color, name in SERIES:
         steps, mean, std = vw.task_curve("er", KEY, value, task_col)
+        # Hold-last anchor at both boundaries (raw-step coordinates). Logging is
+        # every ten steps up to the first switch, so 1959 needs the anchor; the
+        # per-step window around the second switch already covers 3919.
+        for b in BOUNDARIES:
+            steps, mean, std = vw.anchor_boundary(steps, mean, std, at=b)
         ax.fill_between(steps, mean - std, mean + std, color=color, alpha=0.15, lw=0)
         ax.plot(steps, mean, color=color, lw=1.8, label=name, solid_capstyle="round")
     ax.set_xlim(0, 5879)
@@ -41,7 +48,7 @@ def main() -> None:
     _panel(axL, "task_0_acc", "(a) $T_0$ (clean)")
     _panel(axR, "task_1_acc", "(b) $T_1$ (Gaussian noise)")
     axL.set_ylabel("past-task accuracy")
-    axL.annotate("Gaussian$\\rightarrow$shot", xy=(3920, 0.22), xytext=(3050, 0.20),
+    axL.annotate("Gaussian$\\rightarrow$shot", xy=(3919, 0.22), xytext=(3050, 0.20),
                  color=vw.MUTED, fontsize=8)
     leg = axL.legend(loc="lower left", handlelength=1.7)
     for line in leg.get_lines():

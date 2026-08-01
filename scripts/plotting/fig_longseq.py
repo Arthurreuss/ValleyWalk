@@ -24,7 +24,9 @@ import matplotlib.pyplot as plt
 SERIES = [("er", "longseq", "L1_vanilla_ER", vw.C_VANILLA, "vanilla ER"),
           ("er", "longseq", "L2_adaptive_lmin0.20", vw.C_CURR, "curriculum"),
           ("precond_er", "longseq", "L3_PER_asym_d0.1", vw.C_PER, "asym PER")]
-BOUNDARIES = [235, 470, 705, 940]
+# sw - 1 for each switch step sw in {235, 470, 705, 940}: the marker belongs at
+# the last pre-update state, mirroring vw.mark_switch(ax, 0) on shifted axes.
+BOUNDARIES = [234, 469, 704, 939]
 
 
 def _panel(ax, suffix, title):
@@ -32,6 +34,11 @@ def _panel(ax, suffix, title):
         vw.mark_switch(ax, b)
     for m, k, v, color, name in SERIES:
         steps, mean, std = vw.task_curve(m, k, v + suffix, "task_0_acc")
+        # Hold-last anchor at every boundary (raw-step coordinates). Only the
+        # first one has a sparse->dense cadence change; logging is already
+        # per-step from step 235 on, so the later three are no-ops.
+        for b in BOUNDARIES:
+            steps, mean, std = vw.anchor_boundary(steps, mean, std, at=b)
         ax.fill_between(steps, mean - std, mean + std, color=color, alpha=0.13, lw=0)
         ax.plot(steps, mean, color=color, lw=1.7, label=name, solid_capstyle="round")
     ax.set_xlim(0, 1174)
