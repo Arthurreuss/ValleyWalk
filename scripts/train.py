@@ -41,6 +41,7 @@ import hydra
 import numpy as np
 import pandas as pd
 import torch
+from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.data.continual_dataset import ContinualDataset
@@ -235,6 +236,31 @@ def main(cfg: DictConfig) -> None:
     method = build_method(cfg, model, dataset.buffer)
     metrics = ContinualMetrics()
 
+    # ── Optional warm start from a saved checkpoint ───────────────────────
+    # ``init.checkpoint`` loads parameters written by an earlier run and
+    # ``init.skip_tasks`` suppresses the training loop for that many leading
+    # tasks (their end_task bookkeeping still runs, so the replay buffer is
+    # filled exactly as it would have been).
+    #
+    # Used by the S-series learning-rate ladder (scripts/run_S.sh): every cell
+    # must start from one and the same θ*_0.  Training task 0 at the cell's own
+    # η would land in a differently-sharp minimum — less SGD noise means less
+    # implicit flattening — and a sharper past-task Hessian enlarges the
+    # trajectory arc, confounding the step-size manipulation with the geometry
+    # it is supposed to be measured against.
+    _init_cfg = cfg.get("init", None)
+    _skip_tasks = int(_init_cfg.get("skip_tasks", 0)) if _init_cfg else 0
+    _init_ckpt = _init_cfg.get("checkpoint", None) if _init_cfg else None
+    if _init_ckpt:
+        _ckpt_path = to_absolute_path(str(_init_ckpt))
+        if not os.path.isfile(_ckpt_path):
+            raise FileNotFoundError(f"init.checkpoint not found: {_ckpt_path}")
+        model.load_state_dict(torch.load(_ckpt_path, map_location=device))
+        model.to(device)
+        print(f"[init] loaded parameters from {_ckpt_path}")
+    elif _skip_tasks:
+        raise ValueError("init.skip_tasks requires init.checkpoint to be set")
+
     # ── Output directories ────────────────────────────────────────────────
     os.makedirs(cfg.checkpointing.dir, exist_ok=True)
     os.makedirs(cfg.outputs.dir, exist_ok=True)
@@ -322,7 +348,30 @@ def main(cfg: DictConfig) -> None:
         # ── Inner batch loop ───────────────────────────────────────────────
         task_step = 0  # steps elapsed within this task (resets each task)
         steps_per_task = len(train_loader) * cfg.training.epochs_per_task
-        for _epoch in range(cfg.training.epochs_per_task):
+
+        # Warm-started runs skip the training loop of the leading
+        # ``init.skip_tasks`` tasks; global_step is still advanced by one
+        # nominal epoch per skipped task so the boundary index matches an
+        # ordinary run (the per-step plotting convention keys off it).
+        _train_epochs = cfg.training.epochs_per_task
+        if task_id < _skip_tasks:
+            print(f"[init] task {task_id}: training skipped (warm start)")
+            _train_epochs = 0
+            global_step += len(train_loader)
+            # Emit one pre-switch sample so the per-step curves carry the flat
+            # segment an ordinary run would have recorded while training this
+            # task.  Written at global_step - 1 to leave the boundary index
+            # itself free for the next task's first record.
+            _pre_accs = {
+                f"task_{j}_acc": method.evaluate(all_test_loaders[j])
+                for j in range(task_id + 1)
+            }
+            combined_acc_writer.writerow({"step": global_step - 1, **_pre_accs})
+            _combined_acc_file.flush()
+            for j in range(task_id + 1):
+                metrics.record_step(j, global_step - 1, _pre_accs[f"task_{j}_acc"])
+
+        for _epoch in range(_train_epochs):
             for _batch_idx, (x, y) in enumerate(train_loader):
                 # One gradient step + optional method-specific diagnostics
                 step_result = method.observe(x, y, task_id)
@@ -397,12 +446,18 @@ def main(cfg: DictConfig) -> None:
                     task_step
                     >= steps_per_task - cfg.eval.stability_gap.pre_switch_steps
                 )
-                sg_freq = (
-                    cfg.eval.stability_gap.eval_freq_steps
-                    if (in_post_switch_window or in_pre_switch_window)
-                    else cfg.eval.eval_every_n_steps
-                )
-                if gap_tracker is not None and global_step % sg_freq == 0:
+                # Inside the dense windows the cadence counts from the task
+                # boundary (task_step), not from the run start: at
+                # eval_freq_steps > 1 a global_step modulus lands the first
+                # post-switch sample at an arbitrary phase offset into the
+                # task, which for the S-series ladder would skip exactly the
+                # first steps the spike lives in.  At eval_freq_steps = 1 —
+                # every run in the archive — the two are identical.
+                if in_post_switch_window or in_pre_switch_window:
+                    sg_due = task_step % cfg.eval.stability_gap.eval_freq_steps == 0
+                else:
+                    sg_due = global_step % cfg.eval.eval_every_n_steps == 0
+                if gap_tracker is not None and sg_due:
                     sg_accs = gap_tracker.record(global_step, all_test_loaders)
                     # Persist the fine-grained sample to the SAME sinks the
                     # regular eval block writes to — per-task CSV, combined
