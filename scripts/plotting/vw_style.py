@@ -11,9 +11,9 @@ every figure:
     curriculum / scalar gate        -> blue     (feedback gate)
     asymmetric PER / directional    -> aqua      (feedforward gate)
 
-The damping (delta) sweep is an *ordinal* magnitude, so it uses a single-hue
-blue ramp (weaker filter light -> stronger filter dark), not the categorical
-slots.
+A parameter sweep is an *ordinal* magnitude rather than a set of entities, so
+it uses a single-hue ramp (``BLUE_RAMP`` for the gate parameters, the vanilla
+hue for the step-size ladder) instead of the categorical slots.
 """
 
 from __future__ import annotations
@@ -55,13 +55,15 @@ MUTED      = "#898781"
 GRID       = "#e1e0d9"
 AXIS       = "#c3c2b7"
 
-# Ordinal blue ramp for the delta sweep (light = weak filter, dark = strong).
-DELTA_RAMP = {
-    1.0:  "#86b6ef",
-    0.3:  "#5598e7",
-    0.1:  "#2a78d6",
-    0.03: "#184f95",
-}
+# One four-step blue ramp, light -> dark, for every ordinal sweep of a gate
+# parameter (the PER damping, the curriculum's ramp length and lambda_min
+# floor).  Blue because the sweeps that use it are sweeps of a gate parameter,
+# not of a categorical entity; light -> dark always follows the swept knob in
+# the direction its legend names it, so the legend alone fixes the reading.
+BLUE_RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#184f95"]
+
+# Damping (delta) sweep of asymmetric PER: smaller delta = stronger filter.
+DELTA_RAMP = dict(zip([1.0, 0.3, 0.1, 0.03], BLUE_RAMP))
 
 # Ordinal ramp for the S-series step-size ladder.  Every rung *is* vanilla ER —
 # only eta differs — so the ramp stays on the vanilla hue and darkens as the

@@ -151,6 +151,56 @@ and returns almost nothing in accuracy ($0.833 \rightarrow 0.837$), since
 early $T_1$ progress there is set by the boundary gradient the floor is too
 small to redirect.
 
+\paragraph{The sweep as trajectories.}
+Figures~\ref{fig:curr_linear} and~\ref{fig:curr_adaptive} are the trajectory
+form of Table~\ref{tab:app_curr}, one figure per schedule family on the same
+$2 \times 2$: rows the momentum setting, columns stability ($T_0$) and
+plasticity ($T_1$), vanilla ER carried into every panel as the ungated
+reference. Read together they show why the two knobs are decided in the
+momentum-on leg. At momentum $0$ both families trade the same way and neither
+trade is good: the linear ramps buy their shallower start by postponing the
+descent rather than preventing it, each rung releasing the brake at its own
+$N$ and dropping into the same chronic, jittery band vanilla ER occupies
+(Figure~\ref{fig:curr_linear}(a)), and every rung of both families pays for it
+in (b), where the new-task curve is displaced bodily to the right in
+proportion to how much schedule it carries. That displacement is the
+plasticity debt, and at momentum $0$ nothing repays it. The momentum row is a
+different picture. In (c) the schedules never dip at all: they descend gently
+from the pre-switch level and stay above vanilla ER for essentially the whole
+transition instead of dropping below it and recovering, and in (d) the new-task
+curves have closed most of the way back onto vanilla's, the debt repaid, with
+the residual gap ordered by the floor: the more the schedule is allowed to
+brake, the more of the debt survives acceleration, which is what makes
+$\lambda_{\min}$ a graded Pareto knob rather than a switch. Both stability
+panels of a figure span the same $0.30$ of accuracy on an offset floor, so a
+deeper-looking dip is a deeper dip.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/curriculum/curriculum_linear.png}
+    \caption{The linear $\lambda$-ramps (C1--C3) across the rot-MNIST switch:
+        per-step accuracy, seed mean with $\pm$std bands, $x{=}0$ the task
+        switch. Rows are the momentum setting, columns the two tasks; the ramp
+        runs short light $\rightarrow$ long dark, over vanilla ER (red,
+        dashed). A longer ramp holds $T_0$ higher for longer and costs
+        correspondingly more early $T_1$ progress, at momentum $0$ without ever
+        escaping the chronic band vanilla settles into.}
+    \label{fig:curr_linear}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/curriculum/curriculum_adaptive.png}
+    \caption{The adaptive $\lambda$-curriculum and its $\lambda_{\min}$ floor
+        (C4--C7), drawn as Figure~\ref{fig:curr_linear}; the ramp runs
+        unfloored light $\rightarrow$ $\lambda_{\min}{=}0.20$ dark. Raising the
+        floor returns early $T_1$ progress (panels (b) and (d), the darker
+        rungs leading) for a slightly deeper $T_0$ transient, the trade the
+        shipped configuration C7 takes at momentum $0.9$
+        (Table~\ref{tab:app_curr}).}
+    \label{fig:curr_adaptive}
+\end{figure}
+
 \paragraph{Full-buffer momentum diagnostic (C8).}
 Table~\ref{tab:res_c8} crosses the practical curriculum with the full $60$k buffer
 at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}).
@@ -291,24 +341,53 @@ full-buffer leg.
     \label{tab:app_per_full}
 \end{table}
 
+\paragraph{The sweep, rung by rung, on both tasks.}
+Figure~\ref{fig:per_sweep} is the trajectory form of Table~\ref{tab:res_per}:
+the whole standard-buffer sweep, both tasks, both momentum settings. Three
+things are visible there that the scalar summaries only assert. First, the
+ordering in $\delta$ in (a) is an ordering of whole trajectories and not only
+of their worst points: the rungs stack without crossing for the entire
+transition, so a stronger filter is uniformly better on the past task rather
+than better at the spike and worse afterwards. Second, (b) is the evidence
+behind the no-plasticity-cost claim of
+Section~\ref{subsec:res_directional}: the strongest filter is visibly slower
+over roughly the first fifty steps, the selective slowdown along the
+directions the sampled Fisher rates as sharp, and thereafter it is
+indistinguishable from vanilla ER, so the horizon-$100$ metrics record no
+cost. Third, the momentum row keeps that ordering in (c) but reads it against
+a baseline that has itself changed: vanilla ER's transient is shorter and the
+whole ladder sits $3$--$4$ pp deeper, while (d) shows the new-task curves
+collapsing onto one another, momentum having removed what little separated
+them. Both stability panels span the same $0.30$ of accuracy on an offset
+floor, so a deeper-looking dip is a deeper dip; the pre-switch level is higher
+in (c) only because momentum converges $T_0$ further before the switch. No
+$\delta{=}1.0$ cell was run at momentum $0.9$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_sweep.png}
+    \caption{The asymmetric-PER $\delta$ sweep on the standard ($1$k) buffer:
+        per-step accuracy across the rot-MNIST switch, seed mean with $\pm$std
+        bands, $x{=}0$ the task switch. Rows are the momentum setting, columns
+        the two tasks; the damping runs weaker filter light $\rightarrow$
+        stronger filter dark, over vanilla ER (red, dashed) as the ungated
+        reference in every panel. \textbf{(a)} the dip shrinks monotonically as
+        $\delta \to 0$; \textbf{(b)} the strongest filter lags for ${\sim}50$
+        steps and then tracks vanilla; \textbf{(c)} the same ordering,
+        displaced $3$--$4$ pp deeper by the accumulator; \textbf{(d)} under
+        momentum the new-task curves are indistinguishable. Scalar metrics for
+        every rung are in Table~\ref{tab:app_per_full}.}
+    \label{fig:per_sweep}
+\end{figure}
+
 \paragraph{The exact-gradient diagnostic and its cliffs.}
 The full ($60$k) buffer is a diagnostic probe rather than an operating point: replaying the exact past-task gradient switches the variance driver off, so whatever excursion survives is the arc together with the standard step's overshoot of it (Section~\ref{subsec:res_levels}). Read that way the leg behaves as the account predicts down to $\delta = 0.1$, the excursion shrinking with the filter. The one place the sweep breaks monotonicity is the strongest setting, $\delta = 0.03$, where mean depth jumps to $9.5$ pp with a std of $8.2$: in $3$ of $5$ seeds the past-task curve holds flat for roughly two hundred steps and then slides off a late cliff, the red per-seed traces in Figure~\ref{fig:per_cliffs}. A solver control rules out the most straightforward explanation. The filter solves for its preconditioned direction by conjugate gradient, so an under-converged solve at the strongest damping would be the obvious suspect; rerunning the setting with the CG solver at $60$ iterations instead of the default $25$ (row \emph{$\delta{=}0.03$ (CG $60$)} of Table~\ref{tab:app_per_full}) reproduces the cliffs at the same seeds and the same steps, and if anything deepens them ($11.5 \pm 10.1$ pp mean depth against $9.5 \pm 8.2$). They are not a numerical artefact of the solve. The cliffs came as a surprise: the account made no prediction of a late, abrupt failure, and nothing in the rest of the sweep hints at one. They are also confined to the exact-gradient diagnostic: at the same $\delta$ on the standard $1$k buffer no seed shows one (depth $4.8 \pm 1.9$ pp, the monotone end of the sweep). The failure is tied to the exact replay gradient: the sampling jitter of a practical buffer appears to protect against it, the same noise that elsewhere drives the overshoot here keeping the iterate from settling into the escape direction. Why the cliffs happen we can only partly say. A reading consistent with the data is a blind spot of the gate's model of the past task: the filter passes new-task pressure through directions its sampled Fisher rates as flat, and in these seeds that trust appears to be misplaced further out along the trajectory. We offer this as a hypothesis, not an established mechanism. What the control does establish is that the strongest filter can fail late and abruptly when nothing perturbs it. Because the failure is confined to the diagnostic leg, it is unlikely in a practical configuration, but it exposes a real weakness of feedforward control.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_cliffs.png}
-    \caption{The exact-gradient diagnostic leg of the $\delta$ sweep: per-step past-task ($T_0$) accuracy across the rot-MNIST switch at momentum $0$ on the full ($60$k) buffer, where the variance driver is off and the residual excursion is the arc together with the standard step's overshoot of it. The excursion shrinks with the filter for $\delta \ge 0.1$ (seed mean with $\pm$std bands, weaker filter light $\rightarrow$ stronger filter dark), but at the strongest setting $\delta{=}0.03$ the gate fails late and abruptly: shown per seed (critical red), $3$ of $5$ seeds hold flat for ${\sim}200$ steps and then slide off a cliff. The failure is confined to this diagnostic leg; at the same $\delta$ on the standard $1$k buffer no seed shows one (Figure~\ref{fig:per_curves}(a), depth $4.8 \pm 1.9$ pp).}
+    \caption{The exact-gradient diagnostic leg of the $\delta$ sweep: per-step past-task ($T_0$) accuracy across the rot-MNIST switch at momentum $0$ on the full ($60$k) buffer, where the variance driver is off and the residual excursion is the arc together with the standard step's overshoot of it. The excursion shrinks with the filter for $\delta \ge 0.1$ (seed mean with $\pm$std bands, weaker filter light $\rightarrow$ stronger filter dark), but at the strongest setting $\delta{=}0.03$ the gate fails late and abruptly: shown per seed (critical red), $3$ of $5$ seeds hold flat for ${\sim}200$ steps and then slide off a cliff. The failure is confined to this diagnostic leg; at the same $\delta$ on the standard $1$k buffer no seed shows one (Figure~\ref{fig:per_sweep}(a), depth $4.8 \pm 1.9$ pp).}
     \label{fig:per_cliffs}
-\end{figure}
-
-\paragraph{The selective slowdown on the new task.}
-Figure~\ref{fig:per_plasticity} is the $T_1$ counterpart of the $\delta$ sweep, the evidence behind the no-plasticity-cost claim of Section~\ref{subsec:res_directional}: the strongest filter lags over roughly the first fifty steps and is indistinguishable from vanilla ER thereafter, so the horizon-$100$ plasticity metrics record no cost.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_plasticity.png}
-    \caption{New-task ($T_1$) accuracy across the rot-MNIST switch at momentum $0$ for the standard-buffer $\delta$ sweep against vanilla ER (red); seed mean with $\pm$std bands. The strongest filter ($\delta{=}0.03$, darkest) lags briefly over the first ${\approx}50$ steps, the selective slowdown along past-task-sharp directions, and matches vanilla from then on; the plasticity metrics at horizon $100$ and beyond record no cost (Table~\ref{tab:res_per}).}
-    \label{fig:per_plasticity}
 \end{figure}
 
 \subsection{rot-MNIST: Symmetric vs.\ Asymmetric Preconditioning}
