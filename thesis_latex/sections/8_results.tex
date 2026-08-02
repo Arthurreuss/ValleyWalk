@@ -203,25 +203,30 @@ Crucially, shedding the discrete instability to reach this minimal arc does not 
 
 The scalar feedback gate (adaptive curriculum) successfully protects past knowledge by globally scaling down the learning rate when boundary gradients threaten stability. Table~\ref{tab:res_curriculum} summarises the key configurations, contrasting the standalone curriculum against its intended momentum-enabled regime.
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
     \centering
     \small
-    \resizebox{\textwidth}{!}{%
-        \begin{tabular}{l ccc ccc}
-            \hline
-                                                 & \multicolumn{3}{c}{Momentum $0.0$} & \multicolumn{3}{c}{Momentum $0.9$}                                                                                                       \\
-            Condition                            & \texttt{gap\_depth} (pp)           & \texttt{gap\_area\_end}            & ACC               & \texttt{gap\_depth} (pp) & \texttt{gap\_area\_end} & ACC                        \\
-            \hline
-            Vanilla ER (baseline)                & $19.5 \pm 4.1$                     & $6.3 \pm 0.5$                      & $0.873 \pm 0.005$ & $15.9 \pm 2.6$           & $1.0 \pm 0.2$           & $0.928 \pm 0.003$          \\
-            C3: Linear $N{=}200$                 & $14.3 \pm 4.6$                     & $1.8 \pm 0.6$                      & $0.828 \pm 0.025$ & $6.2 \pm 0.6$            & $0.1 \pm 0.0$           & $0.925 \pm 0.007$          \\
-            C4: Adaptive                         & $12.8 \pm 2.9$                     & $2.2 \pm 0.5$                      & $0.833 \pm 0.025$ & $2.5 \pm 0.5$            & $0.3 \pm 0.1$           & $0.917 \pm 0.001$          \\
-            C7: Adaptive $\lambda_{\min}{=}0.20$ & $13.9 \pm 3.4$                     & $2.7 \pm 0.6$                      & $0.837 \pm 0.031$ & $\mathbf{3.7 \pm 0.4}$   & $\mathbf{0.0 \pm 0.0}$  & $\mathbf{0.931 \pm 0.002}$ \\
-            \hline
-        \end{tabular}%
-    }
+    \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{l ccc}
+        \hline
+        Condition                 & depth (pp)             & area                   & ACC                        \\
+        \hline
+        \multicolumn{4}{l}{\emph{Momentum $0.0$}}                                                                 \\
+        Vanilla ER                & $19.5 \pm 4.1$         & $6.3 \pm 0.5$          & $0.873 \pm 0.005$          \\
+        C3: $N{=}200$             & $14.3 \pm 4.6$         & $1.8 \pm 0.6$          & $0.828 \pm 0.025$          \\
+        C4: adaptive              & $12.8 \pm 2.9$         & $2.2 \pm 0.5$          & $0.833 \pm 0.025$          \\
+        C7: $\lambda_{\min}{=}0.20$ & $13.9 \pm 3.4$       & $2.7 \pm 0.6$          & $0.837 \pm 0.031$          \\
+        \hline
+        \multicolumn{4}{l}{\emph{Momentum $0.9$}}                                                                 \\
+        Vanilla ER                & $15.9 \pm 2.6$         & $1.0 \pm 0.2$          & $0.928 \pm 0.003$          \\
+        C3: $N{=}200$             & $6.2 \pm 0.6$          & $0.1 \pm 0.0$          & $0.925 \pm 0.007$          \\
+        C4: adaptive              & $2.5 \pm 0.5$          & $0.3 \pm 0.1$          & $0.917 \pm 0.001$          \\
+        C7: $\lambda_{\min}{=}0.20$ & $\mathbf{3.7 \pm 0.4}$ & $\mathbf{0.0 \pm 0.0}$ & $\mathbf{0.931 \pm 0.002}$ \\
+        \hline
+    \end{tabular}
     \caption{$\lambda$-curriculum key conditions on rot-MNIST against vanilla ER, at momentum $0.0$ and $0.9$; five seeds: the longest linear ramp (C3), the pure adaptive schedule (C4), and the practical configuration (C7). Ultimately, the combination of the adaptive curriculum and momentum achieves profound stability while fully restoring final accuracy to vanilla levels (C7 at momentum $0.9$, in bold); without momentum the same gate buys its smaller gap with accuracy. The full sweep (C1--C7), with vanilla ER's full metric row as the reference, is in Appendix~\ref{app:curr_full}.}
     \label{tab:res_curriculum}
-\end{table*}
+\end{table}
 
 \paragraph{The schedule works, but incurs a plasticity debt without momentum.}
 As shown in Figure~\ref{fig:c_curves} (dashed lines), testing the curriculum without momentum reveals the core trade-off. By scaling down the step size during the boundary transition, the gate effectively shrinks the \emph{depth} of the initial forgetting spike and reduces the total \emph{area} of the excursion compared to the vanilla baseline. However, Figure~\ref{fig:c_curves}(b) illustrates the cost: early learning on the new task is visibly delayed, creating a plasticity debt that depresses final accuracy. Furthermore, while the curriculum prevents the catastrophic initial drop, the dashed blue line in Figure~\ref{fig:c_curves}(a) shows it still suffers from a jittery, chronic baseline of forgetting. This is because the curriculum scales the update but cannot fix the underlying variance of the limited replay buffer.
@@ -241,27 +246,31 @@ The scalar gate is explicitly designed for a momentum-enabled regime, where it e
 
 The directional feedforward gate (asymmetric PER) takes a surgical approach: rather than scaling down the entire update like the scalar curriculum, it selectively filters out only the specific gradient components that align with the high-curvature directions of the past task. Table~\ref{tab:res_per} tracks the effect of tightening this filter ($\delta \to 0$) on the standard $1$k buffer, the operating point of every other experiment, at both momentum settings.
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
     \centering
     \small
-    \resizebox{\textwidth}{!}{%
-        \begin{tabular}{l cccc cccc}
-            \hline
-                     & \multicolumn{4}{c}{Momentum $0.0$} & \multicolumn{4}{c}{Momentum $0.9$}                                                                                                          \\
-            $\delta$ & depth (pp)                         & area                              & ACC     & $\mathrm{WP}_{100}$ & depth (pp)     & area   & ACC     & $\mathrm{WP}_{100}$ \\
-            \hline
-            no gate  & $19.5 \pm 4.1$                     & $6.27$                            & $0.873$ & $0.736$             & $15.9 \pm 2.6$ & $1.03$ & $0.928$ & $0.808$             \\
-            \hline
-            $1.0$    & $9.0 \pm 0.6$                      & $3.29$                            & $0.869$ & $0.733$             & ---            & ---    & ---     & ---                 \\
-            $0.3$    & $7.4 \pm 1.1$                      & $2.32$                            & $0.873$ & $0.736$             & $10.4 \pm 0.5$ & $0.50$ & $0.929$ & $0.813$             \\
-            $0.1$    & $5.9 \pm 1.5$                      & $1.56$                            & $0.876$ & $0.739$             & $9.4 \pm 0.5$  & $0.38$ & $0.928$ & $0.815$             \\
-            $0.03$   & $\mathbf{4.8 \pm 1.9}$             & $\mathbf{1.04}$                   & $0.880$ & $0.741$             & $8.5 \pm 0.6$  & $0.23$ & $0.929$ & $0.816$             \\
-            \hline
-        \end{tabular}%
-    }
+    \setlength{\tabcolsep}{5pt}
+    \begin{tabular}{l cccc}
+        \hline
+        $\delta$ & depth (pp)             & area            & ACC     & $\mathrm{WP}_{100}$ \\
+        \hline
+        \multicolumn{5}{l}{\emph{Momentum $0.0$}}                                            \\
+        no gate  & $19.5 \pm 4.1$         & $6.27$          & $0.873$ & $0.736$             \\
+        $1.0$    & $9.0 \pm 0.6$          & $3.29$          & $0.869$ & $0.733$             \\
+        $0.3$    & $7.4 \pm 1.1$          & $2.32$          & $0.873$ & $0.736$             \\
+        $0.1$    & $5.9 \pm 1.5$          & $1.56$          & $0.876$ & $0.739$             \\
+        $0.03$   & $\mathbf{4.8 \pm 1.9}$ & $\mathbf{1.04}$ & $0.880$ & $0.741$             \\
+        \hline
+        \multicolumn{5}{l}{\emph{Momentum $0.9$}}                                            \\
+        no gate  & $15.9 \pm 2.6$         & $1.03$          & $0.928$ & $0.808$             \\
+        $0.3$    & $10.4 \pm 0.5$         & $0.50$          & $0.929$ & $0.813$             \\
+        $0.1$    & $9.4 \pm 0.5$          & $0.38$          & $0.928$ & $0.815$             \\
+        $0.03$   & $8.5 \pm 0.6$          & $0.23$          & $0.929$ & $0.816$             \\
+        \hline
+    \end{tabular}
     \caption{Asymmetric-PER $\delta$ sweep on the standard ($1$k) buffer at momentum $0.0$ and $0.9$, five seeds, against the ungated reference. At momentum $0$ depth and area fall as $\delta \to 0$ while ACC and $\mathrm{WP}_{100}$ \emph{rise}, so the directional gate protects the past task at no measured plasticity cost, and every one of these trends holds across all five seeds (strongest filter in bold). At momentum $0.9$ the ordering in $\delta$ survives but the ladder is displaced upward by $3$ to $4$ pp of depth, and what accuracy it reaches vanilla ER already has ($0.929$ against $0.928$): the per-step filter is re-inflated by the accumulator. Areas are on the step axis ($\eta = 0.1$) and fall under momentum for the ungated reference too, so depth is the axis on which the loss of protection reads. No $\delta{=}1.0$ cell was run at momentum $0.9$. The exact-gradient ($60$k) diagnostic leg and the full metric set for every cell are in Appendix~\ref{app:per_full}.}
     \label{tab:res_per}
-\end{table*}
+\end{table}
 
 \paragraph{Protection at no plasticity cost.}
 Figure~\ref{fig:per_curves} puts the strongest filter against the ungated baseline in the layout the scalar gate was read in, so the two gates can be compared panel for panel. At momentum $0$ (dashed) the filter holds the past task some four points above vanilla ER through the entire transition, and (b) shows what it charges for that: the new-task curve lags over roughly the first fifty steps and is indistinguishable from vanilla thereafter. The slowdown is selective, confined to the directions the past-task curvature flags rather than applied to the whole loss, and it is gone by the $\mathrm{WP}_{100}$ horizon. This is the scalar gate's plasticity debt inverted, and it is why depth and area fall across the sweep while ACC and $\mathrm{WP}_{100}$ \emph{rise} (Table~\ref{tab:res_per}): the gate recovers the idealised ``arc'' trajectory without microscopic step sizes and without a plasticity debt. The monotonicity in $\delta$ behind the table, on both tasks and at both momentum settings, is Figure~\ref{fig:per_sweep}; the exact-gradient ($60$k) diagnostic controls and the late failure they expose are in Appendix~\ref{app:per_full}.
