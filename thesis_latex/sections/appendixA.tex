@@ -83,6 +83,18 @@ Table~\ref{tab:training} the training protocol shared across both benchmarks.
     \label{tab:training}
 \end{table}
 
+\paragraph{The per-step plotting convention.}
+\label{app:impl_plotting}
+Test accuracy is logged every $10$ steps away from a transition and every step
+inside the dense window (Section~\ref{subsec:testbed}), so a short interval
+separates the last pre-switch evaluation from the first post-update one. In the
+per-step figures the last pre-switch level is held flat up to the boundary
+rather than interpolated across that interval: the past task is still training
+and sitting at its plateau there, so a straight line between the two samples
+would draw the drop as beginning before the switch that causes it. The
+convention affects the drawn curve only. Every reported metric is computed from
+the logged samples themselves, so none of them depends on it.
+
 \subsection{Experience replay}
 \label{app:impl_er}
 
@@ -108,6 +120,26 @@ The $\lambda$-curriculum re-weights only the current-task term, minimising
 $L_\lambda = L_{\text{replay}} + \lambda(t)\, L_{\text{current}}$; the adaptive
 schedule reads $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ through an exponential
 moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$.
+The EMA is reset to zero at each task boundary, so $\lambda$ starts near zero on
+every task; the time-indexed schedules latch at $\lambda = 1$ once the ramp is
+past, but the adaptive one has no such state and follows the ratio for the whole
+task.
+
+Reconstructing $\lambda$ from the logged gradient norms of the C4 runs shows how
+far the two momentum legs actually get, and they get nowhere near the same
+place. At momentum $0$ the norms do converge over the epoch, the median
+$\|g_{\text{new}}\|/\|g_{\text{replay}}\|$ falling from ${\approx}7$ over the
+first twenty steps to ${\approx}1.1$ over the second half, and $\lambda$ follows
+it to $0.79$--$0.93$ at the end of the task; it reaches $1$ in one seed of five
+and then only at step $208$ of $235$, so even here the release is incomplete
+when the task ends. At momentum $0.9$ the ratio instead widens, from
+${\approx}10$ early to ${\approx}40$ late, and $\lambda$ peaks at $0.12$--$0.16$
+around step $60$ and decays to ${\approx}0.02$: the gate shuts again rather than
+opening. With the floor of C5--C7 in place this shows up as saturation, C7$_M$
+sitting at $\lambda = \lambda_{\min}$ for $73$--$79\%$ of the task's steps. The
+schedule is a feedback rule with no terminal state, not a ramp with an endpoint,
+and the momentum-on results of Section~\ref{subsec:res_scalar} are obtained in
+the regime where it holds the new-task term down throughout.
 
 \subsection{The step-size ladder}
 \label{app:impl_ladder}
@@ -126,8 +158,8 @@ only difference between them.
 
 A skipped task still advances \texttt{global\_step} by one nominal epoch
 ($\lceil 60{,}000 / 256 \rceil = 235$ batches), so the task boundary carries the
-same index as in an ordinary run and the per-step plotting convention of
-Section~\ref{subsec:testbed} keys off it unchanged. One pre-switch evaluation is
+same index as in an ordinary run and the per-step plotting convention above
+keys off it unchanged. One pre-switch evaluation is
 written at step $234$, supplying the flat pre-boundary segment that the
 suppressed training loop would otherwise have recorded.
 
