@@ -239,27 +239,29 @@ The scalar gate is explicitly designed for a momentum-enabled regime, where it e
 \subsection{The Directional Feedforward Gate (RQ3)}
 \label{subsec:res_directional}
 
-The directional feedforward gate (asymmetric PER) takes a surgical approach: rather than scaling down the entire update like the scalar curriculum, it selectively filters out only the specific gradient components that align with the high-curvature directions of the past task. Table~\ref{tab:res_per} tracks the effect of tightening this filter ($\delta \to 0$) on the standard $1$k buffer, the operating point of every other experiment.
+The directional feedforward gate (asymmetric PER) takes a surgical approach: rather than scaling down the entire update like the scalar curriculum, it selectively filters out only the specific gradient components that align with the high-curvature directions of the past task. Table~\ref{tab:res_per} tracks the effect of tightening this filter ($\delta \to 0$) on the standard $1$k buffer, the operating point of every other experiment, at both momentum settings.
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
     \centering
     \small
-    \setlength{\tabcolsep}{5pt}
-    \begin{tabular}{l cccc}
-        \hline
-        $\delta$ & depth (pp)     & area  & ACC     & $\mathrm{WP}_{100}$ \\
-        \hline
-        no gate  & $19.5 \pm 4.1$ & $6.3$ & $0.873$ & $0.736$             \\
-        \hline
-        $1.0$    & $9.0 \pm 0.6$  & $3.3$ & $0.869$ & $0.733$             \\
-        $0.3$    & $7.4 \pm 1.1$  & $2.3$ & $0.873$ & $0.736$             \\
-        $0.1$    & $5.9 \pm 1.5$  & $1.6$ & $0.876$ & $0.739$             \\
-        $0.03$   & $4.8 \pm 1.9$  & $1.0$ & $0.880$ & $0.741$             \\
-        \hline
-    \end{tabular}
-    \caption{Asymmetric-PER $\delta$ sweep on the standard ($1$k) buffer at momentum $0$, five seeds, against the ungated reference. Depth and area fall as $\delta \to 0$ while ACC and $\mathrm{WP}_{100}$ \emph{rise}: the directional gate protects the past task at no measured plasticity cost, and every one of these trends holds across all five seeds. Areas are on the step axis ($\eta = 0.1$). The momentum-$0.9$ leg of the same sweep is Figure~\ref{fig:per_curves}(b); the exact-gradient ($60$k) diagnostic leg, the momentum-$0.9$ numbers and the full metric set for every cell are in Appendix~\ref{app:per_full}.}
+    \resizebox{\textwidth}{!}{%
+        \begin{tabular}{l cccc cccc}
+            \hline
+                     & \multicolumn{4}{c}{Momentum $0.0$} & \multicolumn{4}{c}{Momentum $0.9$}                                                                                                          \\
+            $\delta$ & depth (pp)                         & area                              & ACC     & $\mathrm{WP}_{100}$ & depth (pp)     & area   & ACC     & $\mathrm{WP}_{100}$ \\
+            \hline
+            no gate  & $19.5 \pm 4.1$                     & $6.27$                            & $0.873$ & $0.736$             & $15.9 \pm 2.6$ & $1.03$ & $0.928$ & $0.808$             \\
+            \hline
+            $1.0$    & $9.0 \pm 0.6$                      & $3.29$                            & $0.869$ & $0.733$             & ---            & ---    & ---     & ---                 \\
+            $0.3$    & $7.4 \pm 1.1$                      & $2.32$                            & $0.873$ & $0.736$             & $10.4 \pm 0.5$ & $0.50$ & $0.929$ & $0.813$             \\
+            $0.1$    & $5.9 \pm 1.5$                      & $1.56$                            & $0.876$ & $0.739$             & $9.4 \pm 0.5$  & $0.38$ & $0.928$ & $0.815$             \\
+            $0.03$   & $\mathbf{4.8 \pm 1.9}$             & $\mathbf{1.04}$                   & $0.880$ & $0.741$             & $8.5 \pm 0.6$  & $0.23$ & $0.929$ & $0.816$             \\
+            \hline
+        \end{tabular}%
+    }
+    \caption{Asymmetric-PER $\delta$ sweep on the standard ($1$k) buffer at momentum $0.0$ and $0.9$, five seeds, against the ungated reference. At momentum $0$ depth and area fall as $\delta \to 0$ while ACC and $\mathrm{WP}_{100}$ \emph{rise}, so the directional gate protects the past task at no measured plasticity cost, and every one of these trends holds across all five seeds (strongest filter in bold). At momentum $0.9$ the ordering in $\delta$ survives but the ladder is displaced upward by $3$ to $4$ pp of depth, and what accuracy it reaches vanilla ER already has ($0.929$ against $0.928$): the per-step filter is re-inflated by the accumulator. Areas are on the step axis ($\eta = 0.1$) and fall under momentum for the ungated reference too, so depth is the axis on which the loss of protection reads. No $\delta{=}1.0$ cell was run at momentum $0.9$. The exact-gradient ($60$k) diagnostic leg and the full metric set for every cell are in Appendix~\ref{app:per_full}.}
     \label{tab:res_per}
-\end{table}
+\end{table*}
 
 \paragraph{Protection at no plasticity cost.}
 Figure~\ref{fig:per_curves}(a) illustrates the gate operating in its practical regime. As the directional filter strengthens (moving from the lighter to the darker lines), the \emph{depth} of the boundary dip shrinks monotonically, and the total \emph{area} of forgetting is drastically reduced. Unlike the scalar gate, this surgical intervention leaves safe gradient directions completely untouched, meaning it does not broadly slow down early new-task learning. Consequently, this continuous reduction in gap depth and area is achieved while simultaneously \emph{increasing} final accuracy. The gate effectively recovers the idealized ``arc'' trajectory without requiring microscopic step sizes or incurring a plasticity debt. While the practical $1$k buffer exhibits monotonic protection across all seeds, exact-gradient diagnostic controls ($60$k buffer) and late-stage convergence limits are detailed in Appendix~\ref{app:per_full}.
@@ -267,12 +269,12 @@ Figure~\ref{fig:per_curves}(a) illustrates the gate operating in its practical r
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_sweep.png}
-    \caption{The directional feedforward gate on the standard $1$k buffer: per-step past-task ($T_0$) accuracy across the rot-MNIST switch, sweeping the damping $\delta$ (weaker filter light $\rightarrow$ stronger filter dark); seed mean with $\pm$std bands, $x{=}0$ the task switch. \textbf{(a) Momentum $0$:} the boundary dip shrinks monotonically as $\delta \to 0$, and accuracy rises with it (Table~\ref{tab:res_per}), so the protection is bought at no plasticity cost. \textbf{(b) Momentum $0.9$:} the same filters, re-inflated, every rung sitting $3$--$4$ pp deeper than its momentum-$0$ counterpart as the accumulator rebuilds the displacement the per-step filter removes (no $\delta{=}1.0$ cell was run at this momentum). Both panels span the same $0.27$ of accuracy, so a deeper-looking dip is a deeper dip; the pre-switch level is higher in (b) only because momentum converges $T_0$ further before the switch. The exact-gradient ($60$k) diagnostic leg is in Appendix~\ref{app:per_full}.}
+    \caption{The directional feedforward gate on the standard $1$k buffer: per-step past-task ($T_0$) accuracy across the rot-MNIST switch, sweeping the damping $\delta$ (weaker filter light $\rightarrow$ stronger filter dark); seed mean with $\pm$std bands, $x{=}0$ the task switch. \textbf{(a) Momentum $0$:} the boundary dip shrinks monotonically as $\delta \to 0$, and accuracy rises with it (Table~\ref{tab:res_per}), so the protection is bought at no plasticity cost. \textbf{(b) Momentum $0.9$:} the same filters, re-inflated, every rung sitting $3$--$4$ pp deeper than its momentum-$0$ counterpart as the accumulator rebuilds the displacement the per-step filter removes. Both panels span the same $0.27$ of accuracy, so a deeper-looking dip is a deeper dip; the pre-switch level is higher in (b) only because momentum converges $T_0$ further before the switch. The exact-gradient ($60$k) diagnostic leg is in Appendix~\ref{app:per_full}.}
     \label{fig:per_curves}
 \end{figure}
 
 \paragraph{Momentum re-inflates what the filter brakes.}
-The protection does not survive the accelerator. Repeating the same standard-buffer sweep at momentum $0.9$ (Figure~\ref{fig:per_curves}(b)) moves every rung the wrong way: depth climbs from $7.4$, $5.9$ and $4.8$ pp at $\delta = 0.3$, $0.1$ and $0.03$ to $10.4$, $9.4$ and $8.5$ pp, the whole ladder displaced upward by $3$ to $4$ pp with its ordering intact, so no setting of the filter recovers the momentum-$0$ protection (Appendix~\ref{app:per_full}). The mechanism is the per-step locality of the gate. It brakes the push once, at the step it is applied, but momentum accumulates the braked updates and rebuilds the very displacement the filter removed, so what the gate subtracts at one step returns over the next several. Against vanilla ER at the same momentum ($15.9$ pp) the gate still helps, but the reduction it buys falls from ${\approx}75\%$ of vanilla's depth at momentum $0$ to ${\approx}47\%$, and it buys nothing in accuracy that vanilla does not already have ($0.929$ against $0.928$). The area moves the other way, $1.04 \rightarrow 0.23$ at $\delta = 0.03$, as it does for vanilla ER itself ($6.3 \rightarrow 1.0$): momentum shortens every transient, so depth rather than area is the axis on which the loss of protection is visible. This is the failure the scalar gate does not share, and it is what Section~\ref{subsec:res_regimeflip} reads as a regime flip rather than a trade-off.
+The protection does not survive the accelerator. Repeating the same standard-buffer sweep at momentum $0.9$ (Figure~\ref{fig:per_curves}(b)) moves every rung the wrong way: depth climbs from $7.4$, $5.9$ and $4.8$ pp at $\delta = 0.3$, $0.1$ and $0.03$ to $10.4$, $9.4$ and $8.5$ pp, the whole ladder displaced upward by $3$ to $4$ pp with its ordering intact, so no setting of the filter recovers the momentum-$0$ protection (Table~\ref{tab:res_per}). The mechanism is the per-step locality of the gate. It brakes the push once, at the step it is applied, but momentum accumulates the braked updates and rebuilds the very displacement the filter removed, so what the gate subtracts at one step returns over the next several. Against vanilla ER at the same momentum ($15.9$ pp) the gate still helps, but the reduction it buys falls from ${\approx}75\%$ of vanilla's depth at momentum $0$ to ${\approx}47\%$, and it buys nothing in accuracy that vanilla does not already have ($0.929$ against $0.928$). The area moves the other way, $1.04 \rightarrow 0.23$ at $\delta = 0.03$, as it does for vanilla ER itself ($6.3 \rightarrow 1.0$): momentum shortens every transient, so depth rather than area is the axis on which the loss of protection is visible. This is the failure the scalar gate does not share, and it is what Section~\ref{subsec:res_regimeflip} reads as a regime flip rather than a trade-off.
 
 \subsection{Reading the Momentum Crosses Together}
 \label{subsec:res_regimeflip}
