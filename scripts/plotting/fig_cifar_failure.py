@@ -53,7 +53,7 @@ def main() -> None:
     leg = axL.legend(loc="lower left", handlelength=1.7)
     for line in leg.get_lines():
         line.set_linewidth(2.4)
-    vw.finalize(fig, vw.FIG_DIR / "T" / "cifar_3task_failure.png")
+    vw.finalize(fig, vw.FIG_DIR / "cifar" / "cifar_3task_failure.png")
 
 
 if __name__ == "__main__":

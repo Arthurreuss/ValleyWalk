@@ -30,7 +30,8 @@ if __package__ in (None, ""):
     # run as a script, sys.path[0] is this directory, not the project root.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import matplotlib.pyplot as plt  # noqa: E402  (after the path fix)
+import matplotlib.patheffects as pe  # noqa: E402  (after the path fix)
+import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 import scripts.plotting.vw_style as vw  # noqa: E402
@@ -49,7 +50,21 @@ PANELS = [("exact", "(a) Exact replay gradient (60k buffer)"),
 # The bare rung tags, for the reader-facing legend labels.  The arm and the
 # momentum leg are already named by the panel title and the caption, so the
 # legend carries only what varies inside a panel: the step size.
-RUNG_TAG = {"S1": "S1_eta0.1", "S2": "S2_eta0.033", "S3": "S3_eta0.01"}
+RUNG_TAG = {"S1": "S1_eta0.1", "S2": "S2_eta0.033", "S3": "S3_eta0.01",
+            "S4": "S4_eta0.001"}
+
+# The three finest rungs converge to within 0.007 in accuracy, which is the
+# finding — and which draws them as a single stroke.  Colour alone therefore
+# cannot show that there are three of them, so the fine rungs are separated by
+# dash pattern as well; the coarse rung, which is nowhere near the others,
+# keeps the solid line.
+# The finest rung (S4) is drawn thick and solid and the rungs above it ride on
+# top as thinner dashed lines with shortening dashes, so the group reads as
+# several curves that coincide rather than as one stroke.  (style, lw, zorder)
+RUNG_STROKE = {"S1": ("solid", 2.0, 3),
+               "S2": ((0, (1.4, 1.8)), 1.5, 6),
+               "S3": ((0, (5.0, 2.6)), 1.5, 5),
+               "S4": ("solid", 3.0, 4)}
 
 
 def _rung_curves(runs):
@@ -94,7 +109,15 @@ def _panel(ax, by_rung, arm, title):
         label = f"{vw.display_name(RUNG_TAG[rung])}  ({int(n[keep].max())} seeds)"
         ax.fill_between(x, mean - std, mean + std, color=color, alpha=0.14,
                         linewidth=0)
-        ax.plot(x, mean, color=color, lw=2.0, label=label, solid_capstyle="round")
+        style, lw, z = RUNG_STROKE[rung]
+        # A dashed rung sits on top of a rung it coincides with, so its dashes
+        # are outlined in the background colour: without the outline the two
+        # same-hue curves fuse into a single stroke and the convergence, which
+        # is the finding, reads as a missing line.
+        effects = None if style == "solid" else [
+            pe.withStroke(linewidth=lw + 2.2, foreground="white")]
+        ax.plot(x, mean, color=color, lw=lw, label=label, linestyle=style,
+                zorder=z, solid_capstyle="round", path_effects=effects)
         drawn += 1
 
     ax.set_xlim(*WINDOW)

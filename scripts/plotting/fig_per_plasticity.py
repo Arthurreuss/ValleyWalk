@@ -39,7 +39,7 @@ def main() -> None:
                     columnspacing=1.4, borderaxespad=0.6)
     for line in leg.get_lines():
         line.set_linewidth(2.4)
-    vw.finalize(fig, vw.FIG_DIR / "P" / "per_plasticity.png")
+    vw.finalize(fig, vw.FIG_DIR / "asymmetric_per" / "per_plasticity.png")
 
 
 if __name__ == "__main__":

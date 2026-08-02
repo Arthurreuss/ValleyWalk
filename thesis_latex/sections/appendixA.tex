@@ -69,10 +69,10 @@ Table~\ref{tab:training} the training protocol shared across both benchmarks.
         \hline
         Hyperparameter  & rot-MNIST (MLP)         & CIFAR-10 (ResNet-18)   \\
         \hline
-        Epochs per task & $1$ (online)            & $10$                   \\
+        Epochs per task & $1$ (online); $c$ in the ladder & $10$           \\
         Batch size      & $256$                   & $256$                  \\
         Optimiser       & SGD                     & SGD                    \\
-        Learning rate   & $0.1$                   & $0.1$                  \\
+        Learning rate   & $0.1$; $0.1/c$, $c \in \{1,10,33\}$, in the ladder & $0.1$ \\
         Momentum        & $0.0$ or $0.9$          & $0.9$ ($0.0$ in cross) \\
         Weight decay    & $0.0$                   & $0.0$                  \\
         Replay buffer   & $1{,}000$ or $60{,}000$ & $5{,}000$              \\
@@ -87,38 +87,67 @@ Table~\ref{tab:training} the training protocol shared across both benchmarks.
 \label{app:impl_er}
 
 The replay buffer uses reservoir sampling \citep{vitter1985random}, so the stored
-set is a uniform sample of the past stream at any budget. Three modes appear in
+set is a uniform sample of the past stream at any budget. Two modes appear in
 the experiments:
 
 \begin{itemize}
-    \item \emph{Standard ER} (the D1 and all C-series conditions): each step takes
-          one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
-          with half the mini-batch drawn from the current task and half sampled
-          with replacement from the buffer.
-    \item \emph{Balanced-direction ER} (D3, D4): two separate backward passes; the
-          update direction is the equal-magnitude mix
-          $\hat{g}_{\text{new}} + \hat{g}_{\text{rep}}$, rescaled so its length equals
-          $\lVert g_{\text{new}} + g_{\text{replay}} \rVert$, the length of the step
-          vanilla ER would have taken at the same parameters. When the two component
-          norms are equal, the update reduces to vanilla ER exactly. (The original
-          conditions instead normalised the joint direction to unit length, fixing
-          the step at $\eta$; Appendix~\ref{app:old_balanced}.)
-    \item \emph{Full-data replay} (D2, D4): the replay gradient is computed on
-          \emph{every} stored sample exactly once per step (no sub-sampling). Paired
-          with a buffer equal to the full past-task training set ($60{,}000$ for
-          rot-MNIST $T_0$), this yields the deterministic empirical past-task
-          gradient at the current parameters, removing estimator variance.
-    \item \emph{Learning-rate warm-up} (M1--M3): a standard ER step whose learning
-          rate is scaled by $\min((t-1)/N,\, 1)$ over the first $N$ steps of each
-          task with $\text{task\_id} > 0$; the scaling applies to the step only,
-          so with momentum the velocity buffer still accumulates full-magnitude
-          gradients during the ramp.
+    \item \emph{Standard ER} (the D1 reference, the ladder's $1$k arm, and all
+          C-series conditions except C8): each step takes one combined backward
+          pass on $L_{\text{current}} + L_{\text{replay}}$, with half the
+          mini-batch drawn from the current task and half sampled with
+          replacement from the buffer.
+    \item \emph{Full-data replay} (the ladder's exact arm, C8, and the P2--P3
+          legs): the replay gradient is computed on \emph{every} stored sample
+          exactly once per step (no sub-sampling). Paired with a buffer equal to
+          the full past-task training set ($60{,}000$ for rot-MNIST $T_0$), this
+          yields the deterministic empirical past-task gradient at the current
+          parameters, removing estimator variance.
 \end{itemize}
 
 The $\lambda$-curriculum re-weights only the current-task term, minimising
 $L_\lambda = L_{\text{replay}} + \lambda(t)\, L_{\text{current}}$; the adaptive
 schedule reads $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ through an exponential
 moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$.
+
+\subsection{The step-size ladder}
+\label{app:impl_ladder}
+
+Every cell of the ladder warm-starts from a shared task-$0$ checkpoint.
+\texttt{init.checkpoint} loads a task-$0$ \texttt{state\_dict} written by a
+separate anchor run, one per momentum setting and seed, trained at the standard
+operating point ($\eta = 0.1$, one epoch); \texttt{init.skip\_tasks} then
+suppresses the training loop of that many leading tasks while still running
+their \texttt{end\_task} bookkeeping, so the replay buffer is filled from the
+skipped task's stream exactly as it would have been in an ordinary run. Because
+reservoir sampling at a fixed seed returns the same subset of the same stream
+at a given budget, $\theta_0^*$ and the buffer are identical across the three
+rungs at a given buffer arm, momentum, and seed, and the learning rate is the
+only difference between them.
+
+A skipped task still advances \texttt{global\_step} by one nominal epoch
+($\lceil 60{,}000 / 256 \rceil = 235$ batches), so the task boundary carries the
+same index as in an ordinary run and the per-step plotting convention of
+Section~\ref{subsec:testbed} keys off it unchanged. One pre-switch evaluation is
+written at step $234$, supplying the flat pre-boundary segment that the
+suppressed training loop would otherwise have recorded.
+
+Inside the dense post-switch window the stability-gap cadence fires on the step
+index \emph{within the current task} rather than on the global step. At a
+cadence of $c > 1$ a global-step modulus would place the first post-switch
+sample at an arbitrary phase offset into the task whenever $c$ does not divide
+the $235$-batch epoch, skipping exactly the steps the boundary spike occupies.
+The change is a no-op at cadence $1$, which is every previously archived run.
+
+The four rungs use $\eta = 0.1$, $\eta = 0.1/3 = 0.0\overline{3}$, $\eta = 0.01$
+and $\eta = 0.001$. The second is written into the configuration at full
+precision rather than rounded, so that $\eta c = 0.1$ holds exactly and the flow
+time $\tau = 23.5$ is matched to the last digit; the main text reports it as
+$0.1/3$. The dense window is set to $250c$ steps, which exceeds the
+$235c$ steps of the task, so every cell records the whole of $T_1$ at the dense
+cadence: $235$ samples per rung, evenly spaced in flow time. Buffer-fidelity
+diagnostics are disabled throughout the ladder, since each such step costs a
+full pass over the past-task training set and the longest rung takes
+thirty-three epochs.
 
 \subsection{Asymmetric PER}
 \label{app:impl_per}

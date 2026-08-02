@@ -58,7 +58,7 @@ def main() -> None:
     leg = axL.legend(loc="lower left", handlelength=1.7)
     for line in leg.get_lines():
         line.set_linewidth(2.4)
-    vw.finalize(fig, vw.FIG_DIR / "L" / "longseq.png")
+    vw.finalize(fig, vw.FIG_DIR / "long_sequence" / "long_sequence.png")
 
 
 if __name__ == "__main__":

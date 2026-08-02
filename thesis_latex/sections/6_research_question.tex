@@ -4,10 +4,10 @@
 The two-level account and tracking bound of Section~\ref{sec:motivation} make falsifiable predictions about the stability gap and the behaviour of distinct gating mechanisms. To evaluate these predictions, our experiments are organised around four core questions. The first three are evaluated in a controlled setting (rotated MNIST with a small MLP) to probe the gap's dynamics step-by-step, while the fourth tests the generalisability of these findings under increased complexity.
 
 \paragraph{RQ1: The account.}
-Does the stability gap fundamentally decompose into a deterministic arc of the intended trajectory and an optimizer overshoot of the followed path?
+A uniform rescaling of the learning rate is a time reparametrisation of the same gradient flow, so driving $\eta \to 0$ at matched flow time follows the intended trajectory ever more faithfully without changing it. Does the stability gap separate under that limit into a deterministic arc that survives it, belonging to the intended trajectory, and an overshoot that exists only at finite step size?
 
 \paragraph{RQ2: The scalar feedback gate.}
-How does a scalar feedback gate (the $\lambda$-curriculum) attenuate the new-task push, and what is its interplay with optimizer momentum and overall plasticity?
+Taking the limit is itself a repair, but a costly one: a smaller step removes the overshoot and bills for it in training length, the epoch count scaling as $1/\eta$ at matched flow time. Can a scalar feedback gate (the $\lambda$-curriculum) fix the trajectory without paying that bill, and how does the answer depend on optimizer momentum and on the plasticity the gate withholds?
 
 \paragraph{RQ3: The directional feedforward gate.}
 To what extent does a directional feedforward gate (asymmetric PER) reduce the stability gap, and how does accumulated momentum compromise this gating mechanism?

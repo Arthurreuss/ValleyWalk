@@ -10,25 +10,20 @@ Run scripts/aggregate_results.py first if outputs/ has changed.
 from __future__ import annotations
 
 from scripts.plotting import (
-    fig_drivers, fig_lr_ladder, fig_rq1_cross, fig_warmup_vs_curriculum,
-    fig_curriculum, fig_per_sweep, fig_per_plasticity, fig_regime, fig_frontier,
-    fig_cifar, fig_longseq, fig_cifar_failure, fig_old_balanced,
+    fig_lr_ladder,
+    fig_curriculum, fig_per_sweep, fig_per_plasticity, fig_regime,
+    fig_cifar, fig_longseq, fig_cifar_failure,
 )
 
 FIGURES = [
     ("RQ1  step-size ladder",      fig_lr_ladder),
-    ("RQ1  step vs field",         fig_drivers),
-    ("RQ1  path x step cross",     fig_rq1_cross),
-    ("RQ2  warm-up vs curriculum", fig_warmup_vs_curriculum),
     ("RQ2  curriculum",            fig_curriculum),
     ("RQ3  asym-PER delta sweep",  fig_per_sweep),
     ("RQ3  asym-PER plasticity",   fig_per_plasticity),
     ("syn  momentum regime",       fig_regime),
-    ("app  frontier scatter",      fig_frontier),
     ("RQ4  CIFAR headline",        fig_cifar),
     ("app  long sequence",         fig_longseq),
     ("app  CIFAR 3-task outlier",  fig_cifar_failure),
-    ("app  old balanced (capped)", fig_old_balanced),
 ]
 
 

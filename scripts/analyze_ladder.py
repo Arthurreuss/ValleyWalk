@@ -118,7 +118,7 @@ TAU_SPACING = 0.1
 # Archived reference block for the eta = 0.1 consistency check.
 D1_METHOD, D1_KEY, D1_VALUE = "er", "decomposition", "D1_vanilla"
 
-RUNG_ORDER = ["S1", "S2", "S3"]
+RUNG_ORDER = ["S1", "S2", "S3", "S4"]
 
 
 def warn(msg: str) -> None:
@@ -136,7 +136,7 @@ class LadderRun:
 
     run_dir: Path
     ablation_value: str          # e.g. S2_eta0.01_exact_M
-    rung: str                    # S1 | S2 | S3
+    rung: str                    # S1 | S2 | S3 | S4
     arm: str                     # "exact" (60k full buffer) | "sampled" (1k)
     eta: float                   # read from the run's own overrides, not the label
     momentum: float
@@ -370,6 +370,34 @@ def run_metrics(run: LadderRun, curve: Curve) -> Dict[str, float]:
     }
 
 
+# The house convention is that a stability metric never appears without the
+# accuracy of the same condition beside it: ACC is the condition's identity,
+# the gap metric is the finding.  These come from the run's own manifest rather
+# than being recomputed, so they are the same numbers every other table quotes.
+_MANIFEST_METRICS = ("ACC", "FORG", "min_ACC", "WF100", "WP100", "WC_ACC")
+
+
+def manifest_metrics(run: LadderRun) -> Dict[str, float]:
+    """Benchmark metrics for one run, read from ``metrics_summary.json``.
+
+    Missing or unparseable values come back as NaN rather than raising: a cell
+    still in flight must not take the whole analysis down.
+    """
+    path = run.run_dir / "results" / "metrics_summary.json"
+    out: Dict[str, float] = {k: float("nan") for k in _MANIFEST_METRICS}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        warn(f"unreadable metrics_summary {path}: {exc}")
+        return out
+    for key in _MANIFEST_METRICS:
+        value = data.get(key)
+        if value is not None:
+            out[key] = float(value)
+    return out
+
+
 def collect(runs: Sequence[LadderRun]) -> Tuple[pd.DataFrame, Dict[Tuple[str, int], Curve]]:
     """Metrics table (one row per completed run) plus the curves behind it."""
     rows: List[dict] = []
@@ -397,6 +425,7 @@ def collect(runs: Sequence[LadderRun]) -> Tuple[pd.DataFrame, Dict[Tuple[str, in
             "seed": run.seed,
             "run_dir": str(run.run_dir),
             **run_metrics(run, curve),
+            **manifest_metrics(run),
         })
     return pd.DataFrame(rows), curves
 
@@ -410,7 +439,7 @@ def resample(curves: Sequence[Curve], grid: np.ndarray) -> np.ndarray:
     """Interpolate curves onto a shared tau grid; NaN outside each one's range.
 
     Rungs record at the same flow-time spacing but not, in general, at exactly
-    the same tau (the third rung's eta is 0.1/33, so its grid carries rounding),
+    the same tau (the second rung's eta is 0.1/3, so its grid carries rounding),
     and a partial run stops early.  Interpolating with NaN outside the observed
     range lets ``nanmean`` average whatever seeds exist at each tau without
     inventing a tail.
@@ -454,10 +483,10 @@ def fit_o_eta(etas: Sequence[float], values: Sequence[float]) -> Optional[dict]:
 
     Forward Euler's global error is first order in the step, so this is the
     model the ladder is built to test.  ``resid_max`` is the largest absolute
-    departure of a rung from the fitted line: with three rungs a visible
-    residual means the leading-order model has broken down somewhere on the
-    ladder, which at eta = 0.1 is the expected signature of the discrete
-    instability rather than a failure of the fit.
+    departure of a rung from the fitted line: a visible residual means the
+    leading-order model has broken down somewhere on the ladder, which at
+    eta = 0.1 is the expected signature of the discrete instability rather
+    than a failure of the fit.
     """
     etas = np.asarray(etas, dtype=float)
     values = np.asarray(values, dtype=float)
@@ -484,7 +513,7 @@ def extrapolate(df: pd.DataFrame, metric: str) -> pd.DataFrame:
 
     Two fits are reported per (arm, momentum):
       * ``A0`` over every available rung;
-      * ``A0_small`` over the rungs with eta <= 0.01 only, together with
+      * ``A0_small`` over the fine rungs (all but the coarsest), together with
         ``S1_departure`` = (measured at eta=0.1) - (that fit's prediction
         there).  A large positive departure is the discrete instability: the
         coarse rung sits above the line the fine rungs lie on.
@@ -501,8 +530,14 @@ def extrapolate(df: pd.DataFrame, metric: str) -> pd.DataFrame:
                 continue
             row = {"seed": seed, **fit}
 
-            small = grp[grp["eta"] <= 0.011]
-            coarse = grp[grp["eta"] > 0.011]
+            # Fine rungs = everything but the coarsest.  This used to be an
+            # absolute cut at eta <= 0.011, which silently stopped computing
+            # when the ladder was retuned to {0.1, 0.1/3, 0.01} and left only
+            # one rung under the threshold; a positional split is independent
+            # of which etas the ladder happens to use.
+            coarsest = grp["eta"].max()
+            small = grp[grp["eta"] < coarsest]
+            coarse = grp[grp["eta"] == coarsest]
             small_fit = fit_o_eta(small["eta"], small[metric])
             if small_fit is not None:
                 row["A0_small"] = small_fit["A0"]
@@ -533,7 +568,8 @@ def extrapolate(df: pd.DataFrame, metric: str) -> pd.DataFrame:
 # Summary table
 # ---------------------------------------------------------------------------
 
-_SUMMARY_METRICS = ["depth", "area_tau", "area_steps"]
+_SUMMARY_METRICS = ["depth", "area_tau", "area_steps",
+                    "ACC", "FORG", "min_ACC", "WF100", "WP100", "WC_ACC"]
 
 
 def summary_table(df: pd.DataFrame, limits: Dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -618,16 +654,19 @@ def print_rungs(table: pd.DataFrame) -> None:
     for (arm, mu), leg in rung_rows.groupby(["arm", "momentum"]):
         print(f"\n  arm={arm}  momentum={mu:g}")
         print(f"    {'rung':>5} {'eta':>10} {'n':>2}  {'depth':>17} "
-              f"{'area (flow time)':>19} {'area (steps)':>19}")
+              f"{'area (flow time)':>19} {'ACC':>16} {'min-ACC':>8} {'WP100':>8}")
         for _, r in leg.sort_values("eta", ascending=False).iterrows():
             print(f"    {r['rung']:>5} {r['eta']:>10.6g} {int(r['n_seeds']):>2}  "
                   f"{_fmt(r['depth_mean'], 3):>8} +- {_fmt(r['depth_std'], 2):<6} "
                   f"{_fmt(r['area_tau_mean'], 4):>10} +- {_fmt(r['area_tau_std'], 2):<6} "
-                  f"{_fmt(r['area_steps_mean'], 4):>10} +- {_fmt(r['area_steps_std'], 2):<6}")
+                  f"{_fmt(r['ACC_mean'], 4):>7} +- {_fmt(r['ACC_std'], 2):<5} "
+                  f"{_fmt(r['min_ACC_mean'], 3):>8} {_fmt(r['WP100_mean'], 3):>8}")
     print("\n  depth is dimensionless and eta-invariant; area (flow time) has units "
-          "\n  accuracy x tau and is the comparable one.  area (steps) is what "
-          "\n  stab_gap_area_end reports: it scales with c = 0.1/eta, so it grows "
-          "\n  down the ladder even when the trajectory is unchanged.")
+          "\n  accuracy x tau and is the comparable one.  area (steps), what "
+          "\n  stab_gap_area_end reports, is in the CSV: it scales with c = 0.1/eta, "
+          "\n  so it grows down the ladder even when the trajectory is unchanged."
+          "\n  ACC is carried here because the house convention never quotes a gap "
+          "\n  metric without the accuracy of the same condition beside it.")
 
 
 def print_limits(limits: Dict[str, pd.DataFrame]) -> None:
@@ -641,7 +680,7 @@ def print_limits(limits: Dict[str, pd.DataFrame]) -> None:
         any_rows = True
         print(f"\n  {metric}")
         print(f"    {'arm':>8} {'mu':>4} {'seeds':>5} {'rungs':>5}  {'A_0':>16} "
-              f"{'k':>13} {'resid_max':>10} {'A_0 (eta<=.01)':>15} {'S1 departure':>13}")
+              f"{'k':>13} {'resid_max':>10} {'A_0 (fine)':>15} {'S1 departure':>13}")
         for _, r in lim.iterrows():
             print(f"    {r['arm']:>8} {r['momentum']:>4g} {int(r['n_seeds']):>5} "
                   f"{int(r['n_rungs']):>5}  "
@@ -653,13 +692,14 @@ def print_limits(limits: Dict[str, pd.DataFrame]) -> None:
         print("  (no leg has two or more completed rungs yet)")
         return
     print("\n  A_0 is the eta -> 0 limit: what survives the step going to zero, i.e. "
-          "\n  the arc.  Read resid_max with care — with three rungs spread over a "
-          "\n  30x lever arm the least-squares line is pinned by the coarse rung, so "
-          "\n  a real breakdown of the O(eta) model leaves only a small residual "
-          "\n  there.  'S1 departure', how far the eta = 0.1 rung sits above the line "
-          "\n  fitted through the eta <= 0.01 rungs alone, is the sharper diagnostic: "
-          "\n  it is the non-linear excess, i.e. the discrete instability itself.  "
-          "\n  Where the two limits disagree, A_0 (eta <= .01) is the trustworthy one.")
+          "\n  the arc.  Read resid_max with care — the rungs are spread over a "
+          "\n  100x lever arm, so the least-squares line is pinned by the coarse "
+          "\n  rung and a real breakdown of the O(eta) model leaves only a small "
+          "\n  residual there.  'S1 departure', how far the eta = 0.1 rung sits "
+          "\n  above the line fitted through the fine rungs alone, is the sharper "
+          "\n  diagnostic: it is the non-linear excess, i.e. the discrete "
+          "\n  instability itself.  Where the two limits disagree, A_0 (fine rungs) "
+          "\n  is the trustworthy one.")
 
 
 def print_separation(curves_by_condition: Dict[str, List[Curve]]) -> None:

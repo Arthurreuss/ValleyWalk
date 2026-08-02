@@ -69,8 +69,9 @@ DELTA_RAMP = {
 # C_VANILLA, the smaller steps sit below it on the same hue.
 LADDER_RAMP = {
     0.1:     C_VANILLA,
-    0.03333: "#a5302f",
-    0.01:    "#66191a",
+    0.03333: "#c03c33",
+    0.01:    "#8c2622",
+    0.001:   "#4a1113",
 }
 
 
@@ -104,6 +105,7 @@ DISPLAY_NAMES: dict[str, str] = {
     "S1_eta0.1":   "η = 0.1",
     "S2_eta0.033": "η = 0.033",
     "S3_eta0.01":  "η = 0.01",
+    "S4_eta0.001": "η = 0.001",
     # Curriculum (C-series) — only the two conditions the narrative keeps.
     "C7_adaptive_lmin0.20": "loss curriculum",
     "C8_adaptive_lmin0.20_fullbuf": "curriculum + exact replay",

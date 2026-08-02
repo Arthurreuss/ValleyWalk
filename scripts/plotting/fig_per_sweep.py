@@ -82,7 +82,7 @@ def main() -> None:
     for line in leg.get_lines():
         line.set_linewidth(2.4)
 
-    vw.finalize(fig, vw.FIG_DIR / "P" / "per_sweep.png")
+    vw.finalize(fig, vw.FIG_DIR / "asymmetric_per" / "per_sweep.png")
 
 
 if __name__ == "__main__":

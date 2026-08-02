@@ -73,7 +73,7 @@ def main() -> None:
     axL.plot([], [], color=vw.INK_SOFT, lw=1.6, linestyle=DASH, label="$\\mu{=}0.0$")
     _leg(axL, loc="lower right", ncol=2, handlelength=1.8, columnspacing=1.2)
 
-    vw.finalize(fig, vw.FIG_DIR / "C" / "curriculum.png")
+    vw.finalize(fig, vw.FIG_DIR / "curriculum" / "curriculum.png")
 
 
 if __name__ == "__main__":

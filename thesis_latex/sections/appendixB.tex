@@ -69,7 +69,7 @@ deterministic empirical past-task gradient at the current parameters).
         \hline
         Diagnostic                                    & Logged name                     & Role                                                                                            \\
         \hline
-        $\cos(g_{\text{replay}}, g_{\text{true}})$    & \texttt{true\_grad\_cosine}     & Buffer-side directional fidelity, the estimator-variance driver of Section~\ref{subsec:drivers} \\
+        $\cos(g_{\text{replay}}, g_{\text{true}})$    & \texttt{true\_grad\_cosine}     & Buffer-side directional fidelity, the estimator-variance driver of Section~\ref{subsec:ladder} \\
         $\|g_{\text{replay}}\| / \|g_{\text{true}}\|$ & \texttt{true\_grad\_mag\_ratio} & Buffer-side magnitude fidelity                                                                  \\
         $\|g_{\text{new}}\| / \|g_{\text{replay}}\|$  & \texttt{grad\_ratio}            & Update-side magnitude asymmetry, large at step $1$ when $\|g_{\text{replay}}\| \approx 0$       \\
         \hline
