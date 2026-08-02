@@ -1,8 +1,9 @@
 """RQ2 figure: the scalar feedback gate (curriculum), and momentum's two roles.
 
-Two panels across the rot-MNIST T0->T1 switch, vanilla ER (red) vs the shipping
-adaptive curriculum C7 (lambda_min=0.20, blue), each at momentum 0 (dashed) and
-0.9 (solid):
+Two panels, stacked so the figure fits a single text column, across the
+rot-MNIST T0->T1 switch: vanilla ER (red) vs the shipping adaptive curriculum
+C7 (lambda_min=0.20, blue), each at momentum 0 (dashed) and 0.9 (solid).  Both
+share the step axis, so the dip in (a) lines up with the debt in (b):
 
   (a) past task T0 (stability): momentum collapses the curriculum's dip to a few
       points, while it barely touches vanilla's -- momentum closes the gap only
@@ -47,31 +48,37 @@ def _panel(ax, task_col, window):
 
 def main() -> None:
     vw.apply_style()
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(9.8, 4.3))
+    # Stacked, not side by side: the figure sits in one text column.  The two
+    # panels share the step axis so a feature of (a) sits directly above the
+    # same step in (b) -- the point of the pairing is that the stability dip
+    # and the plasticity debt happen at the same moment.  (b) still carries no
+    # sample before the switch; it simply starts at the marker.
+    fig, (axT, axB) = plt.subplots(2, 1, figsize=(4.2, 5.2), sharex=True,
+                                   constrained_layout=True)
 
     # -- (a) stability: T0 across the switch --------------------------------
-    vw.mark_switch(axL)
-    _panel(axL, "task_0_acc", (-25, 234))
-    axL.set_xlim(-25, 234)
-    axL.set_ylim(0.66, 0.97)
-    axL.set_xlabel("steps into new task ($T_1$)")
-    axL.set_ylabel("past-task ($T_0$) accuracy")
-    axL.set_title("(a) Stability")
+    vw.mark_switch(axT)
+    _panel(axT, "task_0_acc", (-25, 234))
+    axT.set_ylim(0.66, 0.97)
+    axT.set_ylabel("past-task ($T_0$) accuracy")
+    axT.set_title("(a) Stability")
 
     # -- (b) plasticity: T1 learning curve ----------------------------------
-    _panel(axR, "task_1_acc", (1, 235))
-    axR.set_xlim(1, 235)
-    axR.set_ylim(0.15, 0.99)
-    axR.set_xlabel("steps into new task ($T_1$)")
-    axR.set_ylabel("new-task ($T_1$) accuracy")
-    axR.set_title("(b) Plasticity")
+    vw.mark_switch(axB)
+    _panel(axB, "task_1_acc", (1, 235))
+    axB.set_ylim(0.15, 0.99)
+    axB.set_xlabel("steps into new task ($T_1$)")
+    axB.set_ylabel("new-task ($T_1$) accuracy")
+    axB.set_title("(b) Plasticity")
+    axB.set_xlim(-25, 235)
 
     # -- shared legend: colour = method, style = momentum -------------------
     for color, name in [(vw.C_VANILLA, "vanilla ER"), (vw.C_CURR, "curriculum")]:
-        axL.plot([], [], color=color, lw=2.2, label=name)
-    axL.plot([], [], color=vw.INK_SOFT, lw=2.0, linestyle="-", label="$\\mu{=}0.9$")
-    axL.plot([], [], color=vw.INK_SOFT, lw=1.6, linestyle=DASH, label="$\\mu{=}0.0$")
-    _leg(axL, loc="lower right", ncol=2, handlelength=1.8, columnspacing=1.2)
+        axT.plot([], [], color=color, lw=2.2, label=name)
+    axT.plot([], [], color=vw.INK_SOFT, lw=2.0, linestyle="-", label="$\\mu{=}0.9$")
+    axT.plot([], [], color=vw.INK_SOFT, lw=1.6, linestyle=DASH, label="$\\mu{=}0.0$")
+    _leg(axT, loc="lower right", ncol=2, handlelength=1.6, columnspacing=1.0,
+         labelspacing=0.3, borderpad=0.2)
 
     vw.finalize(fig, vw.FIG_DIR / "curriculum" / "curriculum.png")
 

@@ -7,6 +7,9 @@ against tau they therefore have to be read as a limit, not as three conditions:
 what shrinks down the ladder is the discretisation, what the curves converge to
 is the trajectory.
 
+The two panels are stacked, one above the other, so the figure fits a single
+text column of the thesis:
+
   (a) exact replay gradient (60k full buffer): the estimator noise is off, so
       whatever residual excursion survives eta -> 0 is deterministic — the arc.
   (b) sampled 1k reservoir: the operating point of every other experiment.
@@ -81,7 +84,7 @@ def _rung_curves(runs):
     return out
 
 
-def _panel(ax, by_rung, arm, title):
+def _panel(ax, by_rung, arm, title, legend=True):
     """Draw one buffer arm: one mean+-std band per rung, light -> dark as eta falls."""
     vw.mark_switch(ax)
     drawn = 0
@@ -101,6 +104,16 @@ def _panel(ax, by_rung, arm, title):
         # no-op here — a sample already sits at tau = 0).
         grid = np.concatenate(([-eta], tau_grid(curves)))
         mean, std, n = condition_band(curves, grid)
+        # condition_band interpolates Curve.acc, which holds the post-switch
+        # records only, so the cell just added comes back NaN and would be
+        # filtered out below — leaving every rung to start at the state *after*
+        # its first new-task update, with the drop itself off the left edge.
+        # The warm start is why the level cannot be recovered from the curve:
+        # these runs skip task-0 training, so step 234 is the single pre-switch
+        # record there is.  load_curve keeps it as Curve.pre (and rejects a run
+        # that lacks it), so the band at tau = -eta is written in from there.
+        pre = np.array([c.pre for c in curves], dtype=float)
+        mean[0], std[0], n[0] = pre.mean(), pre.std(), pre.size
         keep = (~np.isnan(mean)) & (grid >= WINDOW[0]) & (grid <= WINDOW[1])
         x, mean, std = grid[keep], mean[keep], std[keep]
         x, mean, std = vw.anchor_boundary(x, mean, std, at=0.0)
@@ -121,14 +134,14 @@ def _panel(ax, by_rung, arm, title):
         drawn += 1
 
     ax.set_xlim(*WINDOW)
-    ax.set_xlabel("flow time $\\tau = \\eta \\cdot$ steps into $T_1$")
     ax.set_title(title)
-    if drawn:
-        leg = ax.legend(loc="lower right", handlelength=1.6, title="step size")
+    if drawn and legend:
+        leg = ax.legend(loc="lower right", handlelength=1.6, title="step size",
+                        labelspacing=0.3, borderpad=0.2)
         leg.get_title().set_fontsize(9)
         for line in leg.get_lines():
             line.set_linewidth(2.4)
-    else:
+    if not drawn:
         ax.text(0.5, 0.5, "no completed runs yet", transform=ax.transAxes,
                 ha="center", va="center", color=vw.MUTED, fontsize=10)
     return drawn
@@ -142,15 +155,21 @@ def main() -> None:
         print("warning: no completed lr_ladder runs found; drawing an empty figure",
               file=sys.stderr)
 
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.4), sharey=True)
-    for ax, (arm, title) in zip(axes, PANELS):
-        _panel(ax, by_rung, arm, title)
-    axes[0].set_ylabel("past-task ($T_0$) accuracy")
+    # Stacked, not side by side: the figure sits in one text column, so the
+    # panels share the x-axis vertically and the width is spent on flow time.
+    # The rungs are the same in both panels, so one legend (in (a)) serves both.
+    fig, axes = plt.subplots(2, 1, figsize=(4.2, 5.0), sharex=True, sharey=True,
+                             constrained_layout=True)
+    for i, (ax, (arm, title)) in enumerate(zip(axes, PANELS)):
+        _panel(ax, by_rung, arm, title, legend=(i == 0))
+    axes[-1].set_xlabel("flow time $\\tau = \\eta \\cdot$ steps into $T_1$")
+    fig.supylabel("past-task ($T_0$) accuracy", fontsize=11)
     axes[0].set_ylim(0.55, 0.93)
     axes[0].annotate("task switch", xy=(0, 0.565), xytext=(0.6, 0.565),
-                     color=vw.MUTED, fontsize=9)
-    fig.suptitle("Driving the step to zero: what vanishes is discretisation, "
-                 "what remains is the arc", fontsize=12, fontweight="bold", y=1.01)
+                     color=vw.MUTED, fontsize=8)
+    fig.suptitle("Driving the step to zero: what vanishes is\n"
+                 "discretisation, what remains is the arc",
+                 fontsize=11, fontweight="bold")
     vw.finalize(fig, vw.FIG_DIR / "ladder" / "step_size_ladder.png")
 
 

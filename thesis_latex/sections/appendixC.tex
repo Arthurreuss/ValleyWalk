@@ -63,6 +63,15 @@ frozen $\theta_0^*$ per momentum setting and seed.
     \label{tab:app_ladder}
 \end{table}
 
+\paragraph{Momentum is not simply a longer step.}
+The grid provides two matched-effective-step diagonals, and together they say what one alone could not. At effective step $0.1$, $(\eta = 0.01, \mu = 0.9)$ against $(\eta = 0.1, \mu = 0)$ separates widely, $5.0$ pp / $0.061$ / $0.972$ against $22.3$ pp / $0.590$ / $0.895$ on the exact arm; at effective step $0.01$, $(\eta = 0.001, \mu = 0.9)$ against $(\eta = 0.01, \mu = 0)$ reads $2.7$ pp / $0.040$ / $0.973$ against $3.9$ pp / $0.346$ / $0.897$. The depth separation collapses from $17.3$ to $1.2$ pp as the matched step shrinks, which is what two legs approaching their own $\eta \rightarrow 0$ limits must do; the area separation does not, staying eightfold at the finest matched pair. What differs between the legs is therefore the shape of the residual excursion and not only its scale. This remains the secondary read Section~\ref{subsec:ladder} calls it: the legs warm-start from anchors trained at their own momentum and settle some seven accuracy points apart, so comparing their levels compares two operating points.
+
+\paragraph{Momentum's arc is depth without tail.}
+The within-leg contrast is both the safer comparison and the sharper one. On the sampled arm the momentum leg's flow-time area falls by more than two orders of magnitude across the ladder, $0.105 \rightarrow 0.0006$, and extrapolates to zero ($-0.001$), while its depth converges on $4.1$ pp. In the limit the transient that survives under momentum is a dip that recovers almost at once: it keeps the instantaneous drop and loses the hanging tail. The $\mu = 0$ arc keeps both, $4.7$ pp of depth and $0.27$ of area that no further shortening of the step removes. Of the two-part measure of Section~\ref{subsec:metrics}, then, momentum leaves essentially only the depth term standing.
+
+\paragraph{The coarse rung reproduces the operating point in distribution.}
+$\eta = 0.1$ on the sampled arm is the standard operating point, but it is not the archived vanilla-ER reference run (D1, Appendix~\ref{app:curr_full}) and is not paired with it: the ladder skips $T_0$ training so that every cell can share one $\theta_0^*$, which leaves the two protocols on different RNG streams and hence with different buffer contents seed for seed. Their distributions agree, $22.9 \pm 4.2$ against $19.5 \pm 4.1$ pp of depth and $5.77 \pm 0.80$ against $6.27 \pm 0.47$ of step-axis area, one-standard-deviation intervals overlapping on both. That is a check that warm-starting has not moved the operating point, and nothing stronger than that.
+
 \subsection{rot-MNIST: \texorpdfstring{$\lambda$}{lambda}-Curriculum (C-series)}
 \label{app:curr_full}
 
@@ -193,6 +202,11 @@ premise, and the practical scalar-gate configuration remains C7$_M$
     \label{tab:res_c8}
 \end{table}
 
+\paragraph{The gate against the ladder's bar, rung by rung.}
+Lowering the gap is not by itself the gate's claim, because the step size lowers it with no method at all; the claim has to be that the gate lowers it at the standard step size and in the standard number of steps (Section~\ref{subsec:res_levels}). Nor is there an accuracy handicap to discount from the ladder's numbers: ACC is flat to rising down both arms and min-ACC improves sharply, so what the ladder charges is compute, the epoch count scaling as $1/\eta$ at matched flow time. Read against that bar on the matched $1$k arm at momentum $0$, the curriculum loses on everything but the budget. C7 leaves $13.9$ pp of depth at ACC $0.837$ and min-ACC $0.743$ in one epoch at $\eta = 0.1$; the $\eta = 0.01$ rung leaves $4.9$ pp at ACC $0.877$ and min-ACC $0.832$ in ten. Measured against its own protocol's reference the schedule removes $5.6$ pp of vanilla ER's $19.5$ and spends $3.6$ pp of ACC doing it ($0.873 \rightarrow 0.837$), where the tenfold shorter step removes $18.0$ pp of the ladder's distributionally matched $22.9$ and gains $0.3$ pp of ACC ($0.874 \rightarrow 0.877$). The flow-time areas do land together, $0.27$ for C7 against the $\eta = 0.01$ rung's $0.275$ (the curriculum's step-axis $2.7$ converted at $A_\tau = \eta A_{\text{steps}}$), but the two are referenced to plateaus four points apart and a lower plateau is a lower line to integrate against, so this is not a tie (Section~\ref{subsec:metrics}).
+
+Under momentum the comparison turns around, which is the reading Section~\ref{subsec:res_scalar} quotes. On the same $1$k arm at momentum $0.9$ the $\eta = 0.01$ rung reaches $5.4$ pp at ACC $0.940$ and min-ACC $0.901$ after ten epochs, so one epoch of the schedule is $1.7$ pp shallower and $1.8$ pp better in worst-case retention than ten epochs of a tenfold shorter step, for $0.9$ pp of ACC (the two protocols' $\eta = 0.1$ cells agree here as at momentum $0$, $15.4 \pm 2.2$ against $15.9 \pm 2.6$ pp at ACC $0.929$ against $0.928$). That rung is a rung and not a limit, but the ladder's fourth rung supplies the limit as well: at $\eta = 0.001$, a hundred epochs, the same arm reaches $4.6$ pp at ACC $0.942$ and min-ACC $0.910$, and the fine-rung extrapolation puts the $\eta \rightarrow 0$ depth of this leg at $4.1$ pp. One epoch of the schedule is thus $0.9$ pp shallower than a hundred epochs of a hundredfold shorter step, and its $3.7 \pm 0.4$ pp sits at or below what shortening the step can ultimately reach here, for $1.1$ pp of ACC.
+
 \subsection{rot-MNIST: Buffer-Fidelity Diagnostics}
 \label{app:grad_full}
 
@@ -230,7 +244,7 @@ construction.
 \label{app:per_full}
 
 Table~\ref{tab:app_per_full} gives the full metric set for the asymmetric-PER
-$\delta$ sweep on both buffer legs and at both momentum settings; the momentum-$0$
+$\delta$ sweep on both buffer legs and at both momentum settings; the standard-buffer momentum-$0$
 depth/area/ACC columns match Table~\ref{tab:res_per} in the main text, and the
 momentum-$0.9$ rows are the source of the re-inflation numbers of
 Section~\ref{subsec:res_directional}. Momentum-$0.9$ runs cover the three
@@ -276,6 +290,26 @@ full-buffer leg.
         (${\approx}0.965$) are diagnostic values only, the full buffer defeating the limited-memory premise.}
     \label{tab:app_per_full}
 \end{table}
+
+\paragraph{The exact-gradient diagnostic and its cliffs.}
+The full ($60$k) buffer is a diagnostic probe rather than an operating point: replaying the exact past-task gradient switches the variance driver off, so whatever excursion survives is the arc together with the standard step's overshoot of it (Section~\ref{subsec:res_levels}). Read that way the leg behaves as the account predicts down to $\delta = 0.1$, the excursion shrinking with the filter. The one place the sweep breaks monotonicity is the strongest setting, $\delta = 0.03$, where mean depth jumps to $9.5$ pp with a std of $8.2$: in $3$ of $5$ seeds the past-task curve holds flat for roughly two hundred steps and then slides off a late cliff, the red per-seed traces in Figure~\ref{fig:per_cliffs}. A solver control rules out the most straightforward explanation. The filter solves for its preconditioned direction by conjugate gradient, so an under-converged solve at the strongest damping would be the obvious suspect; rerunning the setting with the CG solver at $60$ iterations instead of the default $25$ (row \emph{$\delta{=}0.03$ (CG $60$)} of Table~\ref{tab:app_per_full}) reproduces the cliffs at the same seeds and the same steps, and if anything deepens them ($11.5 \pm 10.1$ pp mean depth against $9.5 \pm 8.2$). They are not a numerical artefact of the solve. The cliffs came as a surprise: the account made no prediction of a late, abrupt failure, and nothing in the rest of the sweep hints at one. They are also confined to the exact-gradient diagnostic: at the same $\delta$ on the standard $1$k buffer no seed shows one (depth $4.8 \pm 1.9$ pp, the monotone end of the sweep). The failure is tied to the exact replay gradient: the sampling jitter of a practical buffer appears to protect against it, the same noise that elsewhere drives the overshoot here keeping the iterate from settling into the escape direction. Why the cliffs happen we can only partly say. A reading consistent with the data is a blind spot of the gate's model of the past task: the filter passes new-task pressure through directions its sampled Fisher rates as flat, and in these seeds that trust appears to be misplaced further out along the trajectory. We offer this as a hypothesis, not an established mechanism. What the control does establish is that the strongest filter can fail late and abruptly when nothing perturbs it. Because the failure is confined to the diagnostic leg, it is unlikely in a practical configuration, but it exposes a real weakness of feedforward control.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_cliffs.png}
+    \caption{The exact-gradient diagnostic leg of the $\delta$ sweep: per-step past-task ($T_0$) accuracy across the rot-MNIST switch at momentum $0$ on the full ($60$k) buffer, where the variance driver is off and the residual excursion is the arc together with the standard step's overshoot of it. The excursion shrinks with the filter for $\delta \ge 0.1$ (seed mean with $\pm$std bands, weaker filter light $\rightarrow$ stronger filter dark), but at the strongest setting $\delta{=}0.03$ the gate fails late and abruptly: shown per seed (critical red), $3$ of $5$ seeds hold flat for ${\sim}200$ steps and then slide off a cliff. The failure is confined to this diagnostic leg; at the same $\delta$ on the standard $1$k buffer no seed shows one (Figure~\ref{fig:per_curves}(a), depth $4.8 \pm 1.9$ pp).}
+    \label{fig:per_cliffs}
+\end{figure}
+
+\paragraph{The selective slowdown on the new task.}
+Figure~\ref{fig:per_plasticity} is the $T_1$ counterpart of the $\delta$ sweep, the evidence behind the no-plasticity-cost claim of Section~\ref{subsec:res_directional}: the strongest filter lags over roughly the first fifty steps and is indistinguishable from vanilla ER thereafter, so the horizon-$100$ plasticity metrics record no cost.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_plasticity.png}
+    \caption{New-task ($T_1$) accuracy across the rot-MNIST switch at momentum $0$ for the standard-buffer $\delta$ sweep against vanilla ER (red); seed mean with $\pm$std bands. The strongest filter ($\delta{=}0.03$, darkest) lags briefly over the first ${\approx}50$ steps, the selective slowdown along past-task-sharp directions, and matches vanilla from then on; the plasticity metrics at horizon $100$ and beyond record no cost (Table~\ref{tab:res_per}).}
+    \label{fig:per_plasticity}
+\end{figure}
 
 \subsection{rot-MNIST: Symmetric vs.\ Asymmetric Preconditioning}
 \label{app:per_sym}

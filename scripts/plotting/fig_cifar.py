@@ -5,6 +5,9 @@ Per-step past-task (T0) accuracy across the clean -> Gaussian-noise switch
 overlaying vanilla ER (red), the shipping curriculum (blue), and asymmetric PER
 (aqua):
 
+The panels are stacked, one above the other, so the figure fits a single text
+column and the two normalisations are read against a shared step axis:
+
   (a) BatchNorm: vanilla dips and re-adapts slowly; both gates hold T0 near its
       plateau through the switch.
   (b) GroupNorm: vanilla ER crashes T0 almost to chance and crawls back over the
@@ -32,17 +35,23 @@ def _panel(ax, series, title):
         vw.plot_transition(ax, m, k, v, "task_0_acc", color, name, window=WINDOW)
     ax.set_xlim(*WINDOW)
     ax.set_ylim(0.24, 0.85)
-    ax.set_xlabel("steps into new task ($T_1$)")
+    ax.set_ylabel("past-task ($T_0$) accuracy")
     ax.set_title(title)
 
 
 def main() -> None:
     vw.apply_style()
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(9.8, 4.3), sharey=True)
-    _panel(axL, BN, "(a) BatchNorm")
-    _panel(axR, GN, "(b) GroupNorm")
-    axL.set_ylabel("past-task ($T_0$) accuracy")
-    leg = axL.legend(loc="lower right", handlelength=1.7)
+    # Stacked for a single text column; shared x and y, so the two
+    # normalisations are directly comparable and only the bottom panel needs
+    # the step axis.  Both panels carry the same three methods, so the legend
+    # is drawn once, in (a).
+    fig, (axT, axB) = plt.subplots(2, 1, figsize=(4.2, 5.2), sharex=True,
+                                   sharey=True, constrained_layout=True)
+    _panel(axT, BN, "(a) BatchNorm")
+    _panel(axB, GN, "(b) GroupNorm")
+    axB.set_xlabel("steps into new task ($T_1$)")
+    leg = axT.legend(loc="lower right", handlelength=1.7, labelspacing=0.3,
+                     borderpad=0.2)
     for line in leg.get_lines():
         line.set_linewidth(2.4)
     vw.finalize(fig, vw.FIG_DIR / "cifar" / "cifar_headline.png")
