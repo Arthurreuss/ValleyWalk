@@ -12,6 +12,15 @@ share the step axis, so the dip in (a) lines up with the debt in (b):
       momentum 0 (the plasticity debt); momentum pays it back, restoring the
       new-task learning curve to the vanilla pace.
 
+``curriculum_c8.png`` (Appendix C.2) is the variance control at momentum 0:
+the same schedule (C7) is run once on the 1k reservoir and once on the exact
+60k replay gradient (C8), over the ungated reference.  If what C7 still leaks
+at momentum 0 were a second deformation of the path, the exact gradient would
+leave it standing; it does not, which is what makes the residual estimator
+variance.  The seed band carries as much of that as the mean does -- C7's
+jitter is a band, C8's plateau is a line -- and (b) prices the control: with no
+momentum to repay it, the exact gradient's plasticity debt is never paid back.
+
 ``curriculum_linear.png`` and ``curriculum_adaptive.png`` (Appendix C.2) put
 every condition of the C-series behind that one headline rung, one figure per
 schedule family, on a shared 2x2: rows are the momentum setting, columns are
@@ -32,6 +41,9 @@ import matplotlib.pyplot as plt
 # (method, ablation_key, base value); "_M" appends for the momentum-0.9 leg.
 VANILLA = ("er", "decomposition", "D1_vanilla")
 CURR = ("er", "curriculum", "C7_adaptive_lmin0.20")
+# C8: the same schedule as C7, replaying the whole past task instead of a 1k
+# reservoir -- the estimator-variance control, not a shippable configuration.
+CURR_FULL = ("er", "curriculum", "C8_adaptive_lmin0.20_fullbuf")
 SERIES = [(VANILLA, vw.C_VANILLA, "vanilla ER"),
           (CURR, vw.C_CURR, "curriculum")]
 
@@ -88,6 +100,39 @@ def _sweep_panel(ax, conds, task_col, window, *, suffix):
     for (value, label), color in zip(conds, ramp):
         vw.plot_transition(ax, *CURR[:2], value + suffix, task_col, color,
                            label, window=window, lw=2.0, alpha_band=0.10)
+
+
+def _c8_figure() -> None:
+    """Appendix C.2: C7 against C8 at momentum 0, the estimator-variance control."""
+    # Appendix C is set \onecolumn, so this is drawn at the full text width.
+    fig, (axL, axR) = plt.subplots(1, 2, figsize=(7.4, 3.1),
+                                   constrained_layout=True)
+    series = [(VANILLA, vw.C_VANILLA, "vanilla ER"),
+              (CURR, vw.C_CURR, "curriculum ($1$k reservoir)"),
+              (CURR_FULL, vw.C_FULL, "curriculum + exact replay")]
+
+    for ax, task_col, window in ((axL, "task_0_acc", WIN_T0),
+                                 (axR, "task_1_acc", WIN_T1)):
+        vw.mark_switch(ax)
+        for (m, k, v), color, label in series:
+            # The legend lives in (b), where the curves leave the corner free.
+            vw.plot_transition(ax, m, k, v, task_col, color,
+                               label if ax is axR else None,
+                               window=window, lw=2.0, alpha_band=0.14)
+        ax.set_xlim(-25, 235)
+        ax.set_xlabel("steps into new task ($T_1$)")
+
+    axL.set_ylim(0.65, 0.92)
+    axL.set_ylabel("past-task ($T_0$) accuracy")
+    axL.set_title("(a) Stability, momentum $0$")
+
+    axR.set_ylim(0.10, 0.95)
+    axR.set_ylabel("new-task ($T_1$) accuracy")
+    axR.set_title("(b) Plasticity, momentum $0$")
+    _leg(axR, loc="lower right", handlelength=1.6, labelspacing=0.3,
+         borderpad=0.2)
+
+    vw.finalize(fig, vw.FIG_DIR / "curriculum" / "curriculum_c8.png")
 
 
 def _sweep_figure(conds, name, legend_title) -> None:
@@ -159,6 +204,7 @@ def main() -> None:
 
     vw.finalize(fig, vw.FIG_DIR / "curriculum" / "curriculum.png")
 
+    _c8_figure()
     _sweep_figure(LINEAR, "curriculum_linear.png", "ramp length")
     _sweep_figure(ADAPTIVE, "curriculum_adaptive.png", "$\\lambda_{\\min}$ floor")
 

@@ -95,6 +95,22 @@ would draw the drop as beginning before the switch that causes it. The
 convention affects the drawn curve only. Every reported metric is computed from
 the logged samples themselves, so none of them depends on it.
 
+\paragraph{Drawing runs of different length on one axis.}
+\label{app:impl_flowaxis}
+The rungs of the ladder (Section~\ref{subsec:ladder}) are not the same length in
+steps: at matched flow time the epoch count scales as $1/\eta$, so the
+$\eta = 0.001$ rung takes a hundred times as many updates as the standard one to
+cover the same $\tau = 23.5$. Its figures are therefore drawn against flow time
+$\tau = \eta \cdot (\text{steps into } T_1)$ rather than against the step index,
+which is the axis on which a uniform rescaling of $\eta$ is a reparametrisation
+of one and the same gradient flow. The evaluation cadence is scaled by the same
+factor $c = 0.1/\eta$ (Appendix~\ref{app:impl_ladder}), so each rung contributes
+$235$ samples at identical $\tau$ values and the curves are compared
+sample-for-sample rather than interpolated onto a common grid; areas convert
+with the same factor, $A_\tau = \eta A_{\text{steps}}$
+(Section~\ref{subsec:metrics}). Every block outside the ladder runs at a single
+$\eta$, where the two axes differ by a constant, and keeps the step index.
+
 \subsection{Experience replay}
 \label{app:impl_er}
 

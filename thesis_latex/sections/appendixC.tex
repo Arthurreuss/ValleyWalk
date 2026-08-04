@@ -205,8 +205,8 @@ deeper-looking dip is a deeper dip.
 Table~\ref{tab:res_c8} crosses the practical curriculum with the full $60$k buffer
 at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}).
 Source variance reduction alone (C8, full buffer, $\mu{=}0$) already closes the
-gap to $0.2$ pp, so the residual the curriculum leaves at $\mu{=}0$ is estimator
-variance, not structure; momentum's gap-closing role is interchangeable with the
+gap to $0.2$ pp (Figure~\ref{fig:c8_control}), so the residual the curriculum
+leaves at $\mu{=}0$ is estimator variance, not structure; momentum's gap-closing role is interchangeable with the
 full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$
 reaches $0.955$, approaching the exact-gradient ceiling (the ladder's ungated
 $\eta = 0.1$ rung on the same $60$k gradient at $\mu{=}0.9$: $0.965$,
@@ -251,6 +251,29 @@ premise, and the practical scalar-gate configuration remains C7$_M$
         at C7 ($\mu{=}0$) is variance, not structure.}
     \label{tab:res_c8}
 \end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/curriculum/curriculum_c8.png}
+    \caption{The estimator-variance control at momentum $0$: per-step accuracy
+        across the rot-MNIST switch, seed mean with $\pm$std bands, for vanilla
+        ER (red), the practical curriculum C7 on the $1$k reservoir (blue), and
+        the same schedule on the exact $60$k replay gradient C8 (violet).
+        \textbf{(a) Stability ($T_0$):} C7 removes vanilla's boundary spike but
+        keeps a jittery chronic drop that bottoms out near $0.79$; with the
+        replay gradient exact, the same schedule never leaves its pre-switch
+        plateau ($0.2$ pp of depth against C7's $13.9$,
+        Table~\ref{tab:res_c8}). The seed band reads the same way as the mean,
+        widening to nearly $6$ pp across C7's transient and staying under one
+        for C8. What C7 still leaks at this momentum setting is therefore the
+        noise of the limited buffer, not a second deformation of the path.
+        \textbf{(b) Plasticity ($T_1$):} what the control costs. Defending the
+        past task at every step makes new-task learning the slowest of the
+        three, and with no momentum to repay the debt the epoch ends some $11$
+        pp behind C7, which is why C8 posts the lowest ACC of the four cells in
+        Table~\ref{tab:res_c8} while holding the smallest gap.}
+    \label{fig:c8_control}
+\end{figure}
 
 \paragraph{The gate against the ladder's bar, rung by rung.}
 Lowering the gap is not by itself the gate's claim, because the step size lowers it with no method at all; the claim has to be that the gate lowers it at the standard step size and in the standard number of steps (Section~\ref{subsec:res_levels}). Nor is there an accuracy handicap to discount from the ladder's numbers: ACC is flat to rising down both arms and min-ACC improves sharply, so what the ladder charges is compute, the epoch count scaling as $1/\eta$ at matched flow time. Read against that bar on the matched $1$k arm at momentum $0$, the curriculum loses on everything but the budget. C7 leaves $13.9$ pp of depth at ACC $0.837$ and min-ACC $0.743$ in one epoch at $\eta = 0.1$; the $\eta = 0.01$ rung leaves $4.9$ pp at ACC $0.877$ and min-ACC $0.832$ in ten. Measured against its own protocol's reference the schedule removes $5.6$ pp of vanilla ER's $19.5$ and spends $3.6$ pp of ACC doing it ($0.873 \rightarrow 0.837$), where the tenfold shorter step removes $18.0$ pp of the ladder's distributionally matched $22.9$ and gains $0.3$ pp of ACC ($0.874 \rightarrow 0.877$). The flow-time areas do land together, $0.27$ for C7 against the $\eta = 0.01$ rung's $0.275$ (the curriculum's step-axis $2.7$ converted at $A_\tau = \eta A_{\text{steps}}$), but the two are referenced to plateaus four points apart and a lower plateau is a lower line to integrate against, so this is not a tie (Section~\ref{subsec:metrics}).
@@ -487,6 +510,30 @@ curriculum holds $T_0$ flat through the same boundary
 its batch-norm value ($1.7$ vs.\ $3.6$). This is a reading rather than an
 established mechanism; a control that freezes the running statistics across
 the switch would isolate it.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\linewidth]{img/results/cifar/cifar_plasticity.png}
+    \caption{What the deep-backbone protection costs on the new task: the
+        plasticity counterpart of Figure~\ref{fig:cifar_curves}, over the same
+        conditions and the same post-switch window, but tracking new-task ($T_1$)
+        accuracy across the clean $\rightarrow$ Gaussian-noise switch
+        (ResNet-18, momentum $0.9$, buffer $5{,}000$, seed mean with $\pm$std
+        bands). \textbf{(a) BatchNorm:} both gates track vanilla ER, the
+        directional gate lagging it by a few points over the first hundred
+        steps ($0.53$ against $0.59$ at step $100$) before closing; after ten
+        epochs the three land within $2.5$ pp of each other ($0.69$, $0.68$,
+        $0.67$). \textbf{(b) GroupNorm:} the gates are \emph{faster} than
+        vanilla ER on the new task at step $50$, by $6$ pp (scalar gate) and
+        $11$ pp (directional gate), and the
+        directional gate finishes ahead of it ($0.72$ against $0.70$). Where
+        the ungated baseline loses the past task it also loses the shared
+        features the new task starts from, so on this backbone the protection
+        is not bought from plasticity, which is what keeps the ACC column of
+        Table~\ref{tab:app_cifar_headline} flat across the batch-norm rows and
+        rising across the group-norm ones.}
+    \label{fig:cifar_plasticity}
+\end{figure}
 
 \subsection{CIFAR-10: Generalisation Block}
 \label{app:cifar_gen_full}
