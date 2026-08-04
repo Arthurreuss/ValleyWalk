@@ -6,10 +6,7 @@ This appendix gives the full metric set for every condition of the main experime
 \subsection{rot-MNIST: The Step-Size Ladder (S-series)}
 \label{app:ladder_full}
 
-The sixteen cells of the ladder of Section~\ref{subsec:ladder}: four rungs at
-matched flow time $\tau = 23.5$, each on the $1$k reservoir and on the $60$k
-exact past-task gradient, at both momentum settings, all warm-started from one
-frozen $\theta_0^*$ per momentum setting and seed.
+The sixteen cells of the ladder of Section~\ref{subsec:ladder}: four rungs at matched flow time $\tau = 23.5$, each on the $1$k reservoir and on the $60$k exact past-task gradient, at both momentum settings, all warm-started from one frozen $\theta_0^*$ per momentum setting and seed.
 
 \begin{table}[H]
     \centering
@@ -42,48 +39,20 @@ frozen $\theta_0^*$ per momentum setting and seed.
             \hline
         \end{tabular}%
     }
-    \caption{Step-size ladder on two-task rot-MNIST, full metrics: rungs
-        $\eta = 0.1$, $0.1/3$, $0.01$ and $0.001$ at $1$, $3$, $10$ and $100$
-        epochs, each on
-        both buffer arms and at both momentum settings, five seeds. Depth is a
-        maximum over accuracies and so is $\eta$-invariant. Area is \emph{not}:
-        \texttt{gap\_area\_end} is a trapezoidal integral of the drop curve
-        against the step index, weighted by the spacing between records
-        (units accuracy${\cdot}$steps, Section~\ref{subsec:metrics}), so an
-        identically shaped excursion reads $c = 0.1/\eta$ times larger on a
-        rung stretched by $c$. The area column is therefore reported in flow
-        time, $A_\tau = \eta\,A_{\text{steps}}$, which is the integral of the
-        same curve against $\tau = \sum_t \eta$ and is comparable across
-        rungs; the fixed-$\eta$ blocks elsewhere in this appendix keep the
-        step-axis value. $\mathrm{WF}_{100}$ and $\mathrm{WP}_{100}$ are fixed
-        hundred-\emph{step} horizons and therefore span a hundredth of the flow
-        time at $\eta = 0.001$ that they span at $\eta = 0.1$; their movement
-        down the ladder is a units artefact of the reparametrisation
-        (Section~\ref{subsec:res_levels}).}
+    \caption{Step-size ladder on two-task rot-MNIST, full metrics: rungs $\eta = 0.1$, $0.1/3$, $0.01$ and $0.001$ at $1$, $3$, $10$ and $100$ epochs, each on both buffer arms and at both momentum settings, five seeds. Depth is a maximum over accuracies and so is $\eta$-invariant. Area is \emph{not}: \texttt{gap\_area\_end} is a trapezoidal integral of the drop curve against the step index, weighted by the spacing between records (units accuracy${\cdot}$steps, Section~\ref{subsec:metrics}), so an identically shaped excursion reads $c = 0.1/\eta$ times larger on a rung stretched by $c$. The area column is therefore reported in flow time, $A_\tau = \eta\,A_{\text{steps}}$, which is the integral of the same curve against $\tau = \sum_t \eta$ and is comparable across rungs; the fixed-$\eta$ blocks elsewhere in this appendix keep the step-axis value. $\mathrm{WF}_{100}$ and $\mathrm{WP}_{100}$ are fixed hundred-\emph{step} horizons and therefore span a hundredth of the flow time at $\eta = 0.001$ that they span at $\eta = 0.1$; their movement down the ladder is a units artefact of the reparametrisation (Section~\ref{subsec:res_levels}).}
     \label{tab:app_ladder}
 \end{table}
 
-\paragraph{Momentum is not simply a longer step.}
-The grid provides two matched-effective-step diagonals, and together they say what one alone could not. At effective step $0.1$, $(\eta = 0.01, \mu = 0.9)$ against $(\eta = 0.1, \mu = 0)$ separates widely, $5.0$ pp / $0.061$ / $0.972$ against $22.3$ pp / $0.590$ / $0.895$ on the exact arm; at effective step $0.01$, $(\eta = 0.001, \mu = 0.9)$ against $(\eta = 0.01, \mu = 0)$ reads $2.7$ pp / $0.040$ / $0.973$ against $3.9$ pp / $0.346$ / $0.897$. The depth separation collapses from $17.3$ to $1.2$ pp as the matched step shrinks, which is what two legs approaching their own $\eta \rightarrow 0$ limits must do; the area separation does not, staying eightfold at the finest matched pair. What differs between the legs is therefore the shape of the residual excursion and not only its scale. This remains the secondary read Section~\ref{subsec:ladder} calls it: the legs warm-start from anchors trained at their own momentum and settle some seven accuracy points apart, so comparing their levels compares two operating points.
+\paragraph{Momentum is not simply a longer step.} The grid provides two matched-effective-step diagonals, and together they say what one alone could not. At effective step $0.1$, $(\eta = 0.01, \mu = 0.9)$ against $(\eta = 0.1, \mu = 0)$ separates widely, $5.0$ pp / $0.061$ / $0.972$ against $22.3$ pp / $0.590$ / $0.895$ on the exact arm; at effective step $0.01$, $(\eta = 0.001, \mu = 0.9)$ against $(\eta = 0.01, \mu = 0)$ reads $2.7$ pp / $0.040$ / $0.973$ against $3.9$ pp / $0.346$ / $0.897$. The depth separation collapses from $17.3$ to $1.2$ pp as the matched step shrinks, which is what two legs approaching their own $\eta \rightarrow 0$ limits must do; the area separation does not, staying eightfold at the finest matched pair. What differs between the legs is therefore the shape of the residual excursion and not only its scale. This remains the secondary read Section~\ref{subsec:ladder} calls it: the legs warm-start from anchors trained at their own momentum and settle some seven accuracy points apart, so comparing their levels compares two operating points.
 
-\paragraph{Momentum's arc is depth without tail.}
-The within-leg contrast is both the safer comparison and the sharper one. On the sampled arm the momentum leg's flow-time area falls by more than two orders of magnitude across the ladder, $0.105 \rightarrow 0.0006$, and extrapolates to zero ($-0.001$), while its depth converges on $4.1$ pp. In the limit the transient that survives under momentum is a dip that recovers almost at once: it keeps the instantaneous drop and loses the hanging tail. The $\mu = 0$ arc keeps both, $4.7$ pp of depth and $0.27$ of area that no further shortening of the step removes. Of the two-part measure of Section~\ref{subsec:metrics}, then, momentum leaves essentially only the depth term standing.
+\paragraph{Momentum's arc is depth without tail.} The within-leg contrast is both the safer comparison and the sharper one. On the sampled arm the momentum leg's flow-time area falls by more than two orders of magnitude across the ladder, $0.105 \rightarrow 0.0006$, and extrapolates to zero ($-0.001$), while its depth converges on $4.1$ pp. In the limit the transient that survives under momentum is a dip that recovers almost at once: it keeps the instantaneous drop and loses the hanging tail. The $\mu = 0$ arc keeps both, $4.7$ pp of depth and $0.27$ of area that no further shortening of the step removes. Of the two-part measure of Section~\ref{subsec:metrics}, then, momentum leaves essentially only the depth term standing.
 
-\paragraph{The coarse rung reproduces the operating point in distribution.}
-$\eta = 0.1$ on the sampled arm is the standard operating point, but it is not the archived vanilla-ER reference run (D1, Appendix~\ref{app:curr_full}) and is not paired with it: the ladder skips $T_0$ training so that every cell can share one $\theta_0^*$, which leaves the two protocols on different RNG streams and hence with different buffer contents seed for seed. Their distributions agree, $22.9 \pm 4.2$ against $19.5 \pm 4.1$ pp of depth and $5.77 \pm 0.80$ against $6.27 \pm 0.47$ of step-axis area, one-standard-deviation intervals overlapping on both. That is a check that warm-starting has not moved the operating point, and nothing stronger than that.
+\paragraph{The coarse rung reproduces the operating point in distribution.} $\eta = 0.1$ on the sampled arm is the standard operating point, but it is not the archived vanilla-ER reference run (D1, Appendix~\ref{app:curr_full}) and is not paired with it: the ladder skips $T_0$ training so that every cell can share one $\theta_0^*$, which leaves the two protocols on different RNG streams and hence with different buffer contents seed for seed. Their distributions agree, $22.9 \pm 4.2$ against $19.5 \pm 4.1$ pp of depth and $5.77 \pm 0.80$ against $6.27 \pm 0.47$ of step-axis area, one-standard-deviation intervals overlapping on both. That is a check that warm-starting has not moved the operating point, and nothing stronger than that.
 
 \subsection{rot-MNIST: \texorpdfstring{$\lambda$}{lambda}-Curriculum (C-series)}
 \label{app:curr_full}
 
-Vanilla ER at the standard protocol (D1: $1$k reservoir, $\eta = 0.1$, one
-online epoch per task, the two gradients summed as they come) is the reference
-every rot-MNIST comparison is quoted against, and its full metric row heads
-each momentum block below rather than standing in a table of its own. These
-are the runs from which the buffer-fidelity diagnostics of
-Table~\ref{tab:app_grad} (Appendix~\ref{app:grad_full}) are taken; the
-step-size ladder re-runs its own
-$\eta = 0.1$ rung rather than reusing the row, because every cell of the
-ladder has to share one frozen $\theta_0^*$ (Appendix~\ref{app:impl_ladder}).
+Vanilla ER at the standard protocol (D1: $1$k reservoir, $\eta = 0.1$, one online epoch per task, the two gradients summed as they come) is the reference every rot-MNIST comparison is quoted against, and its full metric row heads each momentum block below rather than standing in a table of its own. These are the runs from which the buffer-fidelity diagnostics of Table~\ref{tab:app_grad} (Appendix~\ref{app:grad_full}) are taken; the step-size ladder re-runs its own $\eta = 0.1$ rung rather than reusing the row, because every cell of the ladder has to share one frozen $\theta_0^*$ (Appendix~\ref{app:impl_ladder}).
 
 \begin{table}[H]
     \centering
@@ -116,121 +85,29 @@ ladder has to share one frozen $\theta_0^*$ (Appendix~\ref{app:impl_ladder}).
             \hline
         \end{tabular}%
     }
-    \caption{rot-MNIST $\lambda$-curriculum sweep, full metrics, at both momentum
-        settings, each block headed by the vanilla-ER reference the sweep is
-        quoted against. All conditions applied on top of standard ER
-        (1\,k reservoir). Area is on the step axis, as in every block at fixed
-        $\eta$; the ladder converts to flow time
-        (Table~\ref{tab:app_ladder}).}
+    \caption{rot-MNIST $\lambda$-curriculum sweep, full metrics, at both momentum settings, each block headed by the vanilla-ER reference the sweep is quoted against. All conditions applied on top of standard ER (1\,k reservoir). Area is on the step axis, as in every block at fixed $\eta$; the ladder converts to flow time (Table~\ref{tab:app_ladder}).}
     \label{tab:app_curr}
 \end{table}
 
-\paragraph{The ingredient sweep: adaptive signal and $\lambda_{\min}$ floor.}
-Table~\ref{tab:app_curr} settles the two design choices of the shipped
-configuration, and both are decided in the momentum-on leg. At momentum $0$
-the adaptive schedule is indistinguishable from the longest linear ramp
-($12.8$ pp / $2.2$ / $0.833$ against C3's $14.3$ pp / $1.8$ / $0.828$, seeds
-split on depth, $p = 0.44$), so at that setting it is preferred for having no
-ramp length to tune rather than for its numbers. Under momentum the same pair
-separates: C4$_M$ reaches $2.5$ pp / $0.3$ / $0.917$ against C3$_M$'s
-$6.2$ pp / $0.1$ / $0.925$, shallower in all five seeds by ${\approx}3.7$ pp,
-so the feedback signal both removes the knob and beats the best setting of the
-knob, at a small cost in final accuracy and in the tail. The floor trades that
-cost back. Raising $\lambda_{\min}$ from $0$ to $0.20$ (C4$_M$ $\rightarrow$
-C7$_M$) moves depth from $2.5$ to $3.7$ pp, worse in all five seeds, while
-accuracy moves from $0.917$ to $0.931$ and the area from $0.3$ to $0.03$,
-better in all five seeds on both; the intermediate settings C5$_M$ and C6$_M$
-walk monotonically between the two ends in depth and accuracy, so the floor is
-a graded Pareto knob rather than a switch. C7$_M$ is the shipped point because
-it clears the tuned linear ramp on all three quantities (depth in five seeds
-of five, accuracy in four) and returns accuracy to vanilla ER's level
-($3.7$ pp / $0.03$ / $0.931$ against $15.9$ pp / $1.0$ / $0.928$, above
-vanilla in four of five seeds and within the seed spread). At momentum $0$
-the floor is not a useful knob: it costs depth ($12.8 \rightarrow 13.9$ pp)
-and returns almost nothing in accuracy ($0.833 \rightarrow 0.837$), since
-early $T_1$ progress there is set by the boundary gradient the floor is too
-small to redirect.
+\paragraph{The ingredient sweep: adaptive signal and $\lambda_{\min}$ floor.} Table~\ref{tab:app_curr} settles the two design choices of the shipped configuration, and both are decided in the momentum-on leg. At momentum $0$ the adaptive schedule is indistinguishable from the longest linear ramp ($12.8$ pp / $2.2$ / $0.833$ against C3's $14.3$ pp / $1.8$ / $0.828$, seeds split on depth, $p = 0.44$), so at that setting it is preferred for having no ramp length to tune rather than for its numbers. Under momentum the same pair separates: C4$_M$ reaches $2.5$ pp / $0.3$ / $0.917$ against C3$_M$'s $6.2$ pp / $0.1$ / $0.925$, shallower in all five seeds by ${\approx}3.7$ pp, so the feedback signal both removes the knob and beats the best setting of the knob, at a small cost in final accuracy and in the tail. The floor trades that cost back. Raising $\lambda_{\min}$ from $0$ to $0.20$ (C4$_M$ $\rightarrow$ C7$_M$) moves depth from $2.5$ to $3.7$ pp, worse in all five seeds, while accuracy moves from $0.917$ to $0.931$ and the area from $0.3$ to $0.03$, better in all five seeds on both; the intermediate settings C5$_M$ and C6$_M$ walk monotonically between the two ends in depth and accuracy, so the floor is a graded Pareto knob rather than a switch. C7$_M$ is the shipped point because it clears the tuned linear ramp on all three quantities (depth in five seeds of five, accuracy in four) and returns accuracy to vanilla ER's level ($3.7$ pp / $0.03$ / $0.931$ against $15.9$ pp / $1.0$ / $0.928$, above vanilla in four of five seeds and within the seed spread). At momentum $0$ the floor is not a useful knob: it costs depth ($12.8 \rightarrow 13.9$ pp) and returns almost nothing in accuracy ($0.833 \rightarrow 0.837$), since early $T_1$ progress there is set by the boundary gradient the floor is too small to redirect.
 
-\paragraph{The sweep as trajectories.}
-Figures~\ref{fig:curr_linear} and~\ref{fig:curr_adaptive} are the trajectory
-form of Table~\ref{tab:app_curr}, one figure per schedule family on the same
-$2 \times 2$: rows the momentum setting, columns stability ($T_0$) and
-plasticity ($T_1$), vanilla ER carried into every panel as the ungated
-reference. Read together they show why the two knobs are decided in the
-momentum-on leg. At momentum $0$ both families trade the same way and neither
-trade is good: the linear ramps buy their shallower start by postponing the
-descent rather than preventing it, each rung releasing the brake at its own
-$N$ and dropping into the same chronic, jittery band vanilla ER occupies
-(Figure~\ref{fig:curr_linear}(a)), and every rung of both families pays for it
-in (b), where the new-task curve is displaced bodily to the right in
-proportion to how much schedule it carries. That displacement is the
-plasticity debt, and at momentum $0$ nothing repays it. The momentum row is a
-different picture. In (c) the schedules never dip at all: they descend gently
-from the pre-switch level and stay above vanilla ER for essentially the whole
-transition instead of dropping below it and recovering, and in (d) the new-task
-curves have closed most of the way back onto vanilla's, the debt repaid, with
-the residual gap ordered by the floor: the more the schedule is allowed to
-brake, the more of the debt survives acceleration, which is what makes
-$\lambda_{\min}$ a graded Pareto knob rather than a switch. Both stability
-panels of a figure span the same $0.30$ of accuracy on an offset floor, so a
-deeper-looking dip is a deeper dip.
+\paragraph{The sweep as trajectories.} Figures~\ref{fig:curr_linear} and~\ref{fig:curr_adaptive} are the trajectory form of Table~\ref{tab:app_curr}, one figure per schedule family on the same $2 \times 2$: rows the momentum setting, columns stability ($T_0$) and plasticity ($T_1$), vanilla ER carried into every panel as the ungated reference. Read together they show why the two knobs are decided in the momentum-on leg. At momentum $0$ both families trade the same way and neither trade is good: the linear ramps buy their shallower start by postponing the descent rather than preventing it, each rung releasing the brake at its own $N$ and dropping into the same chronic, jittery band vanilla ER occupies (Figure~\ref{fig:curr_linear}(a)), and every rung of both families pays for it in (b), where the new-task curve is displaced bodily to the right in proportion to how much schedule it carries. That displacement is the plasticity debt, and at momentum $0$ nothing repays it. The momentum row is a different picture. In (c) the schedules never dip at all: they descend gently from the pre-switch level and stay above vanilla ER for essentially the whole transition instead of dropping below it and recovering, and in (d) the new-task curves have closed most of the way back onto vanilla's, the debt repaid, with the residual gap ordered by the floor: the more the schedule is allowed to brake, the more of the debt survives acceleration, which is what makes $\lambda_{\min}$ a graded Pareto knob rather than a switch. Both stability panels of a figure span the same $0.30$ of accuracy on an offset floor, so a deeper-looking dip is a deeper dip.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/curriculum/curriculum_linear.png}
-    \caption{The linear $\lambda$-ramps (C1--C3) across the rot-MNIST switch:
-        per-step accuracy, seed mean with $\pm$std bands, $x{=}0$ the task
-        switch. Rows are the momentum setting, columns the two tasks; the ramp
-        runs short light $\rightarrow$ long dark, over vanilla ER (red,
-        dashed). A longer ramp holds $T_0$ higher for longer and costs
-        correspondingly more early $T_1$ progress, at momentum $0$ without ever
-        escaping the chronic band vanilla settles into.}
+    \caption{The linear $\lambda$-ramps (C1--C3) across the rot-MNIST switch: per-step accuracy, seed mean with $\pm$std bands, $x{=}0$ the task switch. Rows are the momentum setting, columns the two tasks; the ramp runs short light $\rightarrow$ long dark, over vanilla ER (red, dashed). A longer ramp holds $T_0$ higher for longer and costs correspondingly more early $T_1$ progress, at momentum $0$ without ever escaping the chronic band vanilla settles into.}
     \label{fig:curr_linear}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/curriculum/curriculum_adaptive.png}
-    \caption{The adaptive $\lambda$-curriculum and its $\lambda_{\min}$ floor
-        (C4--C7), drawn as Figure~\ref{fig:curr_linear}; the ramp runs
-        unfloored light $\rightarrow$ $\lambda_{\min}{=}0.20$ dark. Raising the
-        floor returns early $T_1$ progress (panels (b) and (d), the darker
-        rungs leading) for a slightly deeper $T_0$ transient, the trade the
-        shipped configuration C7 takes at momentum $0.9$
-        (Table~\ref{tab:app_curr}).}
+    \caption{The adaptive $\lambda$-curriculum and its $\lambda_{\min}$ floor (C4--C7), drawn as Figure~\ref{fig:curr_linear}; the ramp runs unfloored light $\rightarrow$ $\lambda_{\min}{=}0.20$ dark. Raising the floor returns early $T_1$ progress (panels (b) and (d), the darker rungs leading) for a slightly deeper $T_0$ transient, the trade the shipped configuration C7 takes at momentum $0.9$ (Table~\ref{tab:app_curr}).}
     \label{fig:curr_adaptive}
 \end{figure}
 
-\paragraph{Full-buffer momentum diagnostic (C8).}
-Table~\ref{tab:res_c8} crosses the practical curriculum with the full $60$k buffer
-at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}).
-Source variance reduction alone (C8, full buffer, $\mu{=}0$) already closes the
-gap to $0.2$ pp (Figure~\ref{fig:c8_control}), so the residual the curriculum
-leaves at $\mu{=}0$ is estimator variance, not structure; momentum's gap-closing role is interchangeable with the
-full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$
-reaches $0.955$, approaching the exact-gradient ceiling (the ladder's ungated
-$\eta = 0.1$ rung on the same $60$k gradient at $\mu{=}0.9$: $0.965$,
-Table~\ref{tab:app_ladder}), while
-re-introducing a small transient ($2.0$ pp, area $0.38$). The shape and timing
-of this transient point to the $\lambda_{\min}$ floor meeting momentum. With
-the replay gradient exact and the arc removed, the only push left in the first
-steps is the floored fifth of the new-task gradient (the logged gradient-norm
-ratio confirms the schedule sits at $\lambda = 0.2$ through the dip window),
-and momentum amplifies a persistent push toward $1/(1-\mu) = 10$ times its
-per-step size: the dip accordingly opens at the boundary, bottoms out about
-ten steps in, and closes within about fifty as the replay gradient reasserts
-itself. The floor is by construction the one share of the push the source gate
-does not attenuate, so momentum briefly re-inflates exactly that share, a
-miniature of the directional gate's re-inflation. The dose-response on the
-same exact buffer supports the reading: the floored push without momentum
-costs $0.2$ pp (C8), with momentum $2.0$ pp (C8$_M$), and the unfloored
-abrupt switch with momentum $14.1$ pp (the same ungated exact-gradient rung,
-which is not seed-paired with C8$_M$ and is read as a magnitude only).
-C8$_M$'s area additionally
-counts in full under the end-referencing convention of
-Section~\ref{subsec:metrics}, since it recovers above its pre-switch level. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory
-premise, and the practical scalar-gate configuration remains C7$_M$
-($3.7$ pp / $0.03$ / $0.931$) at $1/60$th the memory.
+\paragraph{Full-buffer momentum diagnostic (C8).} Table~\ref{tab:res_c8} crosses the practical curriculum with the full $60$k buffer at both momentum settings, isolating momentum's two roles (Section~\ref{subsec:res_scalar}). Source variance reduction alone (C8, full buffer, $\mu{=}0$) already closes the gap to $0.2$ pp (Figure~\ref{fig:c8_control}), so the residual the curriculum leaves at $\mu{=}0$ is estimator variance, not structure; momentum's gap-closing role is interchangeable with the full buffer. Acceleration alone (the $\mu{=}0.9$ column) restores accuracy: C8$_M$ reaches $0.955$, approaching the exact-gradient ceiling (the ladder's ungated $\eta = 0.1$ rung on the same $60$k gradient at $\mu{=}0.9$: $0.965$, Table~\ref{tab:app_ladder}), while re-introducing a small transient ($2.0$ pp, area $0.38$). The shape and timing of this transient point to the $\lambda_{\min}$ floor meeting momentum. With the replay gradient exact and the arc removed, the only push left in the first steps is the floored fifth of the new-task gradient (the logged gradient-norm ratio confirms the schedule sits at $\lambda = 0.2$ through the dip window), and momentum amplifies a persistent push toward $1/(1-\mu) = 10$ times its per-step size: the dip accordingly opens at the boundary, bottoms out about ten steps in, and closes within about fifty as the replay gradient reasserts itself. The floor is by construction the one share of the push the source gate does not attenuate, so momentum briefly re-inflates exactly that share, a miniature of the directional gate's re-inflation. The dose-response on the same exact buffer supports the reading: the floored push without momentum costs $0.2$ pp (C8), with momentum $2.0$ pp (C8$_M$), and the unfloored abrupt switch with momentum $14.1$ pp (the same ungated exact-gradient rung, which is not seed-paired with C8$_M$ and is read as a magnitude only). C8$_M$'s area additionally counts in full under the end-referencing convention of Section~\ref{subsec:metrics}, since it recovers above its pre-switch level. C8/C8$_M$ are diagnostic probes: the full buffer defeats the limited-memory premise, and the practical scalar-gate configuration remains C7$_M$ ($3.7$ pp / $0.03$ / $0.931$) at $1/60$th the memory.
 
 \begin{table}[H]
     \centering
@@ -245,54 +122,25 @@ premise, and the practical scalar-gate configuration remains C7$_M$
         ACC                      & $0.837$         & $0.931$           & $0.818$           & $\mathbf{0.955}$    \\
         \hline
     \end{tabular}
-    \caption{Curriculum $\times$ full buffer $\times$ momentum on rot-MNIST,
-        isolating momentum's two roles. Source variance reduction alone (C8) closes
-        the gap; acceleration alone (the $\mu$ column) restores accuracy. The residual
-        at C7 ($\mu{=}0$) is variance, not structure.}
+    \caption{Curriculum $\times$ full buffer $\times$ momentum on rot-MNIST, isolating momentum's two roles. Source variance reduction alone (C8) closes the gap; acceleration alone (the $\mu$ column) restores accuracy. The residual at C7 ($\mu{=}0$) is variance, not structure.}
     \label{tab:res_c8}
 \end{table}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/curriculum/curriculum_c8.png}
-    \caption{The estimator-variance control at momentum $0$: per-step accuracy
-        across the rot-MNIST switch, seed mean with $\pm$std bands, for vanilla
-        ER (red), the practical curriculum C7 on the $1$k reservoir (blue), and
-        the same schedule on the exact $60$k replay gradient C8 (violet).
-        \textbf{(a) Stability ($T_0$):} C7 removes vanilla's boundary spike but
-        keeps a jittery chronic drop that bottoms out near $0.79$; with the
-        replay gradient exact, the same schedule never leaves its pre-switch
-        plateau ($0.2$ pp of depth against C7's $13.9$,
-        Table~\ref{tab:res_c8}). The seed band reads the same way as the mean,
-        widening to nearly $6$ pp across C7's transient and staying under one
-        for C8. What C7 still leaks at this momentum setting is therefore the
-        noise of the limited buffer, not a second deformation of the path.
-        \textbf{(b) Plasticity ($T_1$):} what the control costs. Defending the
-        past task at every step makes new-task learning the slowest of the
-        three, and with no momentum to repay the debt the epoch ends some $11$
-        pp behind C7, which is why C8 posts the lowest ACC of the four cells in
-        Table~\ref{tab:res_c8} while holding the smallest gap.}
+    \caption{The estimator-variance control at momentum $0$: per-step accuracy across the rot-MNIST switch, seed mean with $\pm$std bands, for vanilla ER (red), the practical curriculum C7 on the $1$k reservoir (blue), and the same schedule on the exact $60$k replay gradient C8 (violet). \textbf{(a) Stability ($T_0$):} C7 removes vanilla's boundary spike but keeps a jittery chronic drop that bottoms out near $0.79$; with the replay gradient exact, the same schedule never leaves its pre-switch plateau ($0.2$ pp of depth against C7's $13.9$, Table~\ref{tab:res_c8}). The seed band reads the same way as the mean, widening to nearly $6$ pp across C7's transient and staying under one for C8. What C7 still leaks at this momentum setting is therefore the noise of the limited buffer, not a second deformation of the path. \textbf{(b) Plasticity ($T_1$):} what the control costs. Defending the past task at every step makes new-task learning the slowest of the three, and with no momentum to repay the debt the epoch ends some $11$ pp behind C7, which is why C8 posts the lowest ACC of the four cells in Table~\ref{tab:res_c8} while holding the smallest gap.}
     \label{fig:c8_control}
 \end{figure}
 
-\paragraph{The gate against the ladder's bar, rung by rung.}
-Lowering the gap is not by itself the gate's claim, because the step size lowers it with no method at all; the claim has to be that the gate lowers it at the standard step size and in the standard number of steps (Section~\ref{subsec:res_levels}). Nor is there an accuracy handicap to discount from the ladder's numbers: ACC is flat to rising down both arms and min-ACC improves sharply, so what the ladder charges is compute, the epoch count scaling as $1/\eta$ at matched flow time. Read against that bar on the matched $1$k arm at momentum $0$, the curriculum loses on everything but the budget. C7 leaves $13.9$ pp of depth at ACC $0.837$ and min-ACC $0.743$ in one epoch at $\eta = 0.1$; the $\eta = 0.01$ rung leaves $4.9$ pp at ACC $0.877$ and min-ACC $0.832$ in ten. Measured against its own protocol's reference the schedule removes $5.6$ pp of vanilla ER's $19.5$ and spends $3.6$ pp of ACC doing it ($0.873 \rightarrow 0.837$), where the tenfold shorter step removes $18.0$ pp of the ladder's distributionally matched $22.9$ and gains $0.3$ pp of ACC ($0.874 \rightarrow 0.877$). The flow-time areas do land together, $0.27$ for C7 against the $\eta = 0.01$ rung's $0.275$ (the curriculum's step-axis $2.7$ converted at $A_\tau = \eta A_{\text{steps}}$), but the two are referenced to plateaus four points apart and a lower plateau is a lower line to integrate against, so this is not a tie (Section~\ref{subsec:metrics}).
+\paragraph{The gate against the ladder's bar, rung by rung.} Lowering the gap is not by itself the gate's claim, because the step size lowers it with no method at all; the claim has to be that the gate lowers it at the standard step size and in the standard number of steps (Section~\ref{subsec:res_levels}). Nor is there an accuracy handicap to discount from the ladder's numbers: ACC is flat to rising down both arms and min-ACC improves sharply, so what the ladder charges is compute, the epoch count scaling as $1/\eta$ at matched flow time. Read against that bar on the matched $1$k arm at momentum $0$, the curriculum loses on everything but the budget. C7 leaves $13.9$ pp of depth at ACC $0.837$ and min-ACC $0.743$ in one epoch at $\eta = 0.1$; the $\eta = 0.01$ rung leaves $4.9$ pp at ACC $0.877$ and min-ACC $0.832$ in ten. Measured against its own protocol's reference the schedule removes $5.6$ pp of vanilla ER's $19.5$ and spends $3.6$ pp of ACC doing it ($0.873 \rightarrow 0.837$), where the tenfold shorter step removes $18.0$ pp of the ladder's distributionally matched $22.9$ and gains $0.3$ pp of ACC ($0.874 \rightarrow 0.877$). The flow-time areas do land together, $0.27$ for C7 against the $\eta = 0.01$ rung's $0.275$ (the curriculum's step-axis $2.7$ converted at $A_\tau = \eta A_{\text{steps}}$), but the two are referenced to plateaus four points apart and a lower plateau is a lower line to integrate against, so this is not a tie (Section~\ref{subsec:metrics}).
 
 Under momentum the comparison turns around, which is the reading Section~\ref{subsec:res_scalar} quotes. On the same $1$k arm at momentum $0.9$ the $\eta = 0.01$ rung reaches $5.4$ pp at ACC $0.940$ and min-ACC $0.901$ after ten epochs, so one epoch of the schedule is $1.7$ pp shallower and $1.8$ pp better in worst-case retention than ten epochs of a tenfold shorter step, for $0.9$ pp of ACC (the two protocols' $\eta = 0.1$ cells agree here as at momentum $0$, $15.4 \pm 2.2$ against $15.9 \pm 2.6$ pp at ACC $0.929$ against $0.928$). That rung is a rung and not a limit, but the ladder's fourth rung supplies the limit as well: at $\eta = 0.001$, a hundred epochs, the same arm reaches $4.6$ pp at ACC $0.942$ and min-ACC $0.910$, and the fine-rung extrapolation puts the $\eta \rightarrow 0$ depth of this leg at $4.1$ pp. One epoch of the schedule is thus $0.9$ pp shallower than a hundred epochs of a hundredfold shorter step, and its $3.7 \pm 0.4$ pp sits at or below what shortening the step can ultimately reach here, for $1.1$ pp of ACC.
 
 \subsection{rot-MNIST: Buffer-Fidelity Diagnostics}
 \label{app:grad_full}
 
-The gradient diagnostics of Appendix~\ref{subsubsec:grad_metrics} were logged
-on the vanilla-ER reference runs only. Each such step costs a full forward and
-backward pass over the whole past-task training set, which is why they are not
-carried elsewhere, and the stretched rungs of the ladder least of all
-(Appendix~\ref{app:impl_ladder}). The rows below are therefore the directional
-and magnitude error that a $1{,}000$-sample reservoir incurs against
-$g_{\text{true}}$ at the standard step size, and they set the figure the
-ladder's exact arm is defined against: a $60$k buffer replays the deterministic
-empirical past-task gradient, so its cosine and magnitude ratio are $1.000$ by
-construction.
+The gradient diagnostics of Appendix~\ref{subsubsec:grad_metrics} were logged on the vanilla-ER reference runs only. Each such step costs a full forward and backward pass over the whole past-task training set, which is why they are not carried elsewhere, and the stretched rungs of the ladder least of all (Appendix~\ref{app:impl_ladder}). The rows below are therefore the directional and magnitude error that a $1{,}000$-sample reservoir incurs against $g_{\text{true}}$ at the standard step size, and they set the figure the ladder's exact arm is defined against: a $60$k buffer replays the deterministic empirical past-task gradient, so its cosine and magnitude ratio are $1.000$ by construction.
 
 \begin{table}[H]
     \centering
@@ -306,23 +154,14 @@ construction.
         D1 vanilla ER ($\mu{=}0.9$)  & 0.551\,$\pm$\,0.033 & 0.135\,$\pm$\,0.069 & 0.418\,$\pm$\,0.014 \\
         \hline
     \end{tabular}
-    \caption{Buffer-fidelity diagnostics for the vanilla-ER reference:
-        $\bar{\cos}$ and $\cos_{\min}$ are the mean and minimum of
-        $\cos(g_{\text{replay}}, g_{\text{true}})$ over the window; $\bar{\rho}$ is the
-        mean of $\|g_{\text{replay}}\|/\|g_{\text{true}}\|$.}
+    \caption{Buffer-fidelity diagnostics for the vanilla-ER reference: $\bar{\cos}$ and $\cos_{\min}$ are the mean and minimum of $\cos(g_{\text{replay}}, g_{\text{true}})$ over the window; $\bar{\rho}$ is the mean of $\|g_{\text{replay}}\|/\|g_{\text{true}}\|$.}
     \label{tab:app_grad}
 \end{table}
 
 \subsection{rot-MNIST: Asymmetric PER (P-series)}
 \label{app:per_full}
 
-Table~\ref{tab:app_per_full} gives the full metric set for the asymmetric-PER
-$\delta$ sweep on both buffer legs and at both momentum settings; the
-$\delta{=}0.03$ rows are the two the main text carries
-(Table~\ref{tab:res_gates}), and the momentum-$0.9$ rows are the source of the
-re-inflation numbers of Section~\ref{subsec:res_directional}. Momentum-$0.9$ runs cover the three
-strongest filters on the standard leg and $\delta \in \{0.3, 0.1\}$ on the
-full-buffer leg.
+Table~\ref{tab:app_per_full} gives the full metric set for the asymmetric-PER $\delta$ sweep on both buffer legs and at both momentum settings; the $\delta{=}0.03$ rows are the two the main text carries (Table~\ref{tab:res_gates}), and the momentum-$0.9$ rows are the source of the re-inflation numbers of Section~\ref{subsec:res_directional}. Momentum-$0.9$ runs cover the three strongest filters on the standard leg and $\delta \in \{0.3, 0.1\}$ on the full-buffer leg.
 
 \begin{table}[H]
     \centering
@@ -355,56 +194,20 @@ full-buffer leg.
             \hline
         \end{tabular}%
     }
-    \caption{rot-MNIST asymmetric-PER $\delta$ sweep, full metrics: both buffer
-        legs at both momentum settings, plus the solver control (CG $60$). The
-        momentum-$0.9$ rows show the re-inflation of
-        Section~\ref{subsec:res_directional}: depth climbs on every leg relative to
-        its momentum-$0$ counterpart, while the full-buffer accuracies
-        (${\approx}0.965$) are diagnostic values only, the full buffer defeating the limited-memory premise.}
+    \caption{rot-MNIST asymmetric-PER $\delta$ sweep, full metrics: both buffer legs at both momentum settings, plus the solver control (CG $60$). The momentum-$0.9$ rows show the re-inflation of Section~\ref{subsec:res_directional}: depth climbs on every leg relative to its momentum-$0$ counterpart, while the full-buffer accuracies (${\approx}0.965$) are diagnostic values only, the full buffer defeating the limited-memory premise.}
     \label{tab:app_per_full}
 \end{table}
 
-\paragraph{The sweep, rung by rung, on both tasks.}
-Figure~\ref{fig:per_sweep} is the trajectory form of Table~\ref{tab:app_per_full}:
-the whole standard-buffer sweep, both tasks, both momentum settings. Three
-things are visible there that the scalar summaries only assert. First, the
-ordering in $\delta$ in (a) is an ordering of whole trajectories and not only
-of their worst points: the rungs stack without crossing for the entire
-transition, so a stronger filter is uniformly better on the past task rather
-than better at the spike and worse afterwards. Second, (b) is the evidence
-behind the no-plasticity-cost claim of
-Section~\ref{subsec:res_directional}: the strongest filter is visibly slower
-over roughly the first fifty steps, the selective slowdown along the
-directions the sampled Fisher rates as sharp, and thereafter it is
-indistinguishable from vanilla ER, so the horizon-$100$ metrics record no
-cost. Third, the momentum row keeps that ordering in (c) but reads it against
-a baseline that has itself changed: vanilla ER's transient is shorter and the
-whole ladder sits $3$--$4$ pp deeper, while (d) shows the new-task curves
-collapsing onto one another, momentum having removed what little separated
-them. Both stability panels span the same $0.30$ of accuracy on an offset
-floor, so a deeper-looking dip is a deeper dip; the pre-switch level is higher
-in (c) only because momentum converges $T_0$ further before the switch. No
-$\delta{=}1.0$ cell was run at momentum $0.9$.
+\paragraph{The sweep, rung by rung, on both tasks.} Figure~\ref{fig:per_sweep} is the trajectory form of Table~\ref{tab:app_per_full}: the whole standard-buffer sweep, both tasks, both momentum settings. Three things are visible there that the scalar summaries only assert. First, the ordering in $\delta$ in (a) is an ordering of whole trajectories and not only of their worst points: the rungs stack without crossing for the entire transition, so a stronger filter is uniformly better on the past task rather than better at the spike and worse afterwards. Second, (b) is the evidence behind the no-plasticity-cost claim of Section~\ref{subsec:res_directional}: the strongest filter is visibly slower over roughly the first fifty steps, the selective slowdown along the directions the sampled Fisher rates as sharp, and thereafter it is indistinguishable from vanilla ER, so the horizon-$100$ metrics record no cost. Third, the momentum row keeps that ordering in (c) but reads it against a baseline that has itself changed: vanilla ER's transient is shorter and the whole ladder sits $3$--$4$ pp deeper, while (d) shows the new-task curves collapsing onto one another, momentum having removed what little separated them. Both stability panels span the same $0.30$ of accuracy on an offset floor, so a deeper-looking dip is a deeper dip; the pre-switch level is higher in (c) only because momentum converges $T_0$ further before the switch. No $\delta{=}1.0$ cell was run at momentum $0.9$.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/asymmetric_per/per_sweep.png}
-    \caption{The asymmetric-PER $\delta$ sweep on the standard ($1$k) buffer:
-        per-step accuracy across the rot-MNIST switch, seed mean with $\pm$std
-        bands, $x{=}0$ the task switch. Rows are the momentum setting, columns
-        the two tasks; the damping runs weaker filter light $\rightarrow$
-        stronger filter dark, over vanilla ER (red, dashed) as the ungated
-        reference in every panel. \textbf{(a)} the dip shrinks monotonically as
-        $\delta \to 0$; \textbf{(b)} the strongest filter lags for ${\sim}50$
-        steps and then tracks vanilla; \textbf{(c)} the same ordering,
-        displaced $3$--$4$ pp deeper by the accumulator; \textbf{(d)} under
-        momentum the new-task curves are indistinguishable. Scalar metrics for
-        every rung are in Table~\ref{tab:app_per_full}.}
+    \caption{The asymmetric-PER $\delta$ sweep on the standard ($1$k) buffer: per-step accuracy across the rot-MNIST switch, seed mean with $\pm$std bands, $x{=}0$ the task switch. Rows are the momentum setting, columns the two tasks; the damping runs weaker filter light $\rightarrow$ stronger filter dark, over vanilla ER (red, dashed) as the ungated reference in every panel. \textbf{(a)} the dip shrinks monotonically as $\delta \to 0$; \textbf{(b)} the strongest filter lags for ${\sim}50$ steps and then tracks vanilla; \textbf{(c)} the same ordering, displaced $3$--$4$ pp deeper by the accumulator; \textbf{(d)} under momentum the new-task curves are indistinguishable. Scalar metrics for every rung are in Table~\ref{tab:app_per_full}.}
     \label{fig:per_sweep}
 \end{figure}
 
-\paragraph{The exact-gradient diagnostic and its cliffs.}
-The full ($60$k) buffer is a diagnostic probe rather than an operating point: replaying the exact past-task gradient switches the variance driver off, so whatever excursion survives is the arc together with the standard step's overshoot of it (Section~\ref{subsec:res_levels}). Read that way the leg behaves as the account predicts down to $\delta = 0.1$, the excursion shrinking with the filter. The one place the sweep breaks monotonicity is the strongest setting, $\delta = 0.03$, where mean depth jumps to $9.5$ pp with a std of $8.2$: in $3$ of $5$ seeds the past-task curve holds flat for roughly two hundred steps and then slides off a late cliff, the red per-seed traces in Figure~\ref{fig:per_cliffs}. A solver control rules out the most straightforward explanation. The filter solves for its preconditioned direction by conjugate gradient, so an under-converged solve at the strongest damping would be the obvious suspect; rerunning the setting with the CG solver at $60$ iterations instead of the default $25$ (row \emph{$\delta{=}0.03$ (CG $60$)} of Table~\ref{tab:app_per_full}) reproduces the cliffs at the same seeds and the same steps, and if anything deepens them ($11.5 \pm 10.1$ pp mean depth against $9.5 \pm 8.2$). They are not a numerical artefact of the solve. The cliffs came as a surprise: the account made no prediction of a late, abrupt failure, and nothing in the rest of the sweep hints at one. They are also confined to the exact-gradient diagnostic: at the same $\delta$ on the standard $1$k buffer no seed shows one (depth $4.8 \pm 1.9$ pp, the monotone end of the sweep). The failure is tied to the exact replay gradient: the sampling jitter of a practical buffer appears to protect against it, the same noise that elsewhere drives the overshoot here keeping the iterate from settling into the escape direction. Why the cliffs happen we can only partly say. A reading consistent with the data is a blind spot of the gate's model of the past task: the filter passes new-task pressure through directions its sampled Fisher rates as flat, and in these seeds that trust appears to be misplaced further out along the trajectory. We offer this as a hypothesis, not an established mechanism. What the control does establish is that the strongest filter can fail late and abruptly when nothing perturbs it. Because the failure is confined to the diagnostic leg, it is unlikely in a practical configuration, but it exposes a real weakness of feedforward control.
+\paragraph{The exact-gradient diagnostic and its cliffs.} The full ($60$k) buffer is a diagnostic probe rather than an operating point: replaying the exact past-task gradient switches the variance driver off, so whatever excursion survives is the arc together with the standard step's overshoot of it (Section~\ref{subsec:res_levels}). Read that way the leg behaves as the account predicts down to $\delta = 0.1$, the excursion shrinking with the filter. The one place the sweep breaks monotonicity is the strongest setting, $\delta = 0.03$, where mean depth jumps to $9.5$ pp with a std of $8.2$: in $3$ of $5$ seeds the past-task curve holds flat for roughly two hundred steps and then slides off a late cliff, the red per-seed traces in Figure~\ref{fig:per_cliffs}. A solver control rules out the most straightforward explanation. The filter solves for its preconditioned direction by conjugate gradient, so an under-converged solve at the strongest damping would be the obvious suspect; rerunning the setting with the CG solver at $60$ iterations instead of the default $25$ (row \emph{$\delta{=}0.03$ (CG $60$)} of Table~\ref{tab:app_per_full}) reproduces the cliffs at the same seeds and the same steps, and if anything deepens them ($11.5 \pm 10.1$ pp mean depth against $9.5 \pm 8.2$). They are not a numerical artefact of the solve. The cliffs came as a surprise: the account made no prediction of a late, abrupt failure, and nothing in the rest of the sweep hints at one. They are also confined to the exact-gradient diagnostic: at the same $\delta$ on the standard $1$k buffer no seed shows one (depth $4.8 \pm 1.9$ pp, the monotone end of the sweep). The failure is tied to the exact replay gradient: the sampling jitter of a practical buffer appears to protect against it, the same noise that elsewhere drives the overshoot here keeping the iterate from settling into the escape direction. Why the cliffs happen we can only partly say. A reading consistent with the data is a blind spot of the gate's model of the past task: the filter passes new-task pressure through directions its sampled Fisher rates as flat, and in these seeds that trust appears to be misplaced further out along the trajectory. We offer this as a hypothesis, not an established mechanism. What the control does establish is that the strongest filter can fail late and abruptly when nothing perturbs it. Because the failure is confined to the diagnostic leg, it is unlikely in a practical configuration, but it exposes a real weakness of feedforward control.
 
 \begin{figure}[H]
     \centering
@@ -416,28 +219,7 @@ The full ($60$k) buffer is a diagnostic probe rather than an operating point: re
 \subsection{rot-MNIST: Symmetric vs.\ Asymmetric Preconditioning}
 \label{app:per_sym}
 
-Leaving the restoring gradient $g_{\text{rep}}$ at full strength is the directional
-gate's defining choice (Section~\ref{subsec:res_directional}). The alternative is to
-precondition the summed update, $d = \delta(F_{\text{rep}}+\delta I)^{-1}(g_{\text{cur}}+g_{\text{rep}})$,
-the symmetric variant that passes both gradients through the same metric. Because
-$g_{\text{rep}}$ is the gradient of the replay loss, it lies in the top eigenspace of that
-loss's own Fisher $F_{\text{rep}}$, so the symmetric filter shrinks the restoring
-gradient \emph{harder} than the harmful push it is meant to brake and cannot
-preferentially protect the past task. Table~\ref{tab:res_per_sym} sweeps the same
-$\delta$ on both variants, and they are mirror images. As the filter strengthens
-($\delta \to 0$) the asymmetric gate's forgetting falls (FORG $0.027 \to 0.012$) and its
-accuracy rises, while the symmetric gate's forgetting \emph{climbs} ($0.030 \to 0.066$)
-and its accuracy falls; every one of these four trends holds across all five seeds.
-Symmetric depth barely moves across the sweep ($5.7 \to 6.7$ pp) and at $\delta{=}1.0$
-even sits below the asymmetric gate's ($5.7$ vs.\ $9.0$ pp), because filtering the whole
-update also damps the per-step \emph{expression} of the dip. This is the area caveat of
-Section~\ref{subsec:metrics} made concrete: the symmetric gate's end-referenced area
-collapses toward zero ($2.7 \to 0.01$) not because the dip recovers but because it stops
-recovering, settling into a permanent accommodation that the area excludes and the
-forgetting metric records. Read on depth or transient area the symmetric gate looks
-competitive; read on forgetting and final accuracy it degrades monotonically as its
-filter strengthens. Asymmetry is what turns the filter from a reshuffling of the damage
-into a net removal of it.
+Leaving the restoring gradient $g_{\text{rep}}$ at full strength is the directional gate's defining choice (Section~\ref{subsec:res_directional}). The alternative is to precondition the summed update, $d = \delta(F_{\text{rep}}+\delta I)^{-1}(g_{\text{cur}}+g_{\text{rep}})$, the symmetric variant that passes both gradients through the same metric. Because $g_{\text{rep}}$ is the gradient of the replay loss, it lies in the top eigenspace of that loss's own Fisher $F_{\text{rep}}$, so the symmetric filter shrinks the restoring gradient \emph{harder} than the harmful push it is meant to brake and cannot preferentially protect the past task. Table~\ref{tab:res_per_sym} sweeps the same $\delta$ on both variants, and they are mirror images. As the filter strengthens ($\delta \to 0$) the asymmetric gate's forgetting falls (FORG $0.027 \to 0.012$) and its accuracy rises, while the symmetric gate's forgetting \emph{climbs} ($0.030 \to 0.066$) and its accuracy falls; every one of these four trends holds across all five seeds. Symmetric depth barely moves across the sweep ($5.7 \to 6.7$ pp) and at $\delta{=}1.0$ even sits below the asymmetric gate's ($5.7$ vs.\ $9.0$ pp), because filtering the whole update also damps the per-step \emph{expression} of the dip. This is the area caveat of Section~\ref{subsec:metrics} made concrete: the symmetric gate's end-referenced area collapses toward zero ($2.7 \to 0.01$) not because the dip recovers but because it stops recovering, settling into a permanent accommodation that the area excludes and the forgetting metric records. Read on depth or transient area the symmetric gate looks competitive; read on forgetting and final accuracy it degrades monotonically as its filter strengthens. Asymmetry is what turns the filter from a reshuffling of the damage into a net removal of it.
 
 \begin{table}[H]
     \centering
@@ -454,16 +236,7 @@ into a net removal of it.
         $0.03$   & $4.8$                                                  & $1.04$    & $0.012$                               & $0.880$ &  & $6.7$      & $0.01$ & $0.066$ & $0.857$ \\
         \hline
     \end{tabular}
-    \caption{Asymmetric versus symmetric preconditioning on the standard $1$k buffer at
-        momentum $0$, five seeds, sweeping the shared damping $\delta$. Both variants filter
-        through the replay Fisher $F_{\text{rep}}$; they differ only in whether the metric is
-        applied to the new-task push alone (asymmetric, $g_{\text{rep}}$ left free) or to the
-        summed update (symmetric). As $\delta \to 0$ the asymmetric gate improves on every
-        axis while the symmetric gate degrades on every axis; symmetric depth stays flat
-        because the filter suppresses the per-step expression of the dip even as the
-        underlying forgetting grows, and the symmetric end-referenced area collapses
-        toward zero for the same reason: the past task stops recovering, so the loss
-        registers in FORG rather than in the transient area (Section~\ref{subsec:metrics}).}
+    \caption{Asymmetric versus symmetric preconditioning on the standard $1$k buffer at momentum $0$, five seeds, sweeping the shared damping $\delta$. Both variants filter through the replay Fisher $F_{\text{rep}}$; they differ only in whether the metric is applied to the new-task push alone (asymmetric, $g_{\text{rep}}$ left free) or to the summed update (symmetric). As $\delta \to 0$ the asymmetric gate improves on every axis while the symmetric gate degrades on every axis; symmetric depth stays flat because the filter suppresses the per-step expression of the dip even as the underlying forgetting grows, and the symmetric end-referenced area collapses toward zero for the same reason: the past task stops recovering, so the loss registers in FORG rather than in the transient area (Section~\ref{subsec:metrics}).}
     \label{tab:res_per_sym}
 \end{table}
 
@@ -488,59 +261,23 @@ into a net removal of it.
             \hline
         \end{tabular}%
     }
-    \caption{CIFAR-10 headline block, full metrics (ResNet-18, momentum $0.9$,
-        buffer $5{,}000$, five seeds). ``adaptive'' is the practical curriculum with
-        $\lambda_{\min} = 0.20$; ``asym.\ PER'' runs at $\delta = 0.1$.}
+    \caption{CIFAR-10 headline block, full metrics (ResNet-18, momentum $0.9$, buffer $5{,}000$, five seeds). ``adaptive'' is the practical curriculum with $\lambda_{\min} = 0.20$; ``asym.\ PER'' runs at $\delta = 0.1$.}
     \label{tab:app_cifar_headline}
 \end{table}
 
-\paragraph{The gates' residual batch-norm dip.}
-The small gap the gates keep under batch norm is a genuine boundary transient:
-in Figure~\ref{fig:cifar_curves}(a) both gated curves dip together over the
-first steps after the switch, by roughly the tabulated $5$ pp, and recover to
-their plateau within a few tens of steps. A reading consistent with this
-pattern is the normalisation pathway of Section~\ref{subsec:cifar}. BatchNorm's
-running statistics update on every forward pass, whatever the gate does to the
-gradient, so the first corrupted batches shift them away from the clean task
-and no gate on the update can hold that back; the clean replay samples in every
-batch pull the statistics back, which matches the fast recovery. The group-norm
-contrast supports the reading: with no cross-batch statistics to disturb, the
-curriculum holds $T_0$ flat through the same boundary
-(Figure~\ref{fig:cifar_curves}(b)) and its transient area falls to roughly half
-its batch-norm value ($1.7$ vs.\ $3.6$). This is a reading rather than an
-established mechanism; a control that freezes the running statistics across
-the switch would isolate it.
+\paragraph{The gates' residual batch-norm dip.} The small gap the gates keep under batch norm is a genuine boundary transient: in Figure~\ref{fig:cifar_curves}(a) both gated curves dip together over the first steps after the switch, by roughly the tabulated $5$ pp, and recover to their plateau within a few tens of steps. A reading consistent with this pattern is the normalisation pathway of Section~\ref{subsec:cifar}. BatchNorm's running statistics update on every forward pass, whatever the gate does to the gradient, so the first corrupted batches shift them away from the clean task and no gate on the update can hold that back; the clean replay samples in every batch pull the statistics back, which matches the fast recovery. The group-norm contrast supports the reading: with no cross-batch statistics to disturb, the curriculum holds $T_0$ flat through the same boundary (Figure~\ref{fig:cifar_curves}(b)) and its transient area falls to roughly half its batch-norm value ($1.7$ vs.\ $3.6$). This is a reading rather than an established mechanism; a control that freezes the running statistics across the switch would isolate it.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.62\linewidth]{img/results/cifar/cifar_plasticity.png}
-    \caption{What the deep-backbone protection costs on the new task: the
-        plasticity counterpart of Figure~\ref{fig:cifar_curves}, over the same
-        conditions and the same post-switch window, but tracking new-task ($T_1$)
-        accuracy across the clean $\rightarrow$ Gaussian-noise switch
-        (ResNet-18, momentum $0.9$, buffer $5{,}000$, seed mean with $\pm$std
-        bands). \textbf{(a) BatchNorm:} both gates track vanilla ER, the
-        directional gate lagging it by a few points over the first hundred
-        steps ($0.53$ against $0.59$ at step $100$) before closing; after ten
-        epochs the three land within $2.5$ pp of each other ($0.69$, $0.68$,
-        $0.67$). \textbf{(b) GroupNorm:} the gates are \emph{faster} than
-        vanilla ER on the new task at step $50$, by $6$ pp (scalar gate) and
-        $11$ pp (directional gate), and the
-        directional gate finishes ahead of it ($0.72$ against $0.70$). Where
-        the ungated baseline loses the past task it also loses the shared
-        features the new task starts from, so on this backbone the protection
-        is not bought from plasticity, which is what keeps the ACC column of
-        Table~\ref{tab:app_cifar_headline} flat across the batch-norm rows and
-        rising across the group-norm ones.}
+    \caption{What the deep-backbone protection costs on the new task: the plasticity counterpart of Figure~\ref{fig:cifar_curves}, over the same conditions and the same post-switch window, but tracking new-task ($T_1$) accuracy across the clean $\rightarrow$ Gaussian-noise switch (ResNet-18, momentum $0.9$, buffer $5{,}000$, seed mean with $\pm$std bands). \textbf{(a) BatchNorm:} both gates track vanilla ER, the directional gate lagging it by a few points over the first hundred steps ($0.53$ against $0.59$ at step $100$) before closing; after ten epochs the three land within $2.5$ pp of each other ($0.69$, $0.68$, $0.67$). \textbf{(b) GroupNorm:} the gates are \emph{faster} than vanilla ER on the new task at step $50$, by $6$ pp (scalar gate) and $11$ pp (directional gate), and the directional gate finishes ahead of it ($0.72$ against $0.70$). Where the ungated baseline loses the past task it also loses the shared features the new task starts from, so on this backbone the protection is not bought from plasticity, which is what keeps the ACC column of Table~\ref{tab:app_cifar_headline} flat across the batch-norm rows and rising across the group-norm ones.}
     \label{fig:cifar_plasticity}
 \end{figure}
 
 \subsection{CIFAR-10: Generalisation Block}
 \label{app:cifar_gen_full}
 
-Each shift pairs the practical curriculum (``curric.'': adaptive $\lambda_{\min} =
-    0.20$, buffer $5{,}000$) against a vanilla-ER control on the same shift, at the
-indicated normalisation, over three seeds.
+Each shift pairs the practical curriculum (``curric.'': adaptive $\lambda_{\min} = 0.20$, buffer $5{,}000$) against a vanilla-ER control on the same shift, at the indicated normalisation, over three seeds.
 
 \begin{table}[H]
     \centering
@@ -567,102 +304,27 @@ indicated normalisation, over three seeds.
         3-task (curric.)     & 0.721\,$\pm$\,0.019 & -0.025\,$\pm$\,0.020 & 0.421\,$\pm$\,0.114 & 0.517\,$\pm$\,0.070 & 32.8\,$\pm$\,14.5 & 32.0\,$\pm$\,19.5 \\
         \hline
     \end{tabular}
-    \caption{CIFAR-10 generalisation block, full metrics. The two-task novel
-        corruptions (shot noise, contrast) favour the curriculum under both
-        normalisations; the three-task group-norm sequence is the outlier analysed
-        below.}
+    \caption{CIFAR-10 generalisation block, full metrics. The two-task novel corruptions (shot noise, contrast) favour the curriculum under both normalisations; the three-task group-norm sequence is the outlier analysed below.}
     \label{tab:app_cifar_gen}
 \end{table}
 
-\paragraph{The three-task group-norm failure.}
-The three-task sequence is the one place the curriculum underperforms its
-control (depth $32.8 \pm 14.5$ pp against vanilla's $4.4 \pm 0.4$,
-Table~\ref{tab:app_cifar_gen}; Figure~\ref{fig:failure_curves}), and the logged
-gradient-norm traces locate the failure in the conditioning of the feedback
-signal. The adaptive ratio $r = \|g_{\text{replay}}\|/\|g_{\text{new}}\|$
-carries information through the boundary ordering of
-Section~\ref{subsec:curriculum}: at a well-separated switch the new-task
-gradient dwarfs the replay gradient, so $r$ starts near zero and its rise
-tracks the replay gradient reasserting itself. The first boundary of this
-sequence behaves that way (clean $\rightarrow$ Gaussian: first-step new-task
-loss $1.9$--$2.1$, $r \approx 0.2$), and the schedule holds every past task
-flat through it. The second boundary never establishes the ordering: Gaussian
-and shot noise are near-identical, so the incoming model already fits the new
-task ($T_2$ accuracy $0.67$--$0.71$ before its first step, new-task loss
-$0.5$--$0.7$), leaving $\|g_{\text{new}}\|$ small, while
-$\|g_{\text{replay}}\|$ is small because the model is converged on the
-replayed tasks. The ratio becomes a quotient of two near-zero norms: under
-group norm it reads $0.5$--$1.3$ from the first step and fluctuates step to
-step, so the EMA drives $\lambda$ from the floor to ${\approx}0.7$--$0.8$
-within fifty steps and back to $\lambda_{\min}$ within a few hundred. The gate
-is moved by noise, not by damage.
+\paragraph{The three-task group-norm failure.} The three-task sequence is the one place the curriculum underperforms its control (depth $32.8 \pm 14.5$ pp against vanilla's $4.4 \pm 0.4$, Table~\ref{tab:app_cifar_gen}; Figure~\ref{fig:failure_curves}), and the logged gradient-norm traces locate the failure in the conditioning of the feedback signal. The adaptive ratio $r = \|g_{\text{replay}}\|/\|g_{\text{new}}\|$ carries information through the boundary ordering of Section~\ref{subsec:curriculum}: at a well-separated switch the new-task gradient dwarfs the replay gradient, so $r$ starts near zero and its rise tracks the replay gradient reasserting itself. The first boundary of this sequence behaves that way (clean $\rightarrow$ Gaussian: first-step new-task loss $1.9$--$2.1$, $r \approx 0.2$), and the schedule holds every past task flat through it. The second boundary never establishes the ordering: Gaussian and shot noise are near-identical, so the incoming model already fits the new task ($T_2$ accuracy $0.67$--$0.71$ before its first step, new-task loss $0.5$--$0.7$), leaving $\|g_{\text{new}}\|$ small, while $\|g_{\text{replay}}\|$ is small because the model is converged on the replayed tasks. The ratio becomes a quotient of two near-zero norms: under group norm it reads $0.5$--$1.3$ from the first step and fluctuates step to step, so the EMA drives $\lambda$ from the floor to ${\approx}0.7$--$0.8$ within fifty steps and back to $\lambda_{\min}$ within a few hundred. The gate is moved by noise, not by damage.
 
-What follows, in all three seeds, is not a stability gap but an optimisation
-instability. Within the first forty steps the replay loss itself diverges
-($0.2$--$0.4 \rightarrow 0.8$--$2.1$) and every task falls together,
-\emph{including the one being trained} ($T_2$: $0.71 \rightarrow 0.29$,
-$0.69 \rightarrow 0.30$, $0.67 \rightarrow 0.51$ across seeds), before the run
-recovers; the per-seed depth scales with the divergence, which is where the
-$\pm 14.5$ pp spread comes from. Because all tasks crash together, the depth
-and area of the three-task group-norm rows record this instability, not the
-past-task transient the rest of the study measures. Two controls isolate the
-trigger. The vanilla run crosses the same boundary with a flat replay loss and
-$4.4$ pp of depth, so the near-identical boundary is harmless on its own; the
-batch-norm run executes the identical schedule through the same boundary, with
-the same ill-conditioned early ratio, without instability
-(Figure~\ref{fig:failure_curves}), so the noise-driven $\lambda$ is not
-sufficient either. The failure needs both the unconditioned signal and the
-group-norm backbone's boundary sensitivity, consistent with the far deeper
-group-norm transients vanilla ER shows on the same corruption family (shot
-noise: $46.3$ vs $13.1$ pp, Table~\ref{tab:app_cifar_gen}). We therefore read
-the episode as a reliability boundary of the gradient-norm-ratio signal rather
-than of the gate principle: the ratio loses its meaning when both norms become
-small, and the design admits direct guards: freezing $\lambda$ when both
-norms fall below a reference scale, or reading a damage signal that does not
-vanish at a quiet boundary, such as the replay-loss excess over its pre-switch
-level.
+What follows, in all three seeds, is not a stability gap but an optimisation instability. Within the first forty steps the replay loss itself diverges ($0.2$--$0.4 \rightarrow 0.8$--$2.1$) and every task falls together, \emph{including the one being trained} ($T_2$: $0.71 \rightarrow 0.29$, $0.69 \rightarrow 0.30$, $0.67 \rightarrow 0.51$ across seeds), before the run recovers; the per-seed depth scales with the divergence, which is where the $\pm 14.5$ pp spread comes from. Because all tasks crash together, the depth and area of the three-task group-norm rows record this instability, not the past-task transient the rest of the study measures. Two controls isolate the trigger. The vanilla run crosses the same boundary with a flat replay loss and $4.4$ pp of depth, so the near-identical boundary is harmless on its own; the batch-norm run executes the identical schedule through the same boundary, with the same ill-conditioned early ratio, without instability (Figure~\ref{fig:failure_curves}), so the noise-driven $\lambda$ is not sufficient either. The failure needs both the unconditioned signal and the group-norm backbone's boundary sensitivity, consistent with the far deeper group-norm transients vanilla ER shows on the same corruption family (shot noise: $46.3$ vs $13.1$ pp, Table~\ref{tab:app_cifar_gen}). We therefore read the episode as a reliability boundary of the gradient-norm-ratio signal rather than of the gate principle: the ratio loses its meaning when both norms become small, and the design admits direct guards: freezing $\lambda$ when both norms fall below a reference scale, or reading a damage signal that does not vanish at a quiet boundary, such as the replay-loss excess over its pre-switch level.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/cifar/cifar_3task_failure.png}
-    \caption{Per-step past-task accuracy across the three-task CIFAR-10
-        generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot,
-        ResNet-18, practical curriculum, three seeds with $\pm$std bands), comparing
-        the group-norm run (orange) against its batch-norm counterpart (blue). The
-        two switches (dashed) fall at ${\sim}2$k and ${\sim}4$k steps. The first
-        boundary (none $\rightarrow$ Gaussian) barely perturbs the past tasks in
-        either norm. The second (Gaussian $\rightarrow$ shot, two near-identical
-        corruptions) drives a deep transient in $T_0$ (a) and $T_1$ (b) under group
-        norm only, while the batch-norm run holds flat through both switches. The dip
-        is thus localised entirely to the second transition and to group norm, the
-        adaptive-ratio reliability boundary analysed above.}
+    \caption{Per-step past-task accuracy across the three-task CIFAR-10 generalisation sequence (none $\rightarrow$ Gaussian $\rightarrow$ shot, ResNet-18, practical curriculum, three seeds with $\pm$std bands), comparing the group-norm run (orange) against its batch-norm counterpart (blue). The two switches (dashed) fall at ${\sim}2$k and ${\sim}4$k steps. The first boundary (none $\rightarrow$ Gaussian) barely perturbs the past tasks in either norm. The second (Gaussian $\rightarrow$ shot, two near-identical corruptions) drives a deep transient in $T_0$ (a) and $T_1$ (b) under group norm only, while the batch-norm run holds flat through both switches. The dip is thus localised entirely to the second transition and to group norm, the adaptive-ratio reliability boundary analysed above.}
     \label{fig:failure_curves}
 \end{figure}
 
 \subsection{CIFAR-10: Momentum Cross and Compute Cost}
 \label{app:cifar_extra}
 
-This subsection collects the three deep-backbone checks summarised in
-Section~\ref{subsec:res_cifar}: the momentum cross (Table~\ref{tab:res_cifar_mom}),
-the generalisation block (Table~\ref{tab:app_cifar_gen} above), and the compute cost
-(Table~\ref{tab:res_cost}).
+This subsection collects the three deep-backbone checks summarised in Section~\ref{subsec:res_cifar}: the momentum cross (Table~\ref{tab:res_cifar_mom}), the generalisation block (Table~\ref{tab:app_cifar_gen} above), and the compute cost (Table~\ref{tab:res_cost}).
 
-\paragraph{Momentum cross.}
-The cross repeats the composability test of Section~\ref{subsec:momentum} on the
-ResNet, pairing momentum-$0$ runs at group norm against the momentum-$0.9$ rows,
-and it turns out to be only weakly informative. At momentum $0$ the ResNet
-under-converges the past task in ten epochs (vanilla min-ACC $0.11$, ACC $0.65$), so
-every momentum-$0$ depth sits on a degraded baseline. On that baseline both gates
-improve with momentum by similar margins (curriculum $28.6 \rightarrow 5.2$ pp,
-asymmetric PER $22.6 \rightarrow 5.6$ pp), so the cross cannot separate the predicted
-source-attenuation composition from a general convergence gain, and the prediction
-that momentum re-inflates the directional gate does not appear; the vanilla null
-($40.5 \rightarrow 41.2$ pp) is directionally consistent with the account but rests
-on the same degraded baseline. We therefore draw no mechanism conclusion from this
-cross in either direction: the momentum signatures rest on the rot-MNIST results,
-where the MLP isolates them cleanly (Sections~\ref{subsec:res_scalar}
-and~\ref{subsec:res_directional}), and a clean deep-backbone test would need a
-converged momentum-$0$ baseline (Section~\ref{subsec:disc_limits}).
+\paragraph{Momentum cross.} The cross repeats the composability test of Section~\ref{subsec:momentum} on the ResNet, pairing momentum-$0$ runs at group norm against the momentum-$0.9$ rows, and it turns out to be only weakly informative. At momentum $0$ the ResNet under-converges the past task in ten epochs (vanilla min-ACC $0.11$, ACC $0.65$), so every momentum-$0$ depth sits on a degraded baseline. On that baseline both gates improve with momentum by similar margins (curriculum $28.6 \rightarrow 5.2$ pp, asymmetric PER $22.6 \rightarrow 5.6$ pp), so the cross cannot separate the predicted source-attenuation composition from a general convergence gain, and the prediction that momentum re-inflates the directional gate does not appear; the vanilla null ($40.5 \rightarrow 41.2$ pp) is directionally consistent with the account but rests on the same degraded baseline. We therefore draw no mechanism conclusion from this cross in either direction: the momentum signatures rest on the rot-MNIST results, where the MLP isolates them cleanly (Sections~\ref{subsec:res_scalar} and~\ref{subsec:res_directional}), and a clean deep-backbone test would need a converged momentum-$0$ baseline (Section~\ref{subsec:disc_limits}).
 
 \begin{table}[H]
     \centering
@@ -676,34 +338,11 @@ converged momentum-$0$ baseline (Section~\ref{subsec:disc_limits}).
         Asym.\ PER ($\delta{=}0.1$)          & $22.6 \pm 9.7$   & $5.6 \pm 1.1$      \\
         \hline
     \end{tabular}
-    \caption{CIFAR-10 momentum cross (group norm, buffer $5{,}000$, five seeds), gap
-        depth in pp. All momentum-$0$ cells sit on an under-converged baseline
-        (vanilla min-ACC $0.11$), so the cross is read as uninformative for the
-        momentum signatures rather than as partial confirmation (see text).}
+    \caption{CIFAR-10 momentum cross (group norm, buffer $5{,}000$, five seeds), gap depth in pp. All momentum-$0$ cells sit on an under-converged baseline (vanilla min-ACC $0.11$), so the cross is read as uninformative for the momentum signatures rather than as partial confirmation (see text).}
     \label{tab:res_cifar_mom}
 \end{table}
 
-\paragraph{Compute cost.}
-Cost is measured with a dedicated benchmark: one full two-task run per gate in its
-headline configuration (curriculum: adaptive schedule, $\lambda_{\min}{=}0.20$;
-asymmetric PER: $\delta{=}0.1$, $25$ warm-started CG iterations; momentum $0.9$,
-group norm and buffer $5{,}000$ on CIFAR), five seeds each on a single NVIDIA RTX
-PRO~6000, with per-step stability evaluation disabled so the numbers reflect method
-compute alone. Wall-clock and CPU time come from \texttt{getrusage}; GPU utilisation,
-power, and memory are sampled at $1$\,Hz with \texttt{nvidia-smi}, and energy is the
-integrated power. On the ResNet-18 the split is stark (Table~\ref{tab:res_cost}). The
-scalar gate adds one gradient-norm ratio and an EMA update to a standard ER step, and
-its run is not even compute-bound: the GPU sits half-idle at $49\%$ utilisation and
-$259$\,W. The directional gate's $25$ conjugate-gradient Fisher-vector products per
-step, each on the order of a backward pass, saturate the same card ($96\%$, $367$\,W)
-for $16\times$ as long, and since energy is power times time the two factors compound
-to a $24\times$ energy gap ($13$ vs.\ $320$\,Wh per run). Memory is not the price:
-peak GPU memory differs by $11\%$. On the rot-MNIST MLP both gates finish in under
-half a minute at near-idle utilisation (the wall-clock is fixed startup, not method
-compute), so no meaningful ratio exists there and the cost question is decided
-entirely on the deep backbone. The ratios are the transferable claim; the absolute
-numbers are specific to this card, and because ${\sim}15$--$30$\,s of each run is
-startup, the training-only ratio is if anything slightly above $16\times$.
+\paragraph{Compute cost.} Cost is measured with a dedicated benchmark: one full two-task run per gate in its headline configuration (curriculum: adaptive schedule, $\lambda_{\min}{=}0.20$; asymmetric PER: $\delta{=}0.1$, $25$ warm-started CG iterations; momentum $0.9$, group norm and buffer $5{,}000$ on CIFAR), five seeds each on a single NVIDIA RTX PRO~6000, with per-step stability evaluation disabled so the numbers reflect method compute alone. Wall-clock and CPU time come from \texttt{getrusage}; GPU utilisation, power, and memory are sampled at $1$\,Hz with \texttt{nvidia-smi}, and energy is the integrated power. On the ResNet-18 the split is stark (Table~\ref{tab:res_cost}). The scalar gate adds one gradient-norm ratio and an EMA update to a standard ER step, and its run is not even compute-bound: the GPU sits half-idle at $49\%$ utilisation and $259$\,W. The directional gate's $25$ conjugate-gradient Fisher-vector products per step, each on the order of a backward pass, saturate the same card ($96\%$, $367$\,W) for $16\times$ as long, and since energy is power times time the two factors compound to a $24\times$ energy gap ($13$ vs.\ $320$\,Wh per run). Memory is not the price: peak GPU memory differs by $11\%$. On the rot-MNIST MLP both gates finish in under half a minute at near-idle utilisation (the wall-clock is fixed startup, not method compute), so no meaningful ratio exists there and the cost question is decided entirely on the deep backbone. The ratios are the transferable claim; the absolute numbers are specific to this card, and because ${\sim}15$--$30$\,s of each run is startup, the training-only ratio is if anything slightly above $16\times$.
 
 \begin{table}[H]
     \centering
@@ -719,13 +358,7 @@ startup, the training-only ratio is if anything slightly above $16\times$.
         (MLP) & Asym.\ PER ($\delta{=}0.1$) & $29 \pm 1$       & $8$     & ---   & $0.5$ & $769$     \\
         \hline
     \end{tabular}
-    \caption{Compute cost of one full two-task run (mean over five seeds, $\pm$ sd on
-        wall-clock; single RTX PRO 6000; per-step evaluation disabled): wall-clock, mean
-        GPU utilisation and power, integrated GPU energy, and peak GPU memory. On the
-        ResNet-18 the directional gate costs ${\sim}16\times$ the wall-clock and
-        ${\sim}24\times$ the energy of the scalar gate at similar peak memory. The MLP
-        rows are dominated by fixed startup on a near-idle GPU, so their power draw is
-        idle draw (omitted) and no ratio is meaningful.}
+    \caption{Compute cost of one full two-task run (mean over five seeds, $\pm$ sd on wall-clock; single RTX PRO 6000; per-step evaluation disabled): wall-clock, mean GPU utilisation and power, integrated GPU energy, and peak GPU memory. On the ResNet-18 the directional gate costs ${\sim}16\times$ the wall-clock and ${\sim}24\times$ the energy of the scalar gate at similar peak memory. The MLP rows are dominated by fixed startup on a near-idle GPU, so their power draw is idle draw (omitted) and no ratio is meaningful.}
     \label{tab:res_cost}
 \end{table}
 
@@ -753,31 +386,14 @@ startup, the training-only ratio is if anything slightly above $16\times$.
             \hline
         \end{tabular}%
     }
-    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
-        consecutive transitions, five seeds), the L-series: both gates in their
-        practical configurations against vanilla ER, at both momentum settings.
-        Depth is the worst single-boundary drop and area the end-referenced
-        transient, aggregated as in the two-task blocks. At momentum $0$ both gates
-        cut the depth from $21$ pp to ${\approx}4$ pp; under momentum the curriculum
-        keeps the best cumulative retention while the re-inflated directional gate
-        falls slightly behind vanilla on FORG ($0.104$ vs.\ $0.096$, all five seeds).}
+    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four consecutive transitions, five seeds), the L-series: both gates in their practical configurations against vanilla ER, at both momentum settings. Depth is the worst single-boundary drop and area the end-referenced transient, aggregated as in the two-task blocks. At momentum $0$ both gates cut the depth from $21$ pp to ${\approx}4$ pp; under momentum the curriculum keeps the best cumulative retention while the re-inflated directional gate falls slightly behind vanilla on FORG ($0.104$ vs.\ $0.096$, all five seeds).}
     \label{tab:app_longseq}
 \end{table}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/results/long_sequence/long_sequence.png}
-    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four
-        consecutive switches, five seeds with $\pm$std bands), the
-        L-series: first-task $T_0$ accuracy across the whole sequence for vanilla ER
-        (red), the practical curriculum $\lambda_{\min}{=}0.20$ (blue) and asymmetric
-        PER $\delta{=}0.1$ (aqua); dashed lines mark the four switches, and the two
-        panels are the two momentum settings. \textbf{(a) Momentum $0$:} both gates
-        hold $T_0$ almost flat through every boundary, asymmetric PER the smoothest,
-        while vanilla ER drops sharply at each switch. \textbf{(b) Momentum $0.9$:}
-        PER's boundary transients return as momentum re-inflates its per-step filter
-        (Section~\ref{subsec:res_directional}); the curriculum keeps the boundaries
-        smoothest and holds the highest plateau (Table~\ref{tab:app_longseq}).}
+    \caption{Five-task rot-MNIST (rotations $[0,30,60,90,120]^\circ$, four consecutive switches, five seeds with $\pm$std bands), the L-series: first-task $T_0$ accuracy across the whole sequence for vanilla ER (red), the practical curriculum $\lambda_{\min}{=}0.20$ (blue) and asymmetric PER $\delta{=}0.1$ (aqua); dashed lines mark the four switches, and the two panels are the two momentum settings. \textbf{(a) Momentum $0$:} both gates hold $T_0$ almost flat through every boundary, asymmetric PER the smoothest, while vanilla ER drops sharply at each switch. \textbf{(b) Momentum $0.9$:} PER's boundary transients return as momentum re-inflates its per-step filter (Section~\ref{subsec:res_directional}); the curriculum keeps the boundaries smoothest and holds the highest plateau (Table~\ref{tab:app_longseq}).}
     \label{fig:longseq}
 \end{figure}
 
