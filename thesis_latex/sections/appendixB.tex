@@ -44,7 +44,7 @@ This appendix gives the full definitions of every metric recorded by the evaluat
 
 \paragraph{Gradient-fidelity diagnostics.}
 \label{subsubsec:grad_metrics}
-Recorded at the dense cadence for the decomposition conditions only. The tracker compares the replay-buffer gradient $g_{\text{replay}}$ against the true past-task gradient $g_{\text{true}}$, computed at every step by a separate forward and backward pass over the entire past-task training set (no sub-sampling, so $g_{\text{true}}$ is the deterministic empirical past-task gradient at the current parameters).
+Recorded at the dense cadence on the vanilla-ER reference runs only. The tracker compares the replay-buffer gradient $g_{\text{replay}}$ against the true past-task gradient $g_{\text{true}}$, computed at every step by a separate forward and backward pass over the entire past-task training set (no sub-sampling, so $g_{\text{true}}$ is the deterministic empirical past-task gradient at the current parameters).
 
 \begin{table}[H]
     \centering

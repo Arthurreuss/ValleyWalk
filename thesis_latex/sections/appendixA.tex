@@ -60,7 +60,7 @@ Tables~\ref{tab:mlp} and~\ref{tab:resnet} give the two backbones, and Table~\ref
         Epochs per task & $1$ (online); $c$ in the ladder & $10$           \\
         Batch size      & $256$                   & $256$                  \\
         Optimiser       & SGD                     & SGD                    \\
-        Learning rate   & $0.1$; $0.1/c$, $c \in \{1,10,33\}$, in the ladder & $0.1$ \\
+        Learning rate   & $0.1$; $0.1/c$, $c \in \{1,3,10,100\}$, in the ladder & $0.1$ \\
         Momentum        & $0.0$ or $0.9$          & $0.9$ ($0.0$ in cross) \\
         Weight decay    & $0.0$                   & $0.0$                  \\
         Replay buffer   & $1{,}000$ or $60{,}000$ & $5{,}000$              \\
@@ -96,13 +96,13 @@ Reconstructing $\lambda$ from the logged gradient norms of the C4 runs shows how
 \subsection{The step-size ladder}
 \label{app:impl_ladder}
 
-Every cell of the ladder warm-starts from a shared task-$0$ checkpoint. \texttt{init.checkpoint} loads a task-$0$ \texttt{state\_dict} written by a separate anchor run, one per momentum setting and seed, trained at the standard operating point ($\eta = 0.1$, one epoch); \texttt{init.skip\_tasks} then suppresses the training loop of that many leading tasks while still running their \texttt{end\_task} bookkeeping, so the replay buffer is filled from the skipped task's stream exactly as it would have been in an ordinary run. Because reservoir sampling at a fixed seed returns the same subset of the same stream at a given budget, $\theta_0^*$ and the buffer are identical across the three rungs at a given buffer arm, momentum, and seed, and the learning rate is the only difference between them.
+Every cell of the ladder warm-starts from a shared task-$0$ checkpoint. \texttt{init.checkpoint} loads a task-$0$ \texttt{state\_dict} written by a separate anchor run, one per momentum setting and seed, trained at the standard operating point ($\eta = 0.1$, one epoch); \texttt{init.skip\_tasks} then suppresses the training loop of that many leading tasks while still running their \texttt{end\_task} bookkeeping, so the replay buffer is filled from the skipped task's stream exactly as it would have been in an ordinary run. Because reservoir sampling at a fixed seed returns the same subset of the same stream at a given budget, $\theta_0^*$ and the buffer are identical across the four rungs at a given buffer arm, momentum, and seed, and the learning rate is the only difference between them.
 
 A skipped task still advances \texttt{global\_step} by one nominal epoch ($\lceil 60{,}000 / 256 \rceil = 235$ batches), so the task boundary carries the same index as in an ordinary run and the per-step plotting convention above keys off it unchanged. One pre-switch evaluation is written at step $234$, supplying the flat pre-boundary segment that the suppressed training loop would otherwise have recorded.
 
 Inside the dense post-switch window the stability-gap cadence fires on the step index \emph{within the current task} rather than on the global step. At a cadence of $c > 1$ a global-step modulus would place the first post-switch sample at an arbitrary phase offset into the task whenever $c$ does not divide the $235$-batch epoch, skipping exactly the steps the boundary spike occupies. The change is a no-op at cadence $1$, which is every previously archived run.
 
-The four rungs use $\eta = 0.1$, $\eta = 0.1/3 = 0.0\overline{3}$, $\eta = 0.01$ and $\eta = 0.001$. The second is written into the configuration at full precision rather than rounded, so that $\eta c = 0.1$ holds exactly and the flow time $\tau = 23.5$ is matched to the last digit; the main text reports it as $0.1/3$. The dense window is set to $250c$ steps, which exceeds the $235c$ steps of the task, so every cell records the whole of $T_1$ at the dense cadence: $235$ samples per rung, evenly spaced in flow time. Buffer-fidelity diagnostics are disabled throughout the ladder, since each such step costs a full pass over the past-task training set and the longest rung takes thirty-three epochs.
+The four rungs use $\eta = 0.1$, $\eta = 0.1/3 = 0.0\overline{3}$, $\eta = 0.01$ and $\eta = 0.001$. The second is written into the configuration at full precision rather than rounded, so that $\eta c = 0.1$ holds exactly and the flow time $\tau = 23.5$ is matched to the last digit; the main text reports it as $0.1/3$. The dense window is set to $250c$ steps, which exceeds the $235c$ steps of the task, so every cell records the whole of $T_1$ at the dense cadence: $235$ samples per rung, evenly spaced in flow time. Buffer-fidelity diagnostics are disabled throughout the ladder, since each such step costs a full pass over the past-task training set and the longest rung takes one hundred epochs.
 
 \subsection{Asymmetric PER}
 \label{app:impl_per}
