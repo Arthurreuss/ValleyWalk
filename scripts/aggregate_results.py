@@ -127,12 +127,28 @@ _METRIC_LABELS: Dict[str, str] = {
 }
 
 
+# Directories under --run-dir that hold runs which are *not* experiments and so
+# must not become rows in the master index.
+#
+#   S_anchors — the S-series' shared task-0 checkpoints (scripts/run_S.sh,
+#               phase 0).  One single-task run per (momentum, seed), whose only
+#               product is theta*_0 for the ladder cells to warm-start from.
+#               They measure no stability gap (num_tasks=1) and carry no
+#               ablation_key, so they would add ten all-"---" rows to the
+#               rot_mnist summary table under an empty ablation group.
+EXCLUDED_DIR_NAMES = {"S_anchors"}
+
+
 def find_manifests(run_dir: Path) -> List[Path]:
     """Recursively find all ``run_manifest.json`` files under *run_dir*.
 
-    Results are sorted for deterministic ordering.
+    Paths passing through a directory in :data:`EXCLUDED_DIR_NAMES` are
+    skipped.  Results are sorted for deterministic ordering.
     """
-    return sorted(run_dir.rglob("run_manifest.json"))
+    return sorted(
+        p for p in run_dir.rglob("run_manifest.json")
+        if not EXCLUDED_DIR_NAMES.intersection(p.relative_to(run_dir).parts)
+    )
 
 
 def parse_manifest(manifest_path: Path) -> Dict[str, Any]:

@@ -73,7 +73,17 @@ class ER(BaseMethod):
         # next(params) on every observe() call.
         self._device: torch.device = next(model.parameters()).device
 
-        self._mode: str = str(cfg.method.mode)  # "standard" | "balanced"
+        # "standard"           — one backward on current_loss + replay_loss.
+        # "balanced"           — component-normalised mix, joint unit-normalised
+        #                        (fixed step length η; original D3/D4).
+        # "balanced_direction" — equal-magnitude mix rescaled to the raw joint
+        #                        gradient norm (vanilla's step length; D3'/D4').
+        self._mode: str = str(cfg.method.mode)
+        if self._mode not in ("standard", "balanced", "balanced_direction"):
+            raise ValueError(
+                f"method.mode must be 'standard', 'balanced' or "
+                f"'balanced_direction', got '{self._mode}'"
+            )
         gb = cfg.method.grad_balance
         self._normalize_components: bool = bool(gb.normalize_components)
         self._task_weighted: bool = bool(gb.task_weighted)
@@ -437,6 +447,10 @@ class ER(BaseMethod):
         # gradient norms, which are only available after the backward passes.
         if self._mode == "standard":
             return self._standard_step(current_loss, replay_loss, task_id, lr_factor)
+        if self._mode == "balanced_direction":
+            return self._balanced_direction_step(
+                current_loss, replay_loss, task_id, lr_factor
+            )
         return self._balanced_step(current_loss, replay_loss, task_id, lr_factor)
 
     def _standard_step(
@@ -558,6 +572,63 @@ class ER(BaseMethod):
         self._step_optimizer(lr_factor)
         # Logged loss tracks L_λ — what the optimiser actually descended.
         return {"loss": (lam * current_loss + replay_loss).item(), "replay_loss": replay_loss.item()}
+
+    def _balanced_direction_step(
+        self,
+        current_loss: torch.Tensor,
+        replay_loss: torch.Tensor,
+        task_id: int,
+        lr_factor: float = 1.0,
+    ) -> Dict[str, float]:
+        """Direction-only balancing at vanilla's step length (D3'/D4').
+
+        The update direction gives g_new and g_replay equal magnitude,
+        d_dir = ĝ_new + ĝ_rep, and is then rescaled to the length vanilla ER
+        would have stepped at the same parameters:
+
+            d = d_dir · ‖g_new + g_replay‖ / ‖d_dir‖      (so ‖d‖ = ‖g_raw‖)
+
+        This isolates the mixing intervention from any change in effective
+        step size — the confound of ``balanced`` mode, whose joint unit
+        normalisation fixes the step length at η regardless of the local
+        gradient magnitude.  When ‖g_new‖ = ‖g_replay‖ the update reduces to
+        vanilla ER exactly.  No λ-curriculum interplay: this mode is a
+        diagnostic condition and ignores ``lambda_curriculum``.
+        """
+        # ── Separate gradients (two backward passes, as in _balanced_step) ─
+        current_loss.backward()
+        g_new_flat = torch.cat([p.grad.detach().flatten() for p in self._params])
+
+        self.optimizer.zero_grad()
+        replay_loss.backward()
+        g_replay_flat = torch.cat([p.grad.detach().flatten() for p in self._params])
+
+        g_new_norm    = torch.linalg.norm(g_new_flat)
+        g_replay_norm = torch.linalg.norm(g_replay_flat)
+        # Magnitude-bias readout (Chapter 3.2.1):  ‖g_new‖ / ‖g_replay‖.
+        self._last_grad_ratio = (g_new_norm / (g_replay_norm + 1e-8)).item()
+        # Buffer-fidelity diagnostics: g_replay vs g_true (full past data).
+        self._record_buffer_diagnostics(g_replay_flat, g_replay_norm)
+
+        # ── Balanced direction, raw step length ────────────────────────
+        g_raw = g_new_flat + g_replay_flat
+        raw_norm = torch.linalg.norm(g_raw)
+        d_dir = (g_new_flat    / (g_new_norm    + 1e-12)
+               + g_replay_flat / (g_replay_norm + 1e-12))
+        d = d_dir * raw_norm / (torch.linalg.norm(d_dir) + 1e-12)
+
+        # ── Write the direction into .grad for optimizer.step() ────────
+        offset = 0
+        for p in self._params:
+            numel = p.numel()
+            p.grad = d[offset: offset + numel].view_as(p).clone()
+            offset += numel
+
+        self._step_optimizer(lr_factor)
+        return {
+            "loss": (current_loss + replay_loss).item(),
+            "replay_loss": replay_loss.item(),
+        }
 
     def get_last_grad_ratio(self) -> float:
         """Return ``‖g_new‖ / ‖g_replay‖`` from the last ``observe()`` call.

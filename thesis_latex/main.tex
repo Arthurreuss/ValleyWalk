@@ -13,6 +13,9 @@
 \setcounter{dbltopnumber}{3}
 \renewcommand{\dbltopfraction}{0.95}
 \renewcommand{\textfraction}{0.05}
+% Same allowance for single-column floats: the tall results figures run to ~90%
+% of a column, above the 0.7 default, which would otherwise push them a page on.
+\renewcommand{\topfraction}{0.95}
 \title{\textbf{\textsc{The Stability Gap as a Trajectory Problem: A Bent Descent Path, Its Overshoot, and One Gate in Two Designs}} \\
     \vspace{1ex} 
     \normalsize Bachelor's Thesis\vspace{-2ex}
@@ -33,7 +36,7 @@
 \thispagestyle{firststyle}
 \input{./sections/1_abstract}
 
-\vspace{2ex}
+\clearpage
 \setcounter{tocdepth}{2} % sections and subsections
 \tableofcontents
 
@@ -60,7 +63,7 @@
     \input{sections/appendixA.tex} % Implementation Details
     \input{sections/appendixB.tex} % Metric Definitions
     \input{sections/appendixC.tex} % Complete Results
-    \input{sections/appendixD.tex} % Proof of the Trajectory Bound
+    \input{sections/appendixD.tex} % Derivation of the Trajectory Bound
     % \newpage
 
 \end{appendices}

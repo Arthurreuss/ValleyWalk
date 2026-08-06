@@ -3,7 +3,15 @@ name: er
 # mode: standard — original ER: one forward/backward on (current_loss + replay_loss).
 #                  Half the mini-batch is current data, half is replay.
 # mode: balanced — two separate backward passes with configurable gradient
-#                  combining (see grad_balance below).
+#                  combining (see grad_balance below).  NOTE: unit-normalises
+#                  the joint direction, i.e. fixes the step length at η —
+#                  confounds rebalancing with step-size capping.  Kept for
+#                  reproducibility of the original D3/D4 runs (appendix).
+# mode: balanced_direction — equal-magnitude mix (ĝ_new + ĝ_rep) rescaled to
+#                  the raw joint gradient norm ‖g_new + g_replay‖: direction
+#                  is rebalanced, step length matches vanilla ER exactly.
+#                  The clean mixing-only intervention (D3'/D4').  Ignores
+#                  grad_balance and lambda_curriculum.
 mode: standard
 
 reset_momentum_steps: 0  # steps at the start of each new task to suppress momentum (0 = disabled)
@@ -59,7 +67,7 @@ lambda_curriculum:
                                     # initial interpolation can feel overly cautious.
                                     # Has no effect on task 0 or after the ramp completes.
 
-# Symmetric LR warm-up (M2 falsification of λ-curriculum).
+# Symmetric LR warm-up (M-series falsification of λ-curriculum; scripts/run_M.sh).
 # Scales the optimiser's lr by  min((task_step − 1) / warmup_steps, 1)  for
 # the first ``warmup_steps`` steps of every task with task_id > 0.  Both the
 # new-task gradient AND the replay gradient are slowed equally — unlike the

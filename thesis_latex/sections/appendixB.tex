@@ -1,14 +1,9 @@
 \section{Metric Definitions}
 \label{app:metric_defs}
 
-This appendix gives the full definitions of every metric recorded by the
-evaluation pipeline of Section~\ref{subsec:metrics}. The main text explains the
-measures the argument turns on; the tables below are the look-up reference for
-the complete set.
+This appendix gives the full definitions of every metric recorded by the evaluation pipeline of Section~\ref{subsec:metrics}. The main text explains the measures the argument turns on; the tables below are the look-up reference for the complete set.
 
-\paragraph{Stability-gap metrics.} Computed from the dense per-step evaluation.
-Write $a_j^{\text{pre}}$ for the pre-task accuracy on task $j$ and $a_j(t)$ for
-its accuracy at step $t$ of the new task.
+\paragraph{Stability-gap metrics.} Computed from the dense per-step evaluation. Write $a_j^{\text{pre}}$ for the pre-task accuracy on task $j$ and $a_j(t)$ for its accuracy at step $t$ of the new task.
 
 \begin{table}[H]
     \centering
@@ -26,13 +21,7 @@ its accuracy at step $t$ of the new task.
     \label{tab:gap_metrics}
 \end{table}
 
-\paragraph{Continual-learning metrics.} Following
-\citet{delange2023continualevaluationlifelonglearning}, computed at task
-boundaries and over the full record. Let $A(E_j, f_n)$ be the accuracy on the
-test set of task $j$ evaluated at the model $f_n$ after training stage $n$, and
-let $N$ be the number of tasks. The full task-boundary accuracy matrix
-$R[i,j] = A(E_j, f_{T_i})$ is logged for every run, so any downstream metric can
-be reconstructed.
+\paragraph{Continual-learning metrics.} Following \citet{delange2023continualevaluationlifelonglearning}, computed at task boundaries and over the full record. Let $A(E_j, f_n)$ be the accuracy on the test set of task $j$ evaluated at the model $f_n$ after training stage $n$, and let $N$ be the number of tasks. The full task-boundary accuracy matrix $R[i,j] = A(E_j, f_{T_i})$ is logged for every run, so any downstream metric can be reconstructed.
 
 \begin{table}[H]
     \centering
@@ -55,12 +44,7 @@ be reconstructed.
 
 \paragraph{Gradient-fidelity diagnostics.}
 \label{subsubsec:grad_metrics}
-Recorded at the dense cadence for the
-decomposition conditions only. The tracker compares the replay-buffer gradient
-$g_{\text{replay}}$ against the true past-task gradient $g_{\text{true}}$,
-computed at every step by a separate forward and backward pass over the entire
-past-task training set (no sub-sampling, so $g_{\text{true}}$ is the
-deterministic empirical past-task gradient at the current parameters).
+Recorded at the dense cadence on the vanilla-ER reference runs only. The tracker compares the replay-buffer gradient $g_{\text{replay}}$ against the true past-task gradient $g_{\text{true}}$, computed at every step by a separate forward and backward pass over the entire past-task training set (no sub-sampling, so $g_{\text{true}}$ is the deterministic empirical past-task gradient at the current parameters).
 
 \begin{table}[H]
     \centering
@@ -69,7 +53,7 @@ deterministic empirical past-task gradient at the current parameters).
         \hline
         Diagnostic                                    & Logged name                     & Role                                                                                            \\
         \hline
-        $\cos(g_{\text{replay}}, g_{\text{true}})$    & \texttt{true\_grad\_cosine}     & Buffer-side directional fidelity, the estimator-variance driver of Section~\ref{subsec:drivers} \\
+        $\cos(g_{\text{replay}}, g_{\text{true}})$    & \texttt{true\_grad\_cosine}     & Buffer-side directional fidelity, the estimator-variance driver of Section~\ref{subsec:ladder} \\
         $\|g_{\text{replay}}\| / \|g_{\text{true}}\|$ & \texttt{true\_grad\_mag\_ratio} & Buffer-side magnitude fidelity                                                                  \\
         $\|g_{\text{new}}\| / \|g_{\text{replay}}\|$  & \texttt{grad\_ratio}            & Update-side magnitude asymmetry, large at step $1$ when $\|g_{\text{replay}}\| \approx 0$       \\
         \hline

@@ -18,12 +18,23 @@
 # D4 is the cleanest isolation of the trajectory contributor (no buffer noise,
 # no magnitude asymmetry, only the SGD-trajectory geometry of Kao et al.).
 #
+# REVISION (feedback round, 2026-07): D3/D4 now use ``balanced_direction``
+# mode — equal-magnitude mixing rescaled to the raw joint gradient norm, so
+# the step length matches vanilla ER exactly.  The original ``balanced`` mode
+# unit-normalised the joint direction (fixed step length η), confounding the
+# rebalancing with a step-size intervention.  The old runs remain in
+# outputs/ under ablation values D3_balanced / D4_fulldata_balanced
+# (appendix); the new runs land under D3_balanced_dir /
+# D4_fulldata_balanced_dir.  The step-size question itself is tested
+# separately by the global LR warm-up block, scripts/run_M.sh.
+#
 # Conditions (default set: D1 D2 D3 D4 D5 D6)
 # -------------------------------------------
 #   D1 — Vanilla ER          (buffer 1 k, standard mode)         total gap
 #   D2 — Full-data ER        (buffer 60 k, standard mode)        − estimator noise
-#   D3 — Balanced ER         (buffer 1 k, balanced mode)         − magnitude asymmetry
-#   D4 — Full-data balanced  (buffer 60 k, balanced mode)        − magnitude + estimator
+#   D3 — Balanced-dir ER     (buffer 1 k, balanced_direction)    − magnitude asymmetry,
+#              step length matched to vanilla
+#   D4 — Full-data bal-dir   (buffer 60 k, balanced_direction)   − magnitude + estimator
 #   D5 — Asymmetric PER      (buffer 1 k; replay Fisher filters the current-task
 #              gradient only, replay gradient added raw)          preconditioner reference
 #   D6 — Averaged GEM        (buffer 1 k; gradient projection)   projection reference
@@ -299,23 +310,23 @@ for mu in $(momentum_values); do
     fi
 
     if should_run D3; then
-        echo "=== D3: balanced ER (1 k reservoir, balanced, normalised) — removes magnitude asymmetry ==="
-        spawn_er_block D3 D3_balanced "${mu}" \
-            method.mode=balanced \
-            method.grad_balance.normalize_components=true \
-            method.grad_balance.task_weighted=false \
+        echo "=== D3: balanced-direction ER (1 k reservoir) — removes magnitude asymmetry at vanilla's step length ==="
+        # Direction: ĝ_new + ĝ_rep (equal magnitude); step length rescaled to
+        # ‖g_new + g_replay‖, bit-for-bit what vanilla ER would step.  Pure
+        # mixing intervention — no step-size change to confess.
+        spawn_er_block D3 D3_balanced_dir "${mu}" \
+            method.mode=balanced_direction \
             "${GRAD_DIAG_ON[@]}"
     fi
 
     if should_run D4; then
-        echo "=== D4: full-data balanced ER (60 k buffer, balanced) — isolates trajectory residual ==="
-        # See D2 for the rationale on replay_full_buffer=true.
-        spawn_er_block D4 D4_fulldata_balanced "${mu}" \
-            method.mode=balanced \
+        echo "=== D4: full-data balanced-direction ER (60 k buffer) — isolates trajectory residual ==="
+        # See D2 for the rationale on replay_full_buffer=true, D3 for the
+        # balanced_direction update.
+        spawn_er_block D4 D4_fulldata_balanced_dir "${mu}" \
+            method.mode=balanced_direction \
             method.replay_full_buffer=true \
             memory.total_budget=60000 \
-            method.grad_balance.normalize_components=true \
-            method.grad_balance.task_weighted=false \
             "${GRAD_DIAG_ON[@]}"
     fi
 

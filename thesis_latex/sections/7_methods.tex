@@ -9,111 +9,123 @@ This section describes the empirical testbeds (Section~\ref{subsec:setup}), the 
 \subsubsection{Testbeds}
 \label{subsec:testbed}
 
-Two testbeds of different scale carry the study. A small, fast one (rotated MNIST on a two-layer MLP) runs the dense mechanistic sweeps: the driver block, the curriculum sweep, the asymmetric-PER damping sweep, and the momentum cross. A larger one (domain-shift CIFAR-10 on a CIFAR-adapted ResNet-18) tests whether the findings survive a deeper backbone and a stronger task shift, the regime where the local condition behind the bound of Section~\ref{subsec:reference} weakens. Both hold the label space and task structure fixed and shift only the input distribution, and both use two tasks in their main blocks, so there is exactly one transition and one instance of the stability gap; a five-task rot-MNIST sequence and a three-task CIFAR sequence serve as multi-boundary checks.
+Two testbeds of different scale carry the study. A small, fast one (rotated MNIST on a two-layer MLP) runs the dense mechanistic sweeps: the step-size ladder, the curriculum sweep, the asymmetric-PER damping sweep, and the momentum cross. A larger one (domain-shift CIFAR-10 on a CIFAR-adapted ResNet-18) tests whether the findings survive a deeper backbone and a stronger task shift, the regime where the local condition behind the bound of Section~\ref{subsec:reference} weakens. Both hold the label space and task structure fixed and shift only the input distribution, and both use two tasks in their main blocks, so there is exactly one transition and one instance of the stability gap; a five-task rot-MNIST sequence and a three-task CIFAR sequence serve as multi-boundary checks.
 
-On rot-MNIST, following \citet{delange2023continualevaluationlifelonglearning}, $T_0$ presents the digits at $-90^\circ$ and $T_1$ applies a further $90^\circ$ rotation, each task using the standard $60{,}000$ training and $10{,}000$ test images. On CIFAR-10, $T_0$ is clean and $T_1$ applies Gaussian-noise corruption at severity $3$ \citep{hendrycks2019robustness}; the ten classes are shared, so only the input distribution shifts. A three-task variant ($[\text{none}, \text{Gaussian}, \text{shot}]$) and two alternative corruptions appear in the generalisation block. The rot-MNIST MLP is cheap enough to sweep across many conditions and seeds and is where the local condition of Section~\ref{subsec:reference} is most plausible; the ResNet-18 is the deeper, more realistic counterpart. rot-MNIST runs online (one epoch per task); the ResNet needs several passes to converge before the transition, so the CIFAR block uses ten epochs per task. Optimiser, learning rate, and batch size are common across benchmarks. Full backbone and protocol specifications are in Appendix~\ref{app:impl_models} (Tables~\ref{tab:mlp}--\ref{tab:training}).
+On rot-MNIST, $T_0$ presents the digits upright and $T_1$ rotates them by $90^\circ$, each task using the standard $60{,}000$ training and $10{,}000$ test images, following \citet{delange2023continualevaluationlifelonglearning}. On CIFAR-10, $T_0$ is clean and $T_1$ applies Gaussian-noise corruption at severity $3$ \citep{hendrycks2019robustness}; the ten classes are shared, so only the input distribution shifts. A three-task variant ($[\text{none}, \text{Gaussian}, \text{shot}]$) and two alternative corruptions appear in the generalisation block. The rot-MNIST MLP is cheap enough to sweep across many conditions and seeds and is where the local condition of Section~\ref{subsec:reference} is most plausible; the ResNet-18 is the deeper, more realistic counterpart. rot-MNIST runs online (one epoch per task); the ResNet needs several passes to converge before the transition, so the CIFAR block uses ten epochs per task. Optimiser, learning rate, and batch size are common across benchmarks; no method retunes the learning rate, so every comparison between methods runs at a matched step size (Section~\ref{subsec:gates}). The step size is held fixed in that role and manipulated in one block only, the ladder of Section~\ref{subsec:ladder}, which holds the objective, the buffer, and the update rule fixed and varies $\eta$ alone. Full backbone and protocol specifications are in Appendix~\ref{app:impl_models} (Tables~\ref{tab:mlp}--\ref{tab:training}).
 
-Throughout training every task's test accuracy is evaluated every $10$ steps; at each transition the cadence rises to every step, so the dip is recorded at full resolution (the whole online epoch on rot-MNIST, a $250$-step window on CIFAR). A stability-gap tracker snapshots each past task's pre-switch accuracy and records the resulting (step, accuracy) series. For the driver block only, a gradient tracker additionally records the fidelity of the replay-buffer gradient against the exact past-task gradient, at the same cadence; each such step costs a full pass over the past-task training set, which is why it is not run elsewhere.
+Throughout training every task's test accuracy is evaluated every $10$ steps; at each transition the cadence rises to every step, so the dip is recorded at full resolution (the whole online epoch on rot-MNIST, a $250$-step window on CIFAR). A stability-gap tracker snapshots each past task's pre-switch accuracy and records the resulting (step, accuracy) series; how the per-step figures draw the sparsely sampled pre-boundary segment is a plotting convention with no effect on any reported number, stated in Appendix~\ref{app:impl_plotting}. On the vanilla-ER reference runs only, a gradient tracker additionally records the fidelity of the replay-buffer gradient against the exact past-task gradient, at the same cadence; each such step costs a full pass over the past-task training set, which is why it is not run elsewhere, the ladder's long rungs least of all.
 
 \subsubsection{Metrics}
 \label{subsec:metrics}
 
 Each metric is reported as the seed mean $\pm$ sample standard deviation; complete definitions are in Appendix~\ref{app:metric_defs}. The gap definition of Section~\ref{sec:motivation}, the transient excess below the level a task settles at, gives two primary metrics. With $a_j^{\text{pre}}$ the pre-switch baseline on past task $j$ and $a_j(t)$ its accuracy at step $t$, \texttt{gap\_depth} is the maximum instantaneous excursion $\max_j (a_j^{\text{pre}} - \min_t a_j(t))$, which Section~\ref{subsec:trajectory_problem} predicts to be overshoot-dominated. The second, \texttt{gap\_area\_end}, integrates the shortfall below the settled level: with reference $b_j = \min(a_j^{\text{pre}}, \bar{a}_j)$, where $\bar{a}_j$ is the accuracy the task eventually reaches, it sums $\max(0, b_j - a_j(t))$ over the new task's training steps and across past tasks. Anchoring to the recovered level implements the split of Section~\ref{subsec:reference}: a permanent step down to a lower plateau contributes to the standard forgetting metrics and near-zero to the area, while a true dip-and-recover registers in full. One consequence, revisited when reading the tables, is that two methods settling at different levels are measured against different lines, so a better-recovering method can carry the \emph{larger} area; a positive area marks transient disruption, not net cost, and we read it with final accuracy. The arc of Section~\ref{subsec:trajectory_problem} and the slow part of the noisy recovery live here; sharp noise-driven drops register in depth instead. A third metric, \texttt{recovery\_steps}, and the gradient-fidelity diagnostics are defined in Appendix~\ref{app:metric_defs}.
 
+One clarification is needed for the ladder of Section~\ref{subsec:ladder}, the only block in which $\eta$ itself varies. \texttt{gap\_depth} is a maximum over accuracies and is therefore $\eta$-invariant by construction. \texttt{gap\_area\_end} is not: it is a trapezoidal integral of the drop curve against the step index, weighted by the spacing between records, with units accuracy${\cdot}$steps. Stretching a rung by $c = 0.1/\eta$ stretches its step axis by the same factor, so an identically shaped excursion reads $c$ times larger. Across the ladder the area is therefore taken in flow time, $A_\tau = \eta\,A_{\text{steps}}$, the integral of the same curve against $\tau = \sum_t \eta$; within a rung the two differ by a constant, and every block at fixed $\eta$ reports the step-axis value as before.
+
 To place the gap in the standard frame we report the continual-evaluation metrics of \citet{delange2023continualevaluationlifelonglearning} from the task-boundary accuracy matrix: average final accuracy (ACC), which checks that a gate lowers the gap at preserved accuracy; worst-case retention (min-ACC, WC-ACC); and short-horizon plasticity ($\mathrm{WP}_{100}$). FORG and the windowed $\mathrm{WF}_w/\mathrm{WP}_w$ family are logged for completeness. Conditions are compared with the paired Wilcoxon signed-rank test on seed-paired differences, preferred over the $t$-test because five paired seeds cannot support a normality assumption on bounded metrics: the gap metrics floor at zero, where the strongest conditions cluster, and accuracy sits near its ceiling, so the seed differences are skewed rather than Gaussian. With five paired seeds the smallest two-sided $p$-value is $0.0625$, reached when all five differences share a sign; we read $p = 0.0625$ as complete directional agreement and let effect sizes separate large results from marginal ones.
 
 \subsection{Experiments}
 \label{subsec:overview}
 
-Each block maps to one or more research questions and tests the corresponding predictions of Section~\ref{sec:motivation}. All conditions use five seeds and the protocol above unless noted.
+Each block maps to one or more research questions and tests the corresponding predictions of Section~\ref{sec:motivation}. Unless otherwise noted, all conditions use five seeds and follow the standard protocol. Vanilla ER at the standard operating point ($1$k reservoir, $\eta = 0.1$, no schedule, and no filter) serves as the common reference baseline for every rot-MNIST block and is run at both momentum settings.
 
+\subsubsection{The Step-Size Ladder (RQ1)}
+\label{subsec:ladder}
 
-\subsubsection{Overshoot Drivers (RQ1)}
-\label{subsec:drivers}
+To address RQ1, the step-size ladder isolates the effects of discretisation from the intended optimisation trajectory. A uniform rescaling of $\eta$ does not change the underlying vector field. Because forward Euler at step $\eta$ integrates the same flow $\dot\theta = -g(\theta)$ on a finer grid, a smaller step size follows the intended path more accurately. Therefore, as $\eta$ decreases, any reduction in the performance gap represents discretisation error. Whatever error survives at the limit belongs to the continuous path the optimiser was trying to follow, which we define as the arc.
 
-The driver block answers the overshoot side of RQ1: each condition switches off one of the drivers of Section~\ref{subsec:trajectory_problem} by construction and observes what remains. The complementary path-side intervention is the curriculum, whose full-buffer diagnostic below completes the RQ1 cross. Table~\ref{tab:drivers} lists the four conditions. Balancing (D3, D4) gives $g_{\text{new}}$ and $g_{\text{replay}}$ equal magnitude from the first step, switching off the boundary imbalance: an unbalanced step at $\theta_0^*$ (the converged $T_0$ optimum, $\theta_A^*$ of Section~\ref{sec:motivation}) is driven almost entirely by $g_{\text{new}}$, a balanced step carries the replay direction at equal weight. The full-data buffer (D2, D4) replaces vanilla ER's noisy $256$-sample replay gradient with the exact empirical past-task gradient, switching off the estimator variance (mechanics in Appendix~\ref{app:impl_er}). Because the drivers interact (Section~\ref{subsec:trajectory_problem}), we read the conditions as interventions, not an additive decomposition: depth differences measure how much of the drop each driver carries in that context, while the area and per-step shape carry the level-one signal: with the replay estimate exact (D2, D4), a dip-and-recover bend that remains cannot come from the variance driver, the arc's fingerprint.
+To ensure the rungs of the ladder represent a true limit rather than unrelated runs, we enforce four constraints. First, we match the total flow time: the epoch count scales as $1/\eta$, meaning a rung at $\eta = 0.1/c$ runs for $c$ epochs. This guarantees every cell covers the same flow time $\tau = 23.5$ over the new task, preventing artificial performance gaps caused simply by under-training. Second, we use a frozen $\theta_0^*$: every cell warm-starts from a shared task-$0$ checkpoint (Appendix~\ref{app:impl_ladder}) rather than training the initial task at its own step size. This prevents smaller step sizes from settling into differently sharp minima before the task switch. Third, we maintain a matched record grid, scaling the evaluation cadence by $c$ so every cell records the exact same number of samples spaced equally in flow time. Finally, the evaluation cadence is counted directly from the task boundary to ensure we capture the initial post-switch spike perfectly.
 
-\begin{table*}[t]
+Table~\ref{tab:ladder} details the ladder rungs: $\eta = 0.1$, $\eta \approx 0.033$, $\eta = 0.01$, and $\eta = 0.001$. Every rung runs at both momentum settings, the finer rungs establishing the limit each leg converges on. Each rung is evaluated on two buffer arms (the standard $1$k reservoir and a $60$k exact past-task gradient buffer). Using the exact past-task gradient switches off estimator variance at the source, ensuring that any excursion surviving both the small step size and the exact gradient is purely a property of the path.
+
+Since forward Euler's global error is $O(\eta)$, we estimate the limit by fitting a linear residual metric $A(\eta) = A_0 + k\eta$ over the small-$\eta$ rungs. A departure from linearity at $\eta = 0.1$ signifies the discrete instability responsible for the first-step spike. The two levels predict opposite behaviors: depth (the overshoot) should fall toward zero down the ladder, while the area in flow time (the arc) should converge on a positive $A_0$ that no further step-size reduction can eliminate.
+
+\begin{table}[b]
     \centering
     \small
-    \begin{tabular}{@{}p{0.9cm} p{3.0cm} p{2.4cm} p{2.7cm} p{5.2cm}@{}}
+    \begin{tabular}{@{}l l l l l l@{}}
         \hline
-        Label & Condition            & Replay buffer    & Gradient handling  & Driver removed by construction             \\
+        Label & $\eta$  & Epochs $c$ & Cadence & Steps   & $\tau$ \\
         \hline
-        D1    & Vanilla ER           & $1$k reservoir   & unbalanced         & none (all drivers active)                  \\
-        D2    & Full-data ER         & $60$k (all past) & unbalanced         & estimator variance (exact replay gradient) \\
-        D3    & Balanced ER          & $1$k reservoir   & unit-norm balanced & boundary imbalance                         \\
-        D4    & Full-data + balanced & $60$k            & unit-norm balanced & imbalance and variance                     \\
+        S1    & $0.1$   & $1$        & $1$     & $235$   & $23.5$ \\
+        S2    & $0.1/3$ & $3$        & $3$     & $705$   & $23.5$ \\
+        S3    & $0.01$  & $10$       & $10$    & $2350$  & $23.5$ \\
+        S4    & $0.001$ & $100$      & $100$   & $23500$ & $23.5$ \\
         \hline
     \end{tabular}
-    \caption{Driver-removal conditions. Each switches off one or two overshoot drivers relative to vanilla ER; what all four leave in place is the descent path itself, so the arc should survive throughout.}
-    \label{tab:drivers}
-\end{table*}
+    \caption{The step-size ladder on two-task rot-MNIST. Cadence is the dense post-switch evaluation interval in steps, so every rung records the same $235$ samples over $T_1$. Each rung runs on both buffer arms at both momentum settings: sixteen cells, five seeds, warm-started from one frozen $\theta_0^*$ per momentum setting and seed.}
+    \label{tab:ladder}
+\end{table}
 
-\subsubsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum Sweep (RQ2, RQ1)}
+\subsubsection{The \texorpdfstring{$\lambda$}{lambda}-Curriculum Sweep (RQ2)}
 \label{subsec:curriculum}
 
-The curriculum sweep tests the scalar feedback gate one ingredient at a time: the $O(1/N)$ prediction of Equation~\eqref{eq:bound} (RQ2a), the adaptive schedule (RQ2b), and the $\lambda_{\min}$ floor (RQ2c); a full-buffer diagnostic (C8) then returns to RQ1, testing the claim that the curriculum removes the arc and leaves only stochastic overshoot. All conditions run on top of standard ER ($1$k reservoir, unbalanced gradients), so the schedule is the only changed variable (Table~\ref{tab:curriculum}). The adaptive schedule (C4) is the feedback variant: it sets $\lambda$ to a clipped exponential moving average of the gradient-norm ratio $r := \|g_{\text{replay}}\|/\|g_{\text{new}}\|$. At $\theta_0^*$ the replay gradient is near zero by stationarity, so $r$ and $\lambda$ start near $0$; as the iterate moves, $\|g_{\text{replay}}\|$ grows and $\|g_{\text{new}}\|$ shrinks, so $\lambda \to 1$ at the pace the damage signal dictates, with no ramp length to choose. The floor $\lambda_{\min}$ (C5--C7) keeps the schedule off $\lambda \approx 0$ during the first steps and buys back early plasticity.
+The curriculum sweep evaluates the scalar feedback gate by testing its components individually (Table~\ref{tab:curriculum}). The central claim of the curriculum is not just that it lowers the performance gap, but that it successfully does so at the standard step size, within the standard step budget, and by modifying only the new-task update. All conditions run on top of standard ER, making the schedule the only independent variable.
 
-C8 combines the practical curriculum configuration (C7) with the full $60$k buffer of D2/D4, so the path is fixed and the variance driver is switched off at source. This makes it a double probe. First, it tests what C7's remaining momentum-$0$ transient is made of: the curriculum has already removed the arc, so if the residual is stochastic overshoot from buffer noise, the exact replay gradient should remove it too and C8 should show no gap even without momentum. Second, comparing C8 with and without momentum (C8 vs.\ C8$_M$) separates the two roles momentum could play for the curriculum. The full buffer already removes the gradient noise, so C8 has no variance left for momentum to reduce; whatever momentum still improves on top of C8 must come from its other role, accelerating new-task learning. C8 stores the whole past task and so breaks the limited-memory premise; it is a diagnostic only, and C7 remains the practical configuration.
+Conditions C1 through C3 test linear ramps to evaluate the $O(1/N)$ prediction of Equation~\eqref{eq:bound}. Condition C4 introduces the adaptive schedule (the feedback variant of Section~\ref{subsec:gates}), which sets $\lambda$ from a clipped exponential moving average of $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$, reset to zero at each boundary. Because $\|g_{\text{replay}}\| \approx 0$ at $\theta_0^*$, it starts near zero; unlike the ramps it has neither a length nor a terminal state, tracking the ratio for as long as the task runs and falling again if the ratio does. How far it releases the new task is therefore an outcome of the run rather than a setting, and the two momentum legs differ sharply in it (Appendix~\ref{app:impl_er}). Conditions C5 through C7 apply a minimum floor ($\lambda_{\min}$) to preserve early plasticity. Condition C8 serves as a diagnostic substitution argument, pairing the optimal practical configuration (C7) with the exact $60$k replay gradient. If the curriculum leaves a residual transient at momentum $0$, applying the exact gradient tests whether that residual is merely buffer noise. Comparing this to momentum runs helps isolate momentum's variance-reduction properties from its role in accelerating new-task learning.
 
-\begin{table*}[t]
+\begin{table}[htbp]
     \centering
     \small
-    \begin{tabular}{@{}p{0.9cm} p{3.4cm} p{4.8cm} p{3.4cm} p{1.4cm}@{}}
+    \begin{tabular}{@{}l l@{}}
         \hline
-        Label & Condition                           & $\lambda(t)$ schedule                                                                  & Hyperparameter                           & Tests     \\
+        Label    & Condition                           \\
         \hline
-        ---   & Vanilla ER (baseline)               & $\lambda \equiv 1$ from step $1$ (abrupt switch)                                       & ---                                      & reference \\
-        C1    & Linear $N{=}50$                     & $\mathrm{clip}(t/50,\, 0,\, 1)$                                                        & $N = 50$                                 & RQ2a      \\
-        C2    & Linear $N{=}100$                    & $\mathrm{clip}(t/100,\, 0,\, 1)$                                                       & $N = 100$                                & RQ2a      \\
-        C3    & Linear $N{=}200$                    & $\mathrm{clip}(t/200,\, 0,\, 1)$                                                       & $N = 200$                                & RQ2a      \\
-        C4    & Adaptive                            & $\mathrm{clip}\!\left(\mathrm{EMA}_\alpha(r),\, 0,\, 1\right)$                         & $\alpha = 0.05$                          & RQ2b      \\
-        C5    & Adaptive $+\,\lambda_{\min}{=}0.05$ & $\max\!\left(\lambda_{\min},\, \mathrm{clip}(\mathrm{EMA}_\alpha(r),\, 0,\, 1)\right)$ & $\alpha = 0.05$, $\lambda_{\min}{=}0.05$ & RQ2c      \\
-        C6    & Adaptive $+\,\lambda_{\min}{=}0.10$ & as C5                                                                                  & $\lambda_{\min}{=}0.10$                  & RQ2c      \\
-        C7    & Adaptive $+\,\lambda_{\min}{=}0.20$ & as C5                                                                                  & $\lambda_{\min}{=}0.20$                  & RQ2c      \\
-        C8    & C7 $+$ full $60$k buffer            & as C5, exact replay gradient                                                           & $\lambda_{\min}{=}0.20$                  & RQ1, RQ2d \\
+        Baseline & Vanilla ER ($\lambda \equiv 1$)     \\
+        C1       & Linear $N{=}50$                     \\
+        C2       & Linear $N{=}100$                    \\
+        C3       & Linear $N{=}200$                    \\
+        C4       & Adaptive                            \\
+        C5       & Adaptive $+\,\lambda_{\min}{=}0.05$ \\
+        C6       & Adaptive $+\,\lambda_{\min}{=}0.10$ \\
+        C7       & Adaptive $+\,\lambda_{\min}{=}0.20$ \\
+        C8       & C7 $+$ full $60$k buffer            \\
         \hline
     \end{tabular}
-    \caption{$\lambda$-curriculum conditions, all applied on top of standard ER. $\mathrm{EMA}_\alpha$ is an exponential moving average with smoothing $\alpha$, and $r := \|g_{\text{replay}}\| / \|g_{\text{new}}\|$ is the gradient-norm ratio. Each condition is run at momentum $0.0$ and $0.9$.}
+    \caption{$\lambda$-curriculum conditions, all applied on top of standard ER and all run at momentum $0.0$ and $0.9$. The linear conditions ramp $\lambda$ as $\mathrm{clip}(t/N, 0, 1)$; the adaptive ones use $\max(\lambda_{\min}, \mathrm{clip}(\mathrm{EMA}_\alpha(r), 0, 1))$ with $\alpha = 0.05$ and $r := \|g_{\text{replay}}\|/\|g_{\text{new}}\|$. C4--C7 settle the two ingredient choices of the shipped configuration and are reported in Appendix~\ref{app:curr_full}.}
     \label{tab:curriculum}
-\end{table*}
+\end{table}
 
-\begin{table*}[t]
-    \centering
-    \small
-    \begin{tabular}{@{}p{0.9cm} p{2.9cm} p{2.6cm} p{2.6cm} p{5.2cm}@{}}
-        \hline
-        Label & Condition         & Replay buffer                  & Damping $\delta$      & Purpose                                                                     \\
-        \hline
-        P1    & Standard leg      & $1$k reservoir                 & $1.0, 0.3, 0.1, 0.03$ & practical regime, matched to the curriculum (RQ3)                           \\
-        P2    & Full-buffer leg   & $60$k (exact $g_{\text{rep}}$) & $1.0, 0.3, 0.1, 0.03$ & variance driver off; residual area is the arc (RQ3, RQ1)                    \\
-        P3    & Solver control    & $60$k                          & $0.03$                & $60$ CG iterations instead of $25$; rules out solve artefacts               \\
-        P4    & Symmetric control & $1$k reservoir                 & $1.0, 0.3, 0.1, 0.03$ & preconditions $g_{\text{cur}} + g_{\text{rep}}$; ablates the one-sided gate \\
-        \hline
-    \end{tabular}
-    \caption{Asymmetric-PER conditions. Both sweep legs run at momentum $0.0$; momentum-$0.9$ counterparts cover $\delta \le 0.3$ on the standard leg and $\delta \in \{0.3, 0.1\}$ on the full-buffer leg. The two controls run at momentum $0$, where the effects they check for arise. The filter metric is always the replay Fisher $F_{\text{rep}}$, estimated on a sampled batch (Appendix~\ref{app:impl_per}).}
-    \label{tab:per}
-\end{table*}
 
-\subsubsection{Momentum Cross (RQ2d, RQ3)}
+\subsubsection{Momentum Cross (RQ2, RQ3)}
 \label{subsec:momentum}
 
-Every rot-MNIST condition of the driver D-series and the curriculum C-series, and the asymmetric-PER sweep legs P1--P2 at the settings noted in Table~\ref{tab:per}, is run at momentum $0.0$ and $0.9$; momentum-on runs carry an $M$ subscript (e.g.\ $\text{D1}_M$). The cross tests the composability prediction of Section~\ref{subsec:gates}: whether momentum helps or hurts a method's gap should depend on where the method attenuates the push. A five-task rot-MNIST sequence (rotations $[0,30,60,90,120]^\circ$, four transitions, five seeds) repeats the three-way comparison of vanilla ER, the practical curriculum, and asymmetric PER at both momentum settings, as a multi-boundary check (Appendix~\ref{app:longseq_full}).
+To test the composability prediction of Section~\ref{subsec:gates}, we run the vanilla ER reference, the step-size ladder, the curriculum sweep, and the asymmetric-PER sweep at both momentum $0.0$ and $0.9$ (denoted with an $M$ subscript). This cross-examination reveals whether momentum helps or hinders a method based on where that method attenuates the parameter push.
+
+We also conduct a multi-boundary check using a five-task rot-MNIST sequence to repeat this three-way comparison across multiple transitions (Appendix~\ref{app:longseq_full}).
 
 \subsubsection{Asymmetric-PER \texorpdfstring{$\delta$}{delta} Sweep (RQ3)}
 \label{subsec:per_asym}
 
-The damping sweep tests the directional feedforward gate: does the gap shrink as the filter strengthens, at what plasticity cost, and where does the gate fail? Asymmetric PER implements Equation~\eqref{eq:asym_per}, filtering the new-task push through the replay Fisher $F_{\text{rep}}$ \citep{amari1998natural}. Normalising by $\delta$ keeps flat directions at unit gain: along an eigendirection of curvature $\rho$ the gain is $\delta/(\rho+\delta)$, so directions the past task is flat in pass through whole and steep ones are shrunk toward zero. The damping $\delta$ is the single knob: at $\delta \to \infty$ plain ER returns, while as $\delta \to 0$ the push concentrates in replay-flat directions with the restoring gradient $g_{\text{rep}}$ at full strength throughout. The push is applied matrix-free by conjugate gradients over Fisher-vector products (Appendix~\ref{app:impl_per}).
+The damping sweep (Table~\ref{tab:per}) evaluates the directional feedforward gate by testing how the gap shrinks as the filter strengthens and identifying where the gate ultimately fails. Asymmetric PER implements Equation~\eqref{eq:asym_per}, where the gain along an eigendirection of replay curvature $\rho$ is defined as $\delta/(\rho+\delta)$. This means $\delta \to \infty$ recovers plain ER, while $\delta \to 0$ forces the update into replay-flat directions while keeping the restoring gradient at full strength.
 
-Table~\ref{tab:per} lays out the sweep: $\delta \in \{1.0, 0.3, 0.1, 0.03\}$ crossed with two buffer legs, each at both momentum settings. The \emph{standard} leg ($1$k reservoir) matches the curriculum's practical regime, while the \emph{full-buffer} leg makes the replay gradient exact, switching off the variance driver as in D2/D4, so the remaining area measures the deterministic arc and the sweep reads out directly whether the gate shrinks the arc itself. Two controls guard the reading: a solver control reruns the strongest filter at $60$ CG iterations to separate gate properties from an under-converged solve (Appendix~\ref{app:impl_per}), and a symmetric control preconditions the summed gradient by the same replay Fisher, isolating the effect of leaving the restoring gradient untouched (Appendix~\ref{app:per_sym}).
+Both legs sweep $\delta \in \{1.0, 0.3, 0.1, 0.03\}$, from a filter that barely moves the update to the strongest setting reached here. The standard leg matches the practical memory budget of the curriculum, while the full-buffer leg uses the exact past-task gradient to eliminate variance, allowing us to measure the deterministic arc directly. We include two controls at the settings where the effects they check for would appear: a solver control rerunning the strongest full-buffer cell ($\delta = 0.03$) with $60$ conjugate-gradient iterations instead of $25$, to rule out numerical artefacts, and a symmetric control over the same four $\delta$ on the standard leg that preconditions the summed gradient, isolating the specific effect of the one-sided gate. When momentum is active, the filtered direction enters the velocity accumulator, meaning momentum acts downstream of the gate.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{@{}l l l@{}}
+        \hline
+        Label & Condition         & Replay buffer                  \\
+        \hline
+        P1    & Standard leg      & $1$k reservoir                 \\
+        P2    & Full-buffer leg   & $60$k (exact $g_{\text{rep}}$) \\
+        P3    & Solver control    & $60$k                          \\
+        P4    & Symmetric control & $1$k reservoir                 \\
+        \hline
+    \end{tabular}
+    \caption{Asymmetric-PER conditions. Both sweep legs run at momentum $0.0$; momentum-$0.9$ counterparts cover $\delta \le 0.3$ on the standard leg and $\delta \in \{0.3, 0.1\}$ on the full-buffer leg. The two controls run at momentum $0$, where the effects they check for arise. The filter metric is always the replay Fisher $F_{\text{rep}}$, estimated on a sampled batch (Appendix~\ref{app:impl_per}).}
+    \label{tab:per}
+\end{table}
 
 \subsubsection{Generalisation: CIFAR-10 (RQ4)}
 \label{subsec:cifar}
 
-The CIFAR-10 block tests whether both gates and the momentum signatures carry to a deeper backbone and a stronger task shift. All CIFAR conditions use the ResNet-18 protocol of Table~\ref{tab:training} (ten epochs per task, buffer $5{,}000$). The headline conditions run at momentum $0.9$ (Table~\ref{tab:cifar}, top), each method crossed with BatchNorm and GroupNorm because the two respond differently at the switch: the input shift disrupts BatchNorm's running statistics, which must re-adapt during the first steps, while GroupNorm uses no cross-batch statistics, so its transient reflects optimisation dynamics alone. The curriculum runs as the adaptive schedule at $\lambda_{\min}=0.20$; asymmetric PER runs at $\delta=0.1$, a strong rot-MNIST setting. Both carry their rot-MNIST configurations without a CIFAR-specific sweep, so they meet the deeper backbone on equal footing. A momentum cross (Table~\ref{tab:cifar}, bottom) adds momentum-$0$ runs of all three methods at GroupNorm, repeating the three-way composability test where the transient is free of normalisation-statistics effects; because momentum also drives convergence on this backbone, accuracy is compared within a momentum setting. A further generalisation block pairs the practical curriculum against a paired vanilla-ER control on shifts it was never tuned on (a two-task shot-noise shift, a two-task contrast shift, and a three-task $[\text{none}, \text{Gaussian}, \text{shot}]$ sequence, each at both normalisations over three seeds) to test whether the result depends on the particular corruption or on having a single transition.
+The CIFAR-10 block tests whether the gating mechanisms and momentum dynamics scale to a deeper backbone and a more severe task shift (Table~\ref{tab:cifar}). We evaluate each method using both BatchNorm and GroupNorm to isolate optimisation dynamics from normalisation transients. Because the input shift disrupts BatchNorm's running statistics, it forces a readaptation phase during the first few steps. GroupNorm avoids cross-batch statistics entirely, ensuring that its transient reflects pure optimisation behavior.
 
-\begin{table}[H]
+The curriculum and asymmetric PER carry their tuned rot-MNIST configurations directly into this block without CIFAR-specific hyperparameter sweeps, ensuring a rigorous test of their generalisation. Furthermore, we test the practical curriculum against vanilla ER on novel corruptions (such as a shot-noise shift and a contrast shift) to confirm the results are robust across different types of distribution shifts rather than overfit to Gaussian noise.
+
+\begin{table}[htbp]
     \centering
     \small
     \begin{tabular}{@{}p{0.9cm} p{3.4cm} p{1.8cm} p{0.8cm}@{}}

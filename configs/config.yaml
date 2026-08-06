@@ -22,6 +22,19 @@ memory:
   total_budget: 1000                # total samples across all replay buffers
   sampling: reservoir                # only reservoir is implemented
 
+# ──────────────────────────────────────────────
+# Warm start (S-series learning-rate ladder; scripts/run_S.sh)
+# ──────────────────────────────────────────────
+# checkpoint: path to a model_task_XX.pt state_dict loaded before the task
+#   loop.  Relative paths resolve against the original working directory,
+#   not the Hydra job dir.
+# skip_tasks: number of leading tasks whose *training* loop is suppressed.
+#   Their end_task() bookkeeping still runs, so the replay buffer is filled
+#   exactly as in an ordinary run.  Requires ``checkpoint``.
+init:
+  checkpoint: null
+  skip_tasks: 0
+
 eval:
   eval_every_n_steps: 10              # general periodic eval → logged to W&B live
   stability_gap:

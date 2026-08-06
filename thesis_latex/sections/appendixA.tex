@@ -1,29 +1,17 @@
 \section{Implementation Details}
 \label{app:implementation}
 
-This appendix records the implementation specifics that the methods of
-Section~\ref{sec:methods} depend on but that would interrupt the argument in the
-main text: the datasets, the backbones and training protocol, the
-experience-replay variants, and the asymmetric-PER solver. The full
-implementation is available at \url{https://github.com/Arthurreuss/ValleyWalk}.
+This appendix records the implementation specifics that the methods of Section~\ref{sec:methods} depend on but that would interrupt the argument in the main text: the datasets, the backbones and training protocol, the experience-replay variants, and the asymmetric-PER solver. The full implementation is available at \url{https://github.com/Arthurreuss/ValleyWalk}.
 
 \subsection{Datasets}
 \label{app:impl_data}
 
-rot-MNIST rotates each $28\times28$ image by the per-task angle and feeds the
-flattened greyscale vector to the MLP. The CIFAR-10 domain shifts are generated
-with the \texttt{imagecorruptions} package, which implements the standard
-common-corruptions benchmark of \citet{hendrycks2019robustness}; the Gaussian
-noise, shot noise, and contrast shifts are applied at severity $3$ on the
-benchmark's $1$--$5$ scale, per sample at load time, followed by the standard
-CIFAR-10 channel normalisation. The clean task (``none'') applies the
-normalisation only.
+rot-MNIST rotates each $28\times28$ image by the per-task angle and feeds the flattened greyscale vector to the MLP. The CIFAR-10 domain shifts are generated with the \texttt{imagecorruptions} package, which implements the standard common-corruptions benchmark of \citet{hendrycks2019robustness}; the Gaussian noise, shot noise, and contrast shifts are applied at severity $3$ on the benchmark's $1$--$5$ scale, per sample at load time, followed by the standard CIFAR-10 channel normalisation. The clean task (``none'') applies the normalisation only.
 
 \subsection{Models and Training}
 \label{app:impl_models}
 
-Tables~\ref{tab:mlp} and~\ref{tab:resnet} give the two backbones, and
-Table~\ref{tab:training} the training protocol shared across both benchmarks.
+Tables~\ref{tab:mlp} and~\ref{tab:resnet} give the two backbones, and Table~\ref{tab:training} the training protocol shared across both benchmarks.
 
 \begin{table}[H]
     \centering
@@ -69,10 +57,10 @@ Table~\ref{tab:training} the training protocol shared across both benchmarks.
         \hline
         Hyperparameter  & rot-MNIST (MLP)         & CIFAR-10 (ResNet-18)   \\
         \hline
-        Epochs per task & $1$ (online)            & $10$                   \\
+        Epochs per task & $1$ (online); $c$ in the ladder & $10$           \\
         Batch size      & $256$                   & $256$                  \\
         Optimiser       & SGD                     & SGD                    \\
-        Learning rate   & $0.1$                   & $0.1$                  \\
+        Learning rate   & $0.1$; $0.1/c$, $c \in \{1,3,10,100\}$, in the ladder & $0.1$ \\
         Momentum        & $0.0$ or $0.9$          & $0.9$ ($0.0$ in cross) \\
         Weight decay    & $0.0$                   & $0.0$                  \\
         Replay buffer   & $1{,}000$ or $60{,}000$ & $5{,}000$              \\
@@ -83,44 +71,50 @@ Table~\ref{tab:training} the training protocol shared across both benchmarks.
     \label{tab:training}
 \end{table}
 
+\paragraph{The per-step plotting convention.}
+\label{app:impl_plotting}
+Test accuracy is logged every $10$ steps away from a transition and every step inside the dense window (Section~\ref{subsec:testbed}), so a short interval separates the last pre-switch evaluation from the first post-update one. In the per-step figures the last pre-switch level is held flat up to the boundary rather than interpolated across that interval: the past task is still training and sitting at its plateau there, so a straight line between the two samples would draw the drop as beginning before the switch that causes it. The convention affects the drawn curve only. Every reported metric is computed from the logged samples themselves, so none of them depends on it.
+
+\paragraph{Drawing runs of different length on one axis.}
+\label{app:impl_flowaxis}
+The rungs of the ladder (Section~\ref{subsec:ladder}) are not the same length in steps: at matched flow time the epoch count scales as $1/\eta$, so the $\eta = 0.001$ rung takes a hundred times as many updates as the standard one to cover the same $\tau = 23.5$. Its figures are therefore drawn against flow time $\tau = \eta \cdot (\text{steps into } T_1)$ rather than against the step index, which is the axis on which a uniform rescaling of $\eta$ is a reparametrisation of one and the same gradient flow. The evaluation cadence is scaled by the same factor $c = 0.1/\eta$ (Appendix~\ref{app:impl_ladder}), so each rung contributes $235$ samples at identical $\tau$ values and the curves are compared sample-for-sample rather than interpolated onto a common grid; areas convert with the same factor, $A_\tau = \eta A_{\text{steps}}$ (Section~\ref{subsec:metrics}). Every block outside the ladder runs at a single $\eta$, where the two axes differ by a constant, and keeps the step index.
+
 \subsection{Experience replay}
 \label{app:impl_er}
 
-The replay buffer uses reservoir sampling \citep{vitter1985random}, so the stored
-set is a uniform sample of the past stream at any budget. Three modes appear in
-the experiments:
+The replay buffer uses reservoir sampling \citep{vitter1985random}, so the stored set is a uniform sample of the past stream at any budget. Two modes appear in the experiments:
 
 \begin{itemize}
-    \item \emph{Standard ER} (the D1 and all C-series conditions): each step takes
-          one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$,
-          with half the mini-batch drawn from the current task and half sampled
-          with replacement from the buffer.
-    \item \emph{Balanced ER} (D3, D4): two separate backward passes whose gradients are
-          individually unit-normalised before being combined $50/50$, removing the
-          magnitude asymmetry between $g_{\text{new}}$ and $g_{\text{replay}}$.
-    \item \emph{Full-data replay} (D2, D4): the replay gradient is computed on
-          \emph{every} stored sample exactly once per step (no sub-sampling). Paired
-          with a buffer equal to the full past-task training set ($60{,}000$ for
-          rot-MNIST $T_0$), this yields the deterministic empirical past-task
-          gradient at the current parameters, removing estimator variance.
+    \item \emph{Standard ER} (the D1 reference, the ladder's $1$k arm, and all C-series conditions except C8): each step takes one combined backward pass on $L_{\text{current}} + L_{\text{replay}}$, with half the mini-batch drawn from the current task and half sampled with replacement from the buffer.
+    \item \emph{Full-data replay} (the ladder's exact arm, C8, and the P2--P3 legs): the replay gradient is computed on \emph{every} stored sample exactly once per step (no sub-sampling). Paired with a buffer equal to the full past-task training set ($60{,}000$ for rot-MNIST $T_0$), this yields the deterministic empirical past-task gradient at the current parameters, removing estimator variance.
 \end{itemize}
 
-The $\lambda$-curriculum re-weights only the current-task term, minimising
-$L_\lambda = L_{\text{replay}} + \lambda(t)\, L_{\text{current}}$; the adaptive
-schedule reads $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ through an exponential
-moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$.
+The $\lambda$-curriculum re-weights only the current-task term, minimising $L_\lambda = L_{\text{replay}} + \lambda(t)\, L_{\text{current}}$; the adaptive schedule reads $\|g_{\text{replay}}\|/\|g_{\text{new}}\|$ through an exponential moving average ($\alpha = 0.05$) and applies the optional floor $\lambda_{\min}$. The EMA is reset to zero at each task boundary, so $\lambda$ starts near zero on every task; the time-indexed schedules latch at $\lambda = 1$ once the ramp is past, but the adaptive one has no such state and follows the ratio for the whole task.
+
+Reconstructing $\lambda$ from the logged gradient norms of the C4 runs shows how far the two momentum legs actually get, and they get nowhere near the same place. At momentum $0$ the norms do converge over the epoch, the median $\|g_{\text{new}}\|/\|g_{\text{replay}}\|$ falling from ${\approx}7$ over the first twenty steps to ${\approx}1.1$ over the second half, and $\lambda$ follows it to $0.79$--$0.93$ at the end of the task; it reaches $1$ in one seed of five and then only at step $208$ of $235$, so even here the release is incomplete when the task ends. At momentum $0.9$ the ratio instead widens, from ${\approx}10$ early to ${\approx}40$ late, and $\lambda$ peaks at $0.12$--$0.16$ around step $60$ and decays to ${\approx}0.02$: the gate shuts again rather than opening. With the floor of C5--C7 in place this shows up as saturation, C7$_M$ sitting at $\lambda = \lambda_{\min}$ for $73$--$79\%$ of the task's steps. The schedule is a feedback rule with no terminal state, not a ramp with an endpoint, and the momentum-on results of Section~\ref{subsec:res_scalar} are obtained in the regime where it holds the new-task term down throughout.
+
+\subsection{The step-size ladder}
+\label{app:impl_ladder}
+
+Every cell of the ladder warm-starts from a shared task-$0$ checkpoint. \texttt{init.checkpoint} loads a task-$0$ \texttt{state\_dict} written by a separate anchor run, one per momentum setting and seed, trained at the standard operating point ($\eta = 0.1$, one epoch); \texttt{init.skip\_tasks} then suppresses the training loop of that many leading tasks while still running their \texttt{end\_task} bookkeeping, so the replay buffer is filled from the skipped task's stream exactly as it would have been in an ordinary run. Because reservoir sampling at a fixed seed returns the same subset of the same stream at a given budget, $\theta_0^*$ and the buffer are identical across the four rungs at a given buffer arm, momentum, and seed, and the learning rate is the only difference between them.
+
+A skipped task still advances \texttt{global\_step} by one nominal epoch ($\lceil 60{,}000 / 256 \rceil = 235$ batches), so the task boundary carries the same index as in an ordinary run and the per-step plotting convention above keys off it unchanged. One pre-switch evaluation is written at step $234$, supplying the flat pre-boundary segment that the suppressed training loop would otherwise have recorded.
+
+Inside the dense post-switch window the stability-gap cadence fires on the step index \emph{within the current task} rather than on the global step. At a cadence of $c > 1$ a global-step modulus would place the first post-switch sample at an arbitrary phase offset into the task whenever $c$ does not divide the $235$-batch epoch, skipping exactly the steps the boundary spike occupies. The change is a no-op at cadence $1$, which is every previously archived run.
+
+The four rungs use $\eta = 0.1$, $\eta = 0.1/3 = 0.0\overline{3}$, $\eta = 0.01$ and $\eta = 0.001$. The second is written into the configuration at full precision rather than rounded, so that $\eta c = 0.1$ holds exactly and the flow time $\tau = 23.5$ is matched to the last digit; the main text reports it as $0.1/3$. The dense window is set to $250c$ steps, which exceeds the $235c$ steps of the task, so every cell records the whole of $T_1$ at the dense cadence: $235$ samples per rung, evenly spaced in flow time. Buffer-fidelity diagnostics are disabled throughout the ladder, since each such step costs a full pass over the past-task training set and the longest rung takes one hundred epochs.
 
 \subsection{Asymmetric PER}
 \label{app:impl_per}
 
-The filtered push $\delta\,(F_{\text{rep}}+\delta I)^{-1} g_{\text{cur}}$ of
-Equation~\eqref{eq:asym_per} is computed each step by warm-started conjugate
-gradients over Fisher-vector products ($25$ iterations), so the metric is never
-formed as a matrix; warm-starting from the previous step's solution keeps the
-per-step solve cheap across the run. The solver control of
-Section~\ref{subsec:per_asym} reruns the strongest filter ($\delta = 0.03$, full
-buffer) at $60$ iterations to separate properties of the gate from artefacts of
-an under-converged solve. On the full-buffer leg the replay gradient is exact
-over all $60$k past samples while the Fisher stays estimated on a sampled batch,
-since a full-buffer Fisher-vector product per CG iteration would dominate the
-runtime.
+\paragraph{How the Fisher is computed.} For a softmax cross-entropy model the Fisher information matrix equals the generalised Gauss--Newton matrix
+\begin{equation*}
+    F \;=\; \frac{1}{B} \sum_b J_b^\top H_b J_b,
+    \qquad J_b = \frac{\partial z_b}{\partial \theta},
+    \qquad H_b = \operatorname{diag}(p_b) - p_b p_b^\top,
+\end{equation*}
+where $z_b$ are the logits of sample $b$ and $p_b = \operatorname{softmax}(z_b)$ \citep{martens2020insights}. This matrix is positive semi-definite by construction, so $F + \delta I$ is positive-definite and the solve is well-posed; it depends only on the model's predictive distribution, not on the labels. $F_{\text{rep}}$ is estimated on a mini-batch sampled from the replay buffer and \emph{recomputed at every step from the current parameters}: the gate uses a live local curvature model, not a snapshot frozen at the task boundary. It remains feedforward in the sense of Section~\ref{subsec:gates}, because what it reads is the curvature model, never the past-task performance it is meant to protect. The matrix is never formed explicitly. Fisher-vector products $v \mapsto F v$ are computed matrix-free by the Gauss--Newton trick of \citet{schraudolph2002fast}: one forward pass gives the logits (retained across the solve), each product then costs one Jacobian-vector and one vector-Jacobian product.
+
+\paragraph{The solve.} The filtered push $\delta\,(F_{\text{rep}}+\delta I)^{-1} g_{\text{cur}}$ of Equation~\eqref{eq:asym_per} is computed each step by conjugate gradients over these Fisher-vector products ($25$ iterations, relative-residual tolerance $10^{-4}$), warm-started from the previous step's solution, which keeps the per-step solve cheap across the run; the warm start is dropped at task boundaries, where the landscape shifts. The solver control of Section~\ref{subsec:per_asym} reruns the strongest filter ($\delta = 0.03$, full buffer) at $60$ iterations to separate properties of the gate from artefacts of an under-converged solve. On the full-buffer leg the replay gradient is exact over all $60$k past samples while the Fisher stays estimated on a sampled batch, since a full-buffer Fisher-vector product per CG iteration would dominate the runtime.
+
+\paragraph{Order of gate and momentum.} When momentum is enabled, the gate is applied first: the filtered direction $d$ is written in place of the gradient, and the optimiser's velocity buffer accumulates $v \leftarrow \mu v + d$ with the step $-\eta\,v$. The velocity is therefore built from already-filtered directions and is itself applied unfiltered. The alternative ordering, accumulating raw gradients and filtering the velocity, is a distinct design with potentially different behaviour under the re-inflation mechanism of Section~\ref{subsec:res_directional}; it is not implemented here and is discussed as future work in Section~\ref{subsec:disc_outlook}.

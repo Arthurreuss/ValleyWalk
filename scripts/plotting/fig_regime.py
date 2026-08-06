@@ -53,7 +53,7 @@ def main() -> None:
     leg = axL.legend(loc="lower right", handlelength=1.8, borderaxespad=0.6)
     for line in leg.get_lines():
         line.set_linewidth(2.4)
-    vw.finalize(fig, vw.FIG_DIR / "R" / "regime_t0.png")
+    vw.finalize(fig, vw.FIG_DIR / "momentum" / "regime_flip.png")
 
 
 if __name__ == "__main__":

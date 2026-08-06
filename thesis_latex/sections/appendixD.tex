@@ -3,8 +3,7 @@
 
 This appendix derives the two results used in Section~\ref{subsec:reference}: the replay loss is monotone along the reference path (Proposition~\ref{prop:monotone}), and a gradient-flow iterate under a linear ramp tracks that path with $O(1/N)$ lag (Proposition~\ref{prop:tracking}), which together give the transient bound of Equation~\eqref{eq:bound}.
 
-\paragraph{Setup.}
-For $\lambda \in [0,1]$ define the curriculum objective
+\paragraph{Setup.} For $\lambda \in [0,1]$ define the curriculum objective
 \begin{equation}
     L_\lambda(\theta) \;=\; L_{\text{replay}}(\theta) + \lambda\, L_{\text{current}}(\theta),
     \qquad
@@ -37,8 +36,7 @@ Assumption (A2) asks for a tracked branch of strict local minima, not global con
         \nabla L_{\text{replay}}(\Theta^*(\lambda)) + \lambda\, \nabla L_{\text{current}}(\Theta^*(\lambda)) = 0.
         \label{eq:foc_detailed}
     \end{equation}
-    Differentiating \eqref{eq:foc_detailed} in $\lambda$ and collecting terms gives
-    $H_\lambda\, \tfrac{d\Theta^*}{d\lambda} + \nabla L_{\text{current}} = 0$, hence
+    Differentiating \eqref{eq:foc_detailed} in $\lambda$ and collecting terms gives $H_\lambda\, \tfrac{d\Theta^*}{d\lambda} + \nabla L_{\text{current}} = 0$, hence
     \begin{equation}
         \frac{d\Theta^*}{d\lambda} = -\,H_\lambda^{-1}\, \nabla L_{\text{current}}.
         \label{eq:path_movement}
@@ -76,8 +74,7 @@ Assumption (A2) asks for a tracked branch of strict local minima, not global con
     Because $H_\lambda \succeq \mu I$, these dynamics contract toward the quasi-static equilibrium $e^\dagger = -\tfrac{1}{N} H_\lambda^{-1} \tfrac{d\Theta^*}{d\lambda}$; bounding $\|H_\lambda^{-1}\| \le 1/\mu$ and, by \eqref{eq:path_movement}, $\|d\Theta^*/d\lambda\| \le g/\mu$ gives the stated bound. The argument is a first-order, continuous-time approximation: it captures how the lag scales with the ramp length $N$, not an exact discrete-time constant.
 \end{proof}
 
-\paragraph{The transient bound.}
-Expanding the replay loss about the reference point, $L_{\text{replay}}(\theta(t)) = L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top e + O(\|e\|^2)$, Proposition~\ref{prop:monotone} bounds the first term by $L_{\text{replay}}(\theta_{\text{joint}}^*)$ and Proposition~\ref{prop:tracking} bounds the correction by $O(1/N)$ (the gradient norm $\|\nabla L_{\text{replay}}(\Theta^*)\| = \lambda \|\nabla L_{\text{current}}\| \le g$ is bounded along the branch). Hence
+\paragraph{The transient bound.} Expanding the replay loss about the reference point, $L_{\text{replay}}(\theta(t)) = L_{\text{replay}}(\Theta^*) + \nabla L_{\text{replay}}(\Theta^*)^\top e + O(\|e\|^2)$, Proposition~\ref{prop:monotone} bounds the first term by $L_{\text{replay}}(\theta_{\text{joint}}^*)$ and Proposition~\ref{prop:tracking} bounds the correction by $O(1/N)$ (the gradient norm $\|\nabla L_{\text{replay}}(\Theta^*)\| = \lambda \|\nabla L_{\text{current}}\| \le g$ is bounded along the branch). Hence
 \begin{equation}
     \max_t\, L_{\text{replay}}(\theta(t)) \;\le\; L_{\text{replay}}(\theta_{\text{joint}}^*) + O\!\left(\frac{1}{N}\right):
 \end{equation}
