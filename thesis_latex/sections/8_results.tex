@@ -26,24 +26,6 @@ However, as the ladder of step sizes converges, it does not converge on zero. Ev
 \paragraph{Accuracy is not what the limit costs.}
 Crucially, shedding the discrete instability to reach this minimal arc does not sacrifice final accuracy, the fine-grained runs recover just as well as the standard run. Instead, the cost is purely computational: traversing the exact same trajectory with tiny steps requires drastically more epochs. Lowering the gap is therefore not by itself an achievement, since a shorter step does it with no method at all. Following RQ1, the criteria for our gating mechanisms (RQ2 and RQ3) are to simultaneously resolve the discrete overshoot and mitigate the underlying arc, achieving both under a practical step-size.
 
-\subsection{The Scalar Feedback Gate (RQ2)}
-\label{subsec:res_scalar}
-
-The scalar feedback gate (adaptive curriculum) successfully protects past knowledge by scaling down the new-task loss term when boundary gradients threaten stability. Table~\ref{tab:res_gates} puts its practical configuration (C7) beside the directional gate of Section~\ref{subsec:res_directional} and the ungated baseline, at both momentum settings; the ingredient sweep behind C7 is in Appendix~\ref{app:curr_full}.
-
-\paragraph{The schedule works, but incurs a plasticity debt without momentum.}
-As shown in Figure~\ref{fig:c_curves} (dashed lines), testing the curriculum without momentum reveals the core trade-off. By scaling down the new-task loss term during the boundary transition, the gate effectively shrinks the \emph{depth} of the initial forgetting spike and reduces the total \emph{area} of the excursion compared to the vanilla baseline. However, Figure~\ref{fig:c_curves}(b) illustrates the cost: early learning on the new task is visibly delayed, creating a plasticity debt that depresses final accuracy. Furthermore, while the curriculum prevents the catastrophic initial drop, the dashed blue line in Figure~\ref{fig:c_curves}(a) shows it still suffers from a jittery, chronic baseline of forgetting. This residual is an artifact of estimator variance, not a secondary deformation of the path: the curriculum scales the new-task term but leaves the replay estimate as noisy as the vanilla baseline. A control experiment using exact replay gradients verifies that this variance accounts for the residual depth (see Appendix~\ref{app:curr_full} for full details).
-
-\paragraph{Momentum pays the debt and closes the gap.}
-The scalar gate is explicitly designed for a momentum-enabled regime, where it excels by solving both the variance and plasticity problems simultaneously. As seen in the solid lines of Figure~\ref{fig:c_curves}, momentum acts in two complementary roles. First, it averages out the noisy replay estimates over time, collapsing the remaining jittery variance and holding the past task nearly flat against its plateau (Figure~\ref{fig:c_curves}(a)). This drives both the \emph{depth} and \emph{area} of the gap down to a mere fraction of the vanilla baseline. Second, momentum accelerates the learning process, entirely repaying the plasticity debt incurred by the curriculum's early braking (Figure~\ref{fig:c_curves}(b)). Ultimately, the combination of the adaptive curriculum and momentum achieves profound stability while fully restoring final accuracy to vanilla levels as seen in Table~\ref{tab:res_gates}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\linewidth]{img/results/curriculum/curriculum.png}
-    \caption{The scalar feedback gate and momentum's two roles: per-step accuracy across the rot-MNIST switch, seed mean with $\pm$std bands, for vanilla ER (red) and the practical adaptive curriculum $\lambda_{\min}{=}0.20$ (blue), each at momentum $0.9$ (solid) and $0.0$ (dashed). \textbf{(a) Stability ($T_0$):} only curriculum-with-momentum (solid blue) holds the past task near its plateau through the switch; momentum leaves vanilla's spike, and both methods open a deep, jittery gap without it (dashed). \textbf{(b) Plasticity ($T_1$):} at momentum $0$ the curriculum slows early new-task learning (dashed blue), the plasticity debt that momentum pays back (solid blue).}
-    \label{fig:c_curves}
-\end{figure}
-
 \begin{table*}[htbp]
     \centering
     \small
@@ -66,13 +48,31 @@ The scalar gate is explicitly designed for a momentum-enabled regime, where it e
     \label{tab:res_gates}
 \end{table*}
 
+\subsection{The Scalar Feedback Gate (RQ2)}
+\label{subsec:res_scalar}
+
+The scalar feedback gate (adaptive curriculum) successfully protects past knowledge by scaling down the new-task loss term when boundary gradients threaten stability. Table~\ref{tab:res_gates} puts its practical configuration (C7) beside the directional gate of Section~\ref{subsec:res_directional} and the ungated baseline, at both momentum settings; the ingredient sweep behind C7 is in Appendix~\ref{app:curr_full}.
+
+\paragraph{The schedule works, but incurs a plasticity debt without momentum.}
+As shown in Figure~\ref{fig:c_curves} (dashed lines), testing the curriculum without momentum reveals the core trade-off. By scaling down the new-task loss term during the boundary transition, the gate effectively shrinks the \emph{depth} of the initial forgetting spike and reduces the total \emph{area} of the excursion compared to the vanilla baseline. However, Figure~\ref{fig:c_curves}(b) illustrates the cost: early learning on the new task is visibly delayed, creating a plasticity debt that depresses final accuracy. Furthermore, while the curriculum prevents the catastrophic initial drop, the dashed blue line in Figure~\ref{fig:c_curves}(a) shows it still suffers from a jittery, chronic baseline of forgetting. This residual is an artifact of estimator variance, not a secondary deformation of the path: the curriculum scales the new-task term but leaves the replay estimate as noisy as the vanilla baseline. A control experiment using exact replay gradients verifies that this variance accounts for the residual depth (see Appendix~\ref{app:curr_full} for full details).
+
+\paragraph{Momentum pays the debt and closes the gap.}
+The scalar gate is explicitly designed for a momentum-enabled regime, where it excels by solving both the variance and plasticity problems simultaneously. As seen in the solid lines of Figure~\ref{fig:c_curves}, momentum acts in two complementary roles. First, it averages out the noisy replay estimates over time, collapsing the remaining jittery variance and holding the past task nearly flat against its plateau (Figure~\ref{fig:c_curves}(a)). This drives both the \emph{depth} and \emph{area} of the gap down to a mere fraction of the vanilla baseline. Second, momentum accelerates the learning process, entirely repaying the plasticity debt incurred by the curriculum's early braking (Figure~\ref{fig:c_curves}(b)). Ultimately, the combination of the adaptive curriculum and momentum achieves profound stability while fully restoring final accuracy to vanilla levels as seen in Table~\ref{tab:res_gates}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{img/results/curriculum/curriculum.png}
+    \caption{The scalar feedback gate and momentum's two roles: per-step accuracy across the rot-MNIST switch, seed mean with $\pm$std bands, for vanilla ER (red) and the practical adaptive curriculum $\lambda_{\min}{=}0.20$ (blue), each at momentum $0.9$ (solid) and $0.0$ (dashed). \textbf{(a) Stability ($T_0$):} only curriculum-with-momentum (solid blue) holds the past task near its plateau through the switch; momentum leaves vanilla's spike, and both methods open a deep, jittery gap without it (dashed). \textbf{(b) Plasticity ($T_1$):} at momentum $0$ the curriculum slows early new-task learning (dashed blue), the plasticity debt that momentum pays back (solid blue).}
+    \label{fig:c_curves}
+\end{figure}
+
 \subsection{The Directional Feedforward Gate (RQ3)}
 \label{subsec:res_directional}
 
 The directional feedforward gate (asymmetric PER) employs a targeted regularization strategy. Rather than attenuating the new-task push uniformly at its source, as the scalar curriculum does, it selectively filters gradient components that align with the high-curvature directions of the past task. Table~\ref{tab:res_gates} presents the results for the most stringent filter setting evaluated using the standard experience replay buffer, matching the baseline operating conditions. The complete hyperparameter sweep across both momentum settings is detailed in Appendix~\ref{app:per_full}.
 
 \paragraph{Protection without plasticity degradation.}
-Figure~\ref{fig:per_curves} contrasts the strongest filter configuration against the ungated baseline, structured to facilitate direct comparison with the scalar gate. In the absence of momentum (dashed line), the filter maintains past-task performance notably above the vanilla ER baseline throughout the transition phase. Furthermore, Figure~\ref{fig:per_curves}(b) demonstrates that this stability does not incur a long-term penalty: while new-task learning experiences a brief initial lag, it quickly converges with the baseline trajectory. Because this deceleration is restricted to directions flagged by past-task curvature rather than the global loss landscape, it fully resolves before the $\mathrm{WP}_{100}$ horizon. This behavior represents an inversion of the plasticity debt observed with the scalar gate. Consequently, as filter strength increases, performance drop depth and area decrease while overall accuracy and $\mathrm{WP}_{100}$ consistently improve (Table~\ref{tab:app_per_full}). Consequently, the gate approximates the idealized ``arc'' trajectory without relying on microscopic step sizes or sacrificing plasticity. The monotonic relationship governing this behavior is shown in Figure~\ref{fig:per_sweep} (see Appendices~\ref{app:per_full} and~\ref{app:per_sym} for supplementary symmetric, higher conjugate gradients, and exact gradient controls).
+Figure~\ref{fig:per_curves} contrasts the strongest filter configuration against the ungated baseline, structured to facilitate direct comparison with the scalar gate. In the absence of momentum (dashed line), the filter maintains past-task performance notably above the vanilla ER baseline throughout the transition phase. Furthermore, Figure~\ref{fig:per_curves}(b) demonstrates that this stability does not incur a long-term penalty: while new-task learning experiences a brief initial lag, it quickly converges with the baseline trajectory. Because this deceleration is restricted to directions flagged by past-task curvature rather than the global loss landscape, it fully resolves before the $\mathrm{WP}_{100}$ horizon. This behavior represents an inversion of the plasticity debt observed with the scalar gate. Consequently, as filter strength increases, performance drop depth and area decrease while overall accuracy and $\mathrm{WP}_{100}$ consistently improve (Table~\ref{tab:app_per_full}). The gate therefore approaches the reference path of Section~\ref{subsec:reference}, along which the past task rises monotonically to its joint-optimum level, without relying on microscopic step sizes or sacrificing plasticity. The monotonic relationship governing this behavior is shown in Figure~\ref{fig:per_sweep} (see Appendices~\ref{app:per_full} and~\ref{app:per_sym} for supplementary symmetric, higher conjugate gradients, and exact gradient controls).
 
 \begin{figure}[htbp]
     \centering
@@ -90,14 +90,6 @@ The protective benefits of the directional gate are largely negated when momentu
 % When evaluated side-by-side on realistic memory budgets, it becomes clear that the two gates do not sit on a continuous stability-plasticity trade-off curve. Instead, their viability is strictly dictated by the momentum regime, and the two blocks of Table~\ref{tab:res_gates} are that flip read off one set of columns.
 
 % Without momentum, the directional gate is vastly superior: it drastically reduces the \emph{depth} of the forgetting gap and keeps the past task stable, whereas the scalar curriculum opens a deep, noisy dip. However, in standard deep learning configurations where momentum is active, the hierarchy completely flips. Accumulated velocity cripples the directional gate, causing its forgetting \emph{depth} to swell back up. Conversely, the scalar curriculum leverages momentum to smooth out its variance, holding the past task virtually flat while fully restoring final accuracy. The choice is binary: use the directional gate for unaccelerated optimisers, and the scalar gate when momentum is enabled.
-
-\subsection{Generalisation to CIFAR-10 (RQ4)}
-\label{subsec:res_cifar}
-
-To ensure these findings are not artifacts of simple environments, we tested both gates on a ResNet-18 architecture transitioning across CIFAR-10 corruptions. Table~\ref{tab:res_cifar} and Figure~\ref{fig:cifar_curves} confirm that the mechanisms carry to deeper networks.
-
-\paragraph{Configuration of the directional gate.}
-It should be noted that the directional gate is evaluated here at a slightly weaker filter setting ($\delta{=}0.1$) than the optimal configuration ($\delta{=}0.03$) established in Section~\ref{subsec:res_directional}. However, because the performance of the gate scales monotonically with filter strength in this regime (as detailed in Appendix~\ref{app:per_full}), the results presented here serve as a conservative lower bound. The empirical difference between these adjacent configurations is marginal and does not alter the broader conclusions regarding the gate's ability to generalise.
 
 \begin{table*}[htbp]
     \centering
@@ -121,12 +113,20 @@ It should be noted that the directional gate is evaluated here at a slightly wea
     \label{tab:res_cifar}
 \end{table*}
 
+\subsection{Generalisation to CIFAR-10 (RQ4)}
+\label{subsec:res_cifar}
+
+To ensure these findings are not artifacts of simple environments, we tested both gates on a ResNet-18 architecture transitioning across CIFAR-10 corruptions. Table~\ref{tab:res_cifar} and Figure~\ref{fig:cifar_curves} confirm that the mechanisms carry to deeper networks.
+
+\paragraph{Configuration of the directional gate.}
+It should be noted that the directional gate is evaluated here at a slightly weaker filter setting ($\delta{=}0.1$) than the optimal configuration ($\delta{=}0.03$) established in Section~\ref{subsec:res_directional}. However, because the performance of the gate scales monotonically with filter strength in this regime (as detailed in Appendix~\ref{app:per_full}), the results presented here serve as a conservative lower bound. The empirical difference between these adjacent configurations is marginal and does not alter the broader conclusions regarding the gate's ability to generalise.
+
 \paragraph{Scaling to deep backbones.}
 Both gates successfully protect past knowledge in harder tasks, though their visual impact varies by normalisation layer. Under batch normalisation (Figure~\ref{fig:cifar_curves}(a)), the vanilla baseline suffers a moderate drop in \emph{depth} and accumulates forgetting \emph{area} as it slowly readapts. Although both gates still exhibit a minor performance dip, which we attribute to the shifting of running batch statistics rather than structural forgetting, they successfully intercept the primary degradation, effectively maintaining the past task near its peak performance.
 
 The contrast is drastically sharper under group normalisation (Figure~\ref{fig:cifar_curves}(b)). Here, the vanilla baseline suffers a catastrophic, prolonged crash, heavily inflating both the gap \emph{depth} and \emph{area}. Both the scalar and directional gates suppress this massive transient, keeping the trajectory virtually flat through the switch. As Table~\ref{tab:res_cifar} demonstrates, this intervention vastly improves worst-case task retention (\emph{min-ACC}) across the board without sacrificing final \emph{accuracy}. The one exception is a three-task group-norm sequence, where the curriculum's gradient-norm ratio loses its conditioning at a boundary between two near-identical corruptions and the run destabilises to $32.8 \pm 14.5$ pp of depth against vanilla's $4.4 \pm 0.4$ (Appendix~\ref{app:cifar_gen_full}).
 
-\begin{figure}[htbp]
+\begin{figure}[htb]
     \centering
     \includegraphics[width=\linewidth]{img/results/cifar/cifar_headline.png}
     \caption{Per-step past-task ($T_0$) accuracy across the CIFAR-10 transition (ResNet-18, momentum $0.9$, buffer $5{,}000$), one panel per normalisation, each overlaying vanilla ER (red), the practical curriculum (blue) and asymmetric PER (aqua); seed mean with $\pm$std bands, $x{=}0$ the task switch. \textbf{(a) BatchNorm:} vanilla ER dips and readapts slowly while both gates hold $T_0$ near its plateau. \textbf{(b) GroupNorm:} vanilla ER's transient is deep and long, whereas both gates hold $T_0$ flat through the switch (Table~\ref{tab:res_cifar}, Appendix~\ref{app:cifar_headline_full}).}

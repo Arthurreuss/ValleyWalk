@@ -5,15 +5,26 @@ The two-level account and tracking bound of Section~\ref{sec:motivation} make fa
 
 \paragraph{RQ1: The account.}
 A uniform rescaling of the learning rate is a time reparametrisation of the same gradient flow, so driving $\eta \to 0$ at matched flow time follows the intended trajectory ever more faithfully without changing it.
-\noindent\textbf{Does the stability gap separate under that limit into a deterministic arc that survives it, belonging to the intended trajectory, and an overshoot that exists only at finite step size?}
+
+\begin{quote}
+    \textbf{Does the stability gap separate under that limit into a deterministic arc that survives it, belonging to the intended trajectory, and an overshoot that exists only at finite step size?}
+\end{quote}
 
 \paragraph{RQ2: The adaptive scalar gate.}
 Taking the limit is itself a repair, but a costly one: a smaller step removes the overshoot and bills for it in training length, the epoch count scaling as $1/\eta$ at matched flow time.
 
-\noindent\textbf{Can an adaptive scalar feedback gate (the adaptive $\lambda$-curriculum) fix the trajectory without paying that bill, and how does the answer depend on optimiser momentum and on the plasticity the gate withholds?}
+\begin{quote}
+    \textbf{Can an adaptive scalar feedback gate (the adaptive $\lambda$-curriculum) fix the trajectory without paying that bill, and how does the answer depend on optimiser momentum and on the plasticity the gate withholds?}
+\end{quote}
 
 \paragraph{RQ3: The directional feedforward gate.}
-\noindent\textbf{To what extent does a directional feedforward gate (asymmetric PER) reduce the stability gap, and how does accumulated momentum compromise this gating mechanism?}
+
+\begin{quote}
+    \textbf{To what extent does a directional feedforward gate (asymmetric PER) reduce the stability gap, and how does accumulated momentum compromise this gating mechanism?}
+\end{quote}
 
 \paragraph{RQ4: Generalisation.}
-\noindent\textbf{Do the mechanisms underlying the stability gap, and the effectiveness of the proposed gates, generalise to deeper network architectures and more severe task shifts?}
+
+\begin{quote}
+    \textbf{Do the mechanisms underlying the stability gap, and the effectiveness of the proposed gates, generalise to deeper network architectures and more severe task shifts?}
+\end{quote}
